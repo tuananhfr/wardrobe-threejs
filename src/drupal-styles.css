@@ -1,0 +1,60 @@
+/* Prefix tất cả styles để tránh conflict với Drupal */
+.my-react-app {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+    sans-serif;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.my-react-app *,
+.my-react-app *::before,
+.my-react-app *::after {
+  box-sizing: border-box;
+}
+
+/* Reset Bootstrap container trong context của Drupal */
+.my-react-app .container-fluid {
+  padding-left: var(--bs-gutter-x, 0.75rem);
+  padding-right: var(--bs-gutter-x, 0.75rem);
+  margin: 0;
+  max-width: none;
+}
+
+/* Theme variations */
+.my-react-app.theme-dark {
+  background-color: #343a40;
+  color: #fff;
+}
+
+.my-react-app.theme-dark .bg-white {
+  background-color: #495057 !important;
+  color: #fff;
+}
+
+.my-react-app.theme-dark .bg-light {
+  background-color: #6c757d !important;
+  color: #fff;
+}
+
+.my-react-app.theme-dark .border-bottom {
+  border-color: #6c757d !important;
+}
+
+/* Responsive adjustments cho Drupal */
+@media (max-width: 991.98px) {
+  .my-react-app .vh-100 {
+    height: 70vh !important; /* Adjust height trong Drupal mobile */
+    min-height: 500px;
+  }
+}
+
+/* Ensure proper spacing trong Drupal block */
+.my-react-app .row {
+  margin: 0;
+}
+
+.my-react-app .col-12,
+.my-react-app .col-lg-3,
+.my-react-app .col-lg-9 {
+  padding: 0;
+}

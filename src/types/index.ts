@@ -1,3 +1,4 @@
+import * as THREE from "three";
 declare global {
   // Định nghĩa kiểu cho context
   interface WardrobeContextType {
@@ -10,14 +11,16 @@ declare global {
   }
 
   interface WardrobeState {
-    width: number;
+    wardrobeTypeListTemplate: WardrobeType[];
+    wardrobeType: WardrobeType;
     height: number;
-    depth: number;
     thickness: number;
+    baseBarHeight: number;
     price: number;
     originalPrice: number;
     texture: Texture;
     textures: Texture[];
+    activeView: string;
     showMeasurements: boolean;
   }
 
@@ -28,24 +31,50 @@ declare global {
 
   interface WardrobeSection {
     width: number;
-    height: number;
     depth: number;
+    columns: WardrobeColumn[];
+    minColumns: number;
+    maxColumns: number;
+    shelves?: number;
+    hangingRods?: number;
   }
 
-  export type WardrobeType = "straight" | "L-shaped" | "U-shaped";
+  interface WardrobeColumn {
+    id: string;
+    width: number;
+  }
 
-  interface WardrobeTypeTemplate {
-    value: WardrobeType;
-    label: string;
-    description: string;
-    icon: string;
+  type WardrobeId = "Linéaire" | "Angle" | "Forme U";
+  type SectionKey = "sectionA" | "sectionB" | "sectionC";
+
+  interface WardrobeType {
+    id: WardrobeId;
+    name: string;
+
+    images: string;
     sections: {
       sectionA: WardrobeSection;
       sectionB?: WardrobeSection;
       sectionC?: WardrobeSection;
     };
-    defaultShelves: number;
-    defaultDoorType: "swing" | "sliding" | "none";
+  }
+
+  interface SceneConfig {
+    [key: string]: string | number | boolean | null | undefined;
+  }
+
+  interface OrbitControls {
+    update: () => void;
+    target: THREE.Vector3;
+    enableDamping?: boolean;
+    dampingFactor?: number;
+  }
+
+  interface Window {
+    __THREE_SCENE__?: THREE.Scene | null;
+    __THREE_CAMERA__?: THREE.Camera | null;
+    __THREE_CONTROLS__?: OrbitControls | null;
+    __THREE_SCENE_CONFIG__?: SceneConfig;
   }
 }
 

@@ -77,6 +77,9 @@ const ThreeDPreview: React.FC = () => {
   const [zoomInTriggered, setZoomInTriggered] = useState(false);
   const [zoomOutTriggered, setZoomOutTriggered] = useState(false);
 
+  const [canZoomIn, setCanZoomIn] = useState(true);
+  const [canZoomOut, setCanZoomOut] = useState(true);
+
   const handleRulerClick = () => {
     updateConfig("showMeasurements", !config.showMeasurements);
   };
@@ -94,11 +97,17 @@ const ThreeDPreview: React.FC = () => {
     setZoomOutTriggered(false);
   }, []);
 
+  // Callback để update zoom state từ CameraController
+  const updateZoomLimits = useCallback((canIn: boolean, canOut: boolean) => {
+    setCanZoomIn(canIn);
+    setCanZoomOut(canOut);
+  }, []);
+
   return (
     <div style={{ width: "100%", height: "100%", position: "relative" }}>
       <Canvas
         gl={{ preserveDrawingBuffer: true }}
-        camera={{ position: [0, 0, 2.5], fov: 50 }}
+        camera={{ position: [-1.5, 0, 4.5], fov: 50 }}
       >
         <color attach="background" args={["#e5e6e8"]} />
 
@@ -117,6 +126,7 @@ const ThreeDPreview: React.FC = () => {
           zoomInTriggered={zoomInTriggered}
           zoomOutTriggered={zoomOutTriggered}
           resetZoomTriggers={resetZoomTriggers}
+          updateZoomLimits={updateZoomLimits}
         />
 
         {/* Sử dụng custom OrbitControls thay vì từ drei */}
@@ -137,6 +147,8 @@ const ThreeDPreview: React.FC = () => {
         onZoomInClick={handleZoomInClick}
         onZoomOutClick={handleZoomOutClick}
         isRulerActive={config.showMeasurements}
+        canZoomIn={canZoomIn}
+        canZoomOut={canZoomOut}
       />
     </div>
   );

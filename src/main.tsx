@@ -5,9 +5,12 @@ import App from "./App.tsx";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap/dist/js/bootstrap.bundle.min.js";
 import "bootstrap-icons/font/bootstrap-icons.css";
+import WardrobeConfigProvider from "./components/context/WardrobeConfigProvider.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <WardrobeConfigProvider>
+      <App />
+    </WardrobeConfigProvider>
   </StrictMode>
 );

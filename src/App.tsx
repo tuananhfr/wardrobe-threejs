@@ -1,8 +1,8 @@
 // src/pages/WardrobePage.tsx
-import ConfigPanel from "@/components/Wardrobe/ConfigPanel/ConfigPanel";
-import PreviewPanel from "@/components/Wardrobe/PreviewPanel/PreviewPanel";
+import ConfigPanel from "@/components/ConfigPanel/ConfigPanel";
+import PreviewPanel from "@/components/PreviewPanel/PreviewPanel";
 
-function WardrobePage() {
+function App() {
   return (
     <div className="container-fluid d-flex flex-column vh-100">
       {/* Main content area */}
@@ -72,4 +72,4 @@ function WardrobePage() {
   );
 }
 
-export default WardrobePage;
+export default App;

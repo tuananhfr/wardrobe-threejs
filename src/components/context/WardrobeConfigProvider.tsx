@@ -2,14 +2,14 @@
 import { ReactNode, useState } from "react";
 import { WardrobeContext } from "./WardrobeContext"; // Import đúng context
 
-import oakTexture from "@/assets/images/samples-oak-wood-effect-800x800.jpg";
-import walnutTexture from "@/assets/images/samples-walnut-wood-effect-800x800.jpg";
-import wengeTexture from "@/assets/images/samples-wenge-wood-effect-800x800.jpg";
-import whiteTexture from "@/assets/images/white_u11209.jpg";
-import lightGreyTexture from "@/assets/images/light_grey_u12044.jpg";
-import taupeTexture from "@/assets/images/taupe_u15133.jpg";
+import oakTexture from "@/assets/images/textures/samples-oak-wood-effect-800x800.jpg";
+import walnutTexture from "@/assets/images/textures/samples-walnut-wood-effect-800x800.jpg";
+import wengeTexture from "@/assets/images/textures/samples-wenge-wood-effect-800x800.jpg";
+import whiteTexture from "@/assets/images/textures/white_u11209.jpg";
+import lightGreyTexture from "@/assets/images/textures/light_grey_u12044.jpg";
+import taupeTexture from "@/assets/images/textures/taupe_u15133.jpg";
+import { wardrobeTypeList } from "@/constants/wardrobeTypes";
 interface WardrobeConfigProviderProps {
-  // Sửa tên interface
   children: ReactNode;
 }
 
@@ -25,15 +25,17 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
 
   // Định nghĩa kiểu dữ liệu cho cấu hình tủ quần áo
   const [config, setConfig] = useState<WardrobeState>({
-    width: 120,
-    height: 120,
-    depth: 30,
+    wardrobeTypeListTemplate: wardrobeTypeList,
+    wardrobeType: wardrobeTypeList[0],
+    height: 180,
     thickness: 2,
+    baseBarHeight: 7,
     price: 0,
     originalPrice: 0,
     texture: textures[0],
     textures: textures,
     showMeasurements: false,
+    activeView: "Entière",
   });
 
   // Hàm cập nhật cấu hình

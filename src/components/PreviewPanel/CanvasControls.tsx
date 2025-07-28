@@ -1,10 +1,10 @@
-import React from "react";
-
 interface CanvasControlsProps {
   onRulerClick: () => void;
   onZoomInClick: () => void;
   onZoomOutClick: () => void;
   isRulerActive?: boolean;
+  canZoomIn?: boolean; // <-- Thêm props này
+  canZoomOut?: boolean; // <-- Thêm props này
 }
 
 const CanvasControls: React.FC<CanvasControlsProps> = ({
@@ -12,6 +12,8 @@ const CanvasControls: React.FC<CanvasControlsProps> = ({
   onZoomInClick,
   onZoomOutClick,
   isRulerActive = false,
+  canZoomIn = true, // <-- Default true
+  canZoomOut = true, // <-- Default true
 }) => {
   const buttonBaseClass =
     "btn d-flex align-items-center justify-content-center rounded-circle shadow-sm";
@@ -31,22 +33,29 @@ const CanvasControls: React.FC<CanvasControlsProps> = ({
       >
         <i className="bi bi-rulers"></i>
       </button>
+
       <button
-        className={`${buttonBaseClass} btn-light`}
+        className={`${buttonBaseClass} ${
+          canZoomIn ? "btn-light" : "btn-secondary"
+        }`}
         onClick={onZoomInClick}
         style={buttonStyle}
+        disabled={!canZoomIn} // <-- Disable khi không thể zoom in
       >
         <i className="bi bi-zoom-in"></i>
       </button>
+
       <button
-        className={`${buttonBaseClass} btn-light`}
+        className={`${buttonBaseClass} ${
+          canZoomOut ? "btn-light" : "btn-secondary"
+        }`}
         onClick={onZoomOutClick}
         style={buttonStyle}
+        disabled={!canZoomOut} // <-- Disable khi không thể zoom out
       >
         <i className="bi bi-zoom-out"></i>
       </button>
     </div>
   );
 };
-
 export default CanvasControls;

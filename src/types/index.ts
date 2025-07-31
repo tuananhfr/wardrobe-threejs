@@ -21,6 +21,7 @@ declare global {
     texture: Texture;
     textures: Texture[];
     activeView: string;
+    showSections: string;
     showMeasurements: boolean;
   }
 
@@ -35,13 +36,24 @@ declare global {
     columns: WardrobeColumn[];
     minColumns: number;
     maxColumns: number;
-    shelves?: number;
+
     hangingRods?: number;
   }
 
   interface WardrobeColumn {
     id: string;
     width: number;
+    shelves?: WardrobeShelf;
+  }
+  interface WardrobeShelf {
+    id: string;
+    shelfSpacing?: number;
+    spacings?: shelfSpacing[];
+  }
+
+  interface shelfSpacing {
+    id: string;
+    spacing: number;
   }
 
   type WardrobeId = "Linéaire" | "Angle" | "Forme U";

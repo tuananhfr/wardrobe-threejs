@@ -3,6 +3,7 @@ import React from "react";
 import * as THREE from "three";
 
 interface SectionFrameProps {
+  sectionName: string;
   sectionData: WardrobeSection;
   position: [number, number, number];
   height: number;
@@ -13,9 +14,11 @@ interface SectionFrameProps {
   hideRightSide?: boolean;
   backPanelWidth?: number;
   backPanelOffsetX?: number;
+  showSections: string;
 }
 
 const SectionFrame: React.FC<SectionFrameProps> = ({
+  sectionName,
   sectionData,
   position,
   height,
@@ -26,14 +29,19 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
   hideRightSide = false,
   backPanelWidth,
   backPanelOffsetX,
+  showSections,
 }) => {
   const width = sectionData.width;
-
   const depth = sectionData.depth;
-
   const actualBackPanelWidth = backPanelWidth
     ? backPanelWidth
     : width - 2 * thickness;
+
+  // Kiểm tra xem section này có đang bật không
+  const isActive = showSections === sectionName;
+
+  // Màu sắc tùy theo có bật hay không
+  const materialColor = isActive ? "black" : "white";
 
   return (
     <group position={position}>
@@ -41,22 +49,20 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
       {!hideLeftSide && (
         <mesh position={[-width / 2 + thickness / 2, 0, 0]} castShadow>
           <boxGeometry args={[thickness, height - baseBarHeight, depth]} />
-          <meshStandardMaterial map={texture} />
+          <meshStandardMaterial map={texture} color={"red"} />
         </mesh>
       )}
 
       {/* Right side */}
       {!hideRightSide && (
-        <mesh position={[width / 2 - thickness / 2, 0 / 2, 0]} castShadow>
+        <mesh position={[width / 2 - thickness / 2, 0, 0]} castShadow>
           <boxGeometry args={[thickness, height - baseBarHeight, depth]} />
-          <meshStandardMaterial map={texture} />
+          <meshStandardMaterial map={texture} color={materialColor} />
         </mesh>
       )}
 
       {/* Top */}
-
       {hideLeftSide ? (
-        // Khi ẩn bên trái - top mesh dịch sang phải
         <mesh
           position={[
             -thickness / 2,
@@ -66,10 +72,9 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} />
+          <meshStandardMaterial map={texture} color={materialColor} />
         </mesh>
       ) : hideRightSide ? (
-        // Khi ẩn bên phải - top mesh dịch sang trái
         <mesh
           position={[
             thickness / 2,
@@ -79,23 +84,20 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} />
+          <meshStandardMaterial map={texture} color={materialColor} />
         </mesh>
       ) : (
-        // Trường hợp bình thường - top mesh ở giữa
         <mesh
           position={[0, height / 2 - baseBarHeight / 2 - thickness / 2, 0]}
           castShadow
         >
           <boxGeometry args={[width - 2 * thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} />
+          <meshStandardMaterial map={texture} color={materialColor} />
         </mesh>
       )}
 
       {/* Bottom */}
-      {/* Bottom - chỉ render 1 mesh dựa trên điều kiện */}
       {hideLeftSide ? (
-        // Khi ẩn bên trái - bottom mesh dịch sang phải
         <mesh
           position={[
             -thickness / 2,
@@ -105,10 +107,9 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} />
+          <meshStandardMaterial map={texture} color={materialColor} />
         </mesh>
       ) : hideRightSide ? (
-        // Khi ẩn bên phải - bottom mesh dịch sang trái
         <mesh
           position={[
             thickness / 2,
@@ -118,16 +119,15 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} />
+          <meshStandardMaterial map={texture} color={materialColor} />
         </mesh>
       ) : (
-        // Trường hợp bình thường - bottom mesh ở giữa
         <mesh
           position={[0, -height / 2 + baseBarHeight / 2 + thickness / 2, 0]}
           castShadow
         >
           <boxGeometry args={[width - 2 * thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} />
+          <meshStandardMaterial map={texture} color={materialColor} />
         </mesh>
       )}
 
@@ -143,7 +143,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
             thickness,
           ]}
         />
-        <meshStandardMaterial map={texture} />
+        <meshStandardMaterial map={texture} color={materialColor} />
       </mesh>
     </group>
   );

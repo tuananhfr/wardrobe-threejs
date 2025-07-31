@@ -3,23 +3,34 @@ import React from "react";
 import * as THREE from "three";
 
 interface SectionColumnsProps {
+  sectionName: string;
   sectionData: WardrobeSection;
   position: [number, number, number];
   height: number;
   baseBarHeight: number;
   thickness: number;
   texture: THREE.Texture;
+  showSections: string;
 }
 
 const SectionColumns: React.FC<SectionColumnsProps> = ({
+  sectionName,
   sectionData,
   position,
+
   height,
   baseBarHeight,
   thickness,
   texture,
+  showSections,
 }) => {
   const { width, depth, columns } = sectionData;
+
+  // Kiểm tra xem section này có đang bật không
+  const isActive = showSections === sectionName;
+
+  // Màu sắc tùy theo có bật hay không
+  const materialColor = isActive ? "black" : "white";
 
   // Tính toán vị trí các cột dựa trên column widths
   const calculateColumnPositions = () => {
@@ -58,7 +69,7 @@ const SectionColumns: React.FC<SectionColumnsProps> = ({
               position={[
                 separatorX,
                 thickness / 2, // Đặt ở giữa chiều cao
-                0,
+                thickness,
               ]}
               castShadow
             >
@@ -69,25 +80,12 @@ const SectionColumns: React.FC<SectionColumnsProps> = ({
                   depth - 2 * thickness, // Chiều sâu (trừ back panel)
                 ]}
               />
-              <meshStandardMaterial map={texture} />
+              <meshStandardMaterial map={texture} color={materialColor} />
             </mesh>
           );
         }
         return null;
       })}
-
-      {/* Debug: Hiển thị outline của từng column space (optional - có thể xóa) */}
-      {process.env.NODE_ENV === "development" &&
-        columnPositions.map((col) => (
-          <mesh
-            key={`debug-${col.id}`}
-            position={[col.x, thickness / 2, depth / 4]}
-            visible={false} // Ẩn đi, chỉ để debug
-          >
-            <boxGeometry args={[col.width, innerHeight, 0.01]} />
-            <meshBasicMaterial color="red" opacity={0.3} transparent />
-          </mesh>
-        ))}
     </group>
   );
 };

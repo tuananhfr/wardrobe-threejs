@@ -13,6 +13,7 @@ interface AngleWardrobeProps {
   height: number;
   baseBarHeight: number;
   texture: THREE.Texture;
+  showSections: string;
 }
 
 const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
@@ -21,6 +22,7 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
   height,
   baseBarHeight,
   texture,
+  showSections,
 }) => {
   // Convert dimensions to meters và tính toán vị trí
   const calculations = useMemo(() => {
@@ -78,27 +80,32 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
     <group>
       {/* Section A - phần ngang chính */}
       <SectionFrame
+        sectionName="sectionA"
         sectionData={sections.sectionA}
         height={height}
         baseBarHeight={baseBarHeight}
         position={sectionAPosition}
         thickness={thickness}
         texture={texture}
+        showSections={showSections}
       />
 
       {/* Section A Columns */}
       <SectionColumns
+        sectionName="sectionA"
         sectionData={sections.sectionA}
         height={height}
         baseBarHeight={baseBarHeight}
         position={sectionAPosition}
         thickness={thickness}
         texture={texture}
+        showSections={showSections}
       />
 
       {/* Section B */}
       <group position={sectionBPosition} rotation={[0, -Math.PI / 2, 0]}>
         <SectionFrame
+          sectionName="sectionB"
           sectionData={sections.sectionB}
           height={height}
           baseBarHeight={baseBarHeight}
@@ -108,16 +115,19 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
           hideLeftSide={true}
           backPanelWidth={sections.sectionB.width - thickness}
           backPanelOffsetX={-thickness / 2}
+          showSections={showSections}
         />
 
         {/* Section B Columns */}
         <SectionColumns
+          sectionName="sectionB"
           sectionData={sections.sectionB}
           height={height}
           baseBarHeight={baseBarHeight}
           position={[0, 0, 0]}
           thickness={thickness}
           texture={texture}
+          showSections={showSections}
         />
       </group>
     </group>

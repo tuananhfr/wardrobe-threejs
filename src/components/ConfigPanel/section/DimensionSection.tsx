@@ -1,5 +1,5 @@
 // src/components/ConfigPanel/DimensionSection.tsx
-import React from "react";
+import React, { useEffect } from "react";
 import DimensionControl from "../section/DimensionControl";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 
@@ -10,7 +10,71 @@ const DimensionSection: React.FC = () => {
     handleSectionWidthChange,
     handleUpdateSection,
   } = useWardrobeConfig();
+  useEffect(() => {
+    let isManualClose = true; // Track if close is manual or auto-close
 
+    const handlerShown = (event: Event) => {
+      const target = (event.target as HTMLElement).closest(
+        ".accordion-collapse"
+      );
+      if (!target) return;
+
+      // Mark that next closes will be auto-closes (not manual)
+      isManualClose = false;
+
+      // Only handle section accordions when opened
+      switch (target.id) {
+        case "collapseSectionA":
+          updateConfig("showSections", "sectionA");
+          break;
+        case "collapseSectionB":
+          updateConfig("showSections", "sectionB");
+          break;
+        case "collapseSectionC":
+          updateConfig("showSections", "sectionC");
+          break;
+        // Don't handle other accordions - keep current showSections value
+      }
+
+      // Reset flag after a small delay to allow for auto-closes
+      setTimeout(() => {
+        isManualClose = true;
+      }, 50);
+    };
+
+    const handlerHidden = (event: Event) => {
+      const target = (event.target as HTMLElement).closest(
+        ".accordion-collapse"
+      );
+      if (!target) return;
+
+      // If main Redimension accordion is closed, always reset showSections
+      if (target.id === "collapseRedimension") {
+        updateConfig("showSections", "");
+        return;
+      }
+
+      // Only reset if it's a manual close (not auto-close from opening another section)
+      if (
+        isManualClose &&
+        ["collapseSectionA", "collapseSectionB", "collapseSectionC"].includes(
+          target.id
+        )
+      ) {
+        updateConfig("showSections", "");
+      }
+    };
+
+    // Listen to all accordion events in the document
+    document.addEventListener("shown.bs.collapse", handlerShown);
+    document.addEventListener("hidden.bs.collapse", handlerHidden);
+
+    return () => {
+      document.removeEventListener("shown.bs.collapse", handlerShown);
+      document.removeEventListener("hidden.bs.collapse", handlerHidden);
+    };
+  }, [updateConfig]);
+  console.log("DimensionSection config:", config.showSections);
   return (
     <div className="accordion-item">
       <h2 className="accordion-header" id="headingRedimension">

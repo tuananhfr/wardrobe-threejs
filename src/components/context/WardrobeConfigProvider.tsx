@@ -35,6 +35,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     texture: textures[0],
     textures: textures,
     showMeasurements: false,
+    showSections: "",
     activeView: "Entière",
   });
 

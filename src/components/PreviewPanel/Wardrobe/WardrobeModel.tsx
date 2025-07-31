@@ -14,13 +14,10 @@ interface WardrobeModelProps {
   showMeasurements?: boolean;
 }
 
-const WardrobeModel: React.FC<WardrobeModelProps> = ({
-  showMeasurements = false,
-}) => {
+const WardrobeModel: React.FC<WardrobeModelProps> = () => {
   const { config } = useConfig();
   const groupRef = useRef<THREE.Group>(null);
   const texture = useLoader(TextureLoader, config.texture.src);
-  console.log(showMeasurements);
 
   // Get current wardrobe type data
   const currentWardrobeType = config.wardrobeType;
@@ -82,8 +79,8 @@ const WardrobeModel: React.FC<WardrobeModelProps> = ({
     thickness,
     height,
     texture,
+    showSections: config.showSections,
   };
-
 
   // For BaseBar, create a simplified sections object (only width/depth needed)
   const baseBarSections = {

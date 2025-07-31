@@ -22,6 +22,8 @@ declare global {
     textures: Texture[];
     activeView: string;
     showSections: string;
+    accordionOpen: string;
+    selectedColumnId: string | null;
     showMeasurements: boolean;
   }
 

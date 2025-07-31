@@ -74,7 +74,7 @@ const DimensionSection: React.FC = () => {
       document.removeEventListener("hidden.bs.collapse", handlerHidden);
     };
   }, [updateConfig]);
-  console.log("DimensionSection config:", config.showSections);
+
   return (
     <div className="accordion-item">
       <h2 className="accordion-header" id="headingRedimension">

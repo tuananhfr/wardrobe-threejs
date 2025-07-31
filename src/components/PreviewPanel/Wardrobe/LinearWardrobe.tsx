@@ -1,8 +1,10 @@
-// src/components/Wardrobe/types/LinearWardrobe.tsx
+// src/components/Wardrobe/LinearWardrobe.tsx (Updated - Working Version)
 import React from "react";
 import * as THREE from "three";
 import SectionFrame from "./SectionFrame";
 import SectionColumns from "./SectionColumns";
+import SectionShelves from "./SectionShelves";
+import EtagereColumnHighlights from "./EtagereColumnHighlights"; // New working component
 
 interface LinearWardrobeProps {
   sections: {
@@ -27,7 +29,7 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
 }) => {
   return (
     <group>
-      {/* Section A */}
+      {/* Section A Frame */}
       <SectionFrame
         sectionName="sectionA"
         sectionData={sections.sectionA}
@@ -38,6 +40,8 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
         texture={texture}
         showSections={showSections}
       />
+
+      {/* Section A Columns */}
       <SectionColumns
         sectionName="sectionA"
         sectionData={sections.sectionA}
@@ -47,6 +51,28 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
         thickness={thickness}
         texture={texture}
         showSections={showSections}
+      />
+
+      {/* Section A Shelves */}
+      <SectionShelves
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        position={[0, 0, 0]}
+        thickness={thickness}
+        texture={texture}
+        showSections={showSections}
+      />
+
+      {/* Étagère Column Highlights - Based on working ColumnHighlights pattern */}
+      <EtagereColumnHighlights
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
       />
     </group>
   );

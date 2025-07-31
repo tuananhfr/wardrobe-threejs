@@ -36,6 +36,8 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     textures: textures,
     showMeasurements: false,
     showSections: "",
+    accordionOpen: "collapseType",
+    selectedColumnId: null,
     activeView: "Entière",
   });
 

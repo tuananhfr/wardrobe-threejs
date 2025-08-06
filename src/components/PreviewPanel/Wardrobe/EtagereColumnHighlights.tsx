@@ -178,7 +178,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
             {/* Icon text */}
             <Text
               position={[0, 0, 0.01]}
-              color={isSelected ? "	#90EE90" : "#4169E1"}
+              color={isSelected ? "green" : "#4169E1"}
               fontSize={0.1}
               anchorX="center"
               anchorY="middle"

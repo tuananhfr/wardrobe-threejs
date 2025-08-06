@@ -1,5 +1,5 @@
-// src/components/ConfigPanel/section/EtagereSection.tsx (Simplified)
-import React, { useState, useEffect } from "react";
+// src/components/ConfigPanel/section/EtagereSection.tsx (Completely Clean)
+import React from "react";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useWardrobeShelves } from "@/hooks/useWardrobeShelves";
 
@@ -17,45 +17,34 @@ const EtagereSection: React.FC = () => {
     MIN_SHELF_SPACING,
   } = useWardrobeShelves();
 
-  const [selectedColumnId, setSelectedColumnId] = useState<string | null>(null);
-
   // Check if étagère accordion is open
   const isEtagereOpen = config.accordionOpen === "collapseEtageres";
-
-  // Update accordion state and selected column when section opens/closes
-  useEffect(() => {
-    if (isEtagereOpen) {
-      // When étagère section opens, enable selection mode
-      // Don't update selectedColumnId here to avoid loop
-    } else {
-      // When étagère section closes, clear selection
-      setSelectedColumnId(null);
-      // Don't call updateConfig here to avoid loop
-    }
-  }, [isEtagereOpen]); // Remove selectedColumnId and updateConfig from dependencies
-
-  // Sync selectedColumnId with config (separate useEffect)
-  useEffect(() => {
-    if (selectedColumnId !== config.selectedColumnId) {
-      updateConfig("selectedColumnId", selectedColumnId);
-    }
-  }, [selectedColumnId]); // Only depend on selectedColumnId
 
   // Handle accordion toggle
   const handleAccordionToggle = () => {
     const newState = isEtagereOpen ? "" : "collapseEtageres";
     updateConfig("accordionOpen", newState);
+
+    // Clear selection when closing accordion
+    if (isEtagereOpen && config.selectedColumnId) {
+      updateConfig("selectedColumnId", null);
+    }
   };
 
-  // Handle column click from 3D
+  // Handle column click
   const handleColumnClick = (columnId: string) => {
-    setSelectedColumnId(columnId);
-    updateConfig("selectedColumnId", columnId);
+    if (config.selectedColumnId === columnId) {
+      // Deselect if already selected
+      updateConfig("selectedColumnId", null);
+    } else {
+      // Select new column
+      updateConfig("selectedColumnId", columnId);
+    }
   };
 
   // Get selected column data
   const getSelectedColumnData = () => {
-    if (!selectedColumnId) return null;
+    if (!config.selectedColumnId || !isEtagereOpen) return null;
 
     for (const [sectionKey, section] of Object.entries(
       config.wardrobeType.sections
@@ -63,7 +52,7 @@ const EtagereSection: React.FC = () => {
       if (!section) continue;
 
       const columnIndex = section.columns.findIndex(
-        (col) => col.id === selectedColumnId
+        (col) => col.id === config.selectedColumnId
       );
       if (columnIndex !== -1) {
         return {
@@ -82,7 +71,42 @@ const EtagereSection: React.FC = () => {
     return null;
   };
 
+  // Get all available columns for selection
+  const getAllColumns = () => {
+    const columns: Array<{
+      id: string;
+      sectionKey: SectionKey;
+      sectionName: string;
+      columnIndex: number;
+      width: number;
+    }> = [];
+
+    Object.entries(config.wardrobeType.sections).forEach(
+      ([sectionKey, section]) => {
+        if (!section) return;
+
+        section.columns.forEach((column, index) => {
+          columns.push({
+            id: column.id,
+            sectionKey: sectionKey as SectionKey,
+            sectionName:
+              sectionKey === "sectionA"
+                ? "A"
+                : sectionKey === "sectionB"
+                ? "B"
+                : "C",
+            columnIndex: index,
+            width: column.width,
+          });
+        });
+      }
+    );
+
+    return columns;
+  };
+
   const selectedColumnData = getSelectedColumnData();
+  const allColumns = getAllColumns();
 
   const renderColumnShelves = (
     sectionKey: SectionKey,
@@ -96,15 +120,15 @@ const EtagereSection: React.FC = () => {
     const hasNoShelves = !columnShelves || columnShelves.shelves.length === 0;
 
     const handleInitializeShelves = () => {
-      initializeColumnShelves(sectionKey, column.id, 3);
+      // Not needed anymore - using input control
     };
 
     const handleAddShelf = () => {
-      addShelfToColumn(sectionKey, column.id);
+      // Not needed anymore - using input control
     };
 
     const handleRemoveShelf = (shelfId: string) => {
-      removeShelfFromColumn(sectionKey, column.id, shelfId);
+      // Not needed anymore - using input control
     };
 
     const handleShelfPositionChange = (
@@ -119,23 +143,17 @@ const EtagereSection: React.FC = () => {
     };
 
     return (
-      <div className="card">
-        <div className="card-header">
+      <div className="card border-primary">
+        <div className="card-header bg-primary bg-opacity-10">
           <div className="d-flex justify-content-between align-items-center">
             <h6 className="mb-0">
-              📋 Section {sectionName} - Colonne {columnIndex + 1}
-              <small className="text-muted ms-2">({column.width}cm)</small>
+              Section {sectionName} - Colonne {columnIndex + 1}
             </h6>
             <div className="d-flex gap-2 align-items-center">
-              {columnShelves && (
-                <small className="text-info">
-                  {columnShelves.shelves.length} étagères
-                </small>
-              )}
               <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary"
-                onClick={() => setSelectedColumnId(null)}
+                onClick={() => handleColumnClick(column.id)}
                 title="Désélectionner"
               >
                 ✕
@@ -144,181 +162,160 @@ const EtagereSection: React.FC = () => {
           </div>
         </div>
         <div className="card-body">
-          {hasNoShelves ? (
-            <div className="text-center py-4">
-              <p className="text-muted mb-3">
-                Aucune étagère configurée pour cette colonne
-              </p>
-              <button
-                type="button"
-                className="btn btn-success"
-                onClick={handleInitializeShelves}
-              >
-                Initialiser les étagères
-              </button>
+          {/* Shelf Count Control */}
+          <div className="mb-3">
+            <label className="form-label">
+              <strong>Nombre d'étagères:</strong>
+            </label>
+            <div className="input-group w-100">
+              <input
+                type="number"
+                className="form-control"
+                value={columnShelves?.shelves?.length || 0}
+                min={0}
+                max={10}
+                onChange={(e) => {
+                  const newCount = parseInt(e.target.value) || 0;
+                  const currentCount = columnShelves?.shelves?.length || 0;
+
+                  if (newCount > currentCount) {
+                    // Add shelves
+                    for (let i = currentCount; i < newCount; i++) {
+                      addShelfToColumn(sectionKey, column.id);
+                    }
+                  } else if (newCount < currentCount) {
+                    // Remove shelves (from the end)
+                    const shelvesToRemove = columnShelves!.shelves
+                      .sort((a, b) => a.position - b.position)
+                      .slice(newCount);
+
+                    shelvesToRemove.forEach((shelf) => {
+                      removeShelfFromColumn(sectionKey, column.id, shelf.id);
+                    });
+                  }
+                }}
+              />
+              <span className="input-group-text">étagères</span>
             </div>
-          ) : (
-            <div>
-              {/* Column Info */}
-              <div className="mb-3 p-2 bg-light rounded">
-                <small className="text-muted">
-                  <strong>Hauteur disponible:</strong> {totalHeight}cm
-                  <br />
-                  <strong>Étagères:</strong> {columnShelves!.shelves.length}
-                  {spacingAnalysis && (
-                    <>
-                      <br />
-                      <strong>Espacement moyen:</strong>{" "}
-                      {spacingAnalysis.averageSpacing.toFixed(1)}cm
-                      {!spacingAnalysis.hasValidSpacing && (
-                        <span className="text-danger ms-2">
-                          ⚠️ Espacement insuffisant
-                        </span>
-                      )}
-                    </>
-                  )}
-                </small>
-              </div>
+            <small className="text-muted">
+              Ajustez le nombre d'étagères pour cette colonne (0-10)
+            </small>
+          </div>
 
-              {/* Action Buttons */}
-              <div className="mb-3 d-flex gap-2 flex-wrap">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-success"
-                  onClick={handleAddShelf}
-                >
-                  + Ajouter étagère
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-outline-secondary"
-                  onClick={handleRedistribute}
-                  title="Redistribuer également"
-                >
-                  ⚖️ Redistribuer
-                </button>
-              </div>
+          {/* Shelves List - only show if shelves exist */}
+          {columnShelves?.shelves?.length &&
+            columnShelves.shelves.length > 0 && (
+              <div>
+                {/* Shelves List */}
+                <div className="mb-3">
+                  <h6>Position des étagères:</h6>
+                  {columnShelves!.shelves
+                    .sort((a, b) => b.position - a.position)
+                    .map((shelf, index) => {
+                      const range = getShelfPositionRange(
+                        sectionKey,
+                        column.id,
+                        shelf.id
+                      );
+                      const distanceFromBottom = shelf.position;
+                      const distanceFromTop = totalHeight - shelf.position;
 
-              {/* Shelves List */}
-              <div className="mb-3">
-                <h6>Position des étagères:</h6>
-                {columnShelves!.shelves
-                  .sort((a, b) => b.position - a.position)
-                  .map((shelf, index) => {
-                    const range = getShelfPositionRange(
-                      sectionKey,
-                      column.id,
-                      shelf.id
-                    );
-                    const distanceFromBottom = shelf.position;
-                    const distanceFromTop = totalHeight - shelf.position;
+                      return (
+                        <div key={shelf.id} className="mb-3 p-2 border rounded">
+                          <div className="d-flex justify-content-between align-items-center mb-2">
+                            <label className="form-label mb-0">
+                              <strong>
+                                Étagère {columnShelves!.shelves.length - index}
+                              </strong>
+                              <small className="text-muted ms-2">
+                                (↑{distanceFromTop.toFixed(0)}cm / ↓
+                                {distanceFromBottom.toFixed(0)}cm)
+                              </small>
+                            </label>
+                          </div>
 
-                    return (
-                      <div key={shelf.id} className="mb-3 p-2 border rounded">
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <label className="form-label mb-0">
-                            <strong>
-                              Étagère {columnShelves!.shelves.length - index}
-                            </strong>
-                            <small className="text-muted ms-2">
-                              (↑{distanceFromTop.toFixed(0)}cm / ↓
-                              {distanceFromBottom.toFixed(0)}cm)
-                            </small>
-                          </label>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-outline-danger"
-                            onClick={() => handleRemoveShelf(shelf.id)}
-                            title="Supprimer étagère"
-                          >
-                            🗑️
-                          </button>
+                          <div className="input-group">
+                            <input
+                              type="number"
+                              className="form-control"
+                              value={shelf.position}
+                              min={range.min}
+                              max={range.max}
+                              step={1}
+                              onChange={(e) => {
+                                const newPos =
+                                  parseInt(e.target.value) || range.min;
+                                handleShelfPositionChange(shelf.id, newPos);
+                              }}
+                            />
+                            <span className="input-group-text">cm du sol</span>
+                          </div>
+
+                          <small className="text-muted">
+                            Position valide: {range.min}cm - {range.max}cm
+                          </small>
                         </div>
-
-                        <div className="input-group">
-                          <input
-                            type="number"
-                            className="form-control"
-                            value={shelf.position}
-                            min={range.min}
-                            max={range.max}
-                            step={1}
-                            onChange={(e) => {
-                              const newPos =
-                                parseInt(e.target.value) || range.min;
-                              handleShelfPositionChange(shelf.id, newPos);
-                            }}
-                          />
-                          <span className="input-group-text">cm du sol</span>
-                        </div>
-
-                        <small className="text-muted">
-                          Position valide: {range.min}cm - {range.max}cm
-                        </small>
-
-                        {/* Position Slider */}
-                        <div className="mt-2">
-                          <input
-                            type="range"
-                            className="form-range"
-                            value={shelf.position}
-                            min={range.min}
-                            max={range.max}
-                            step={1}
-                            onChange={(e) => {
-                              const newPos = parseInt(e.target.value);
-                              handleShelfPositionChange(shelf.id, newPos);
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-              </div>
-
-              {/* Spacing Analysis */}
-              {spacingAnalysis && (
-                <div className="mt-3">
-                  <h6>Analyse des espacements:</h6>
-                  <div className="small">
-                    {spacingAnalysis.spacings.map((spacing, index) => (
-                      <div
-                        key={index}
-                        className={`d-flex justify-content-between align-items-center py-1 px-2 mb-1 rounded ${
-                          spacing.isValid
-                            ? spacing.isOptimal
-                              ? "bg-success bg-opacity-10"
-                              : "bg-light"
-                            : "bg-danger bg-opacity-10"
-                        }`}
-                      >
-                        <span>
-                          {index === 0
-                            ? "Sol"
-                            : `Étagère ${
-                                spacingAnalysis.spacings.length - index
-                              }`}
-                          →
-                          {index === spacingAnalysis.spacings.length - 1
-                            ? "Plafond"
-                            : `Étagère ${
-                                spacingAnalysis.spacings.length - index - 1
-                              }`}
-                        </span>
-                        <span
-                          className={
-                            spacing.isValid ? "text-success" : "text-danger"
-                          }
-                        >
-                          {spacing.height.toFixed(1)}cm
-                          {!spacing.isValid && ` (min: ${MIN_SHELF_SPACING}cm)`}
-                          {spacing.isOptimal && " ✓"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                      );
+                    })}
                 </div>
-              )}
+
+                {/* Spacing Analysis */}
+                {spacingAnalysis && (
+                  <div className="mt-3">
+                    <h6>Analyse des espacements:</h6>
+                    <div className="small">
+                      {spacingAnalysis.spacings.map((spacing, index) => (
+                        <div
+                          key={index}
+                          className={`d-flex justify-content-between align-items-center py-1 px-2 mb-1 rounded ${
+                            spacing.isValid
+                              ? spacing.isOptimal
+                                ? "bg-success bg-opacity-10"
+                                : "bg-light"
+                              : "bg-danger bg-opacity-10"
+                          }`}
+                        >
+                          <span>
+                            {index === 0
+                              ? "Sol"
+                              : `Étagère ${
+                                  spacingAnalysis.spacings.length - index
+                                }`}
+                            →
+                            {index === spacingAnalysis.spacings.length - 1
+                              ? "Plafond"
+                              : `Étagère ${
+                                  spacingAnalysis.spacings.length - index - 1
+                                }`}
+                          </span>
+                          <span
+                            className={
+                              spacing.isValid ? "text-success" : "text-danger"
+                            }
+                          >
+                            {spacing.height.toFixed(1)}cm
+                            {!spacing.isValid &&
+                              ` (min: ${MIN_SHELF_SPACING}cm)`}
+                            {spacing.isOptimal && " ✓"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+          {/* No shelves message */}
+          {(!columnShelves?.shelves?.length ||
+            columnShelves.shelves.length === 0) && (
+            <div className="text-center py-3">
+              <p className="text-muted mb-0">
+                <em>
+                  Aucune étagère configurée. Utilisez le champ ci-dessus pour en
+                  ajouter.
+                </em>
+              </p>
             </div>
           )}
         </div>
@@ -339,6 +336,49 @@ const EtagereSection: React.FC = () => {
           Les colonnes sont surlignées en bleu clair et deviennent cliquables.
         </small>
       </p>
+
+      {/* Quick Column Selection Grid */}
+      <div className="mt-4">
+        <h6 className="text-muted mb-3">🎯 Sélection rapide:</h6>
+        <div className="row g-2">
+          {allColumns.map((column) => {
+            const shelves = getColumnShelves(column.sectionKey, column.id);
+            const shelvesCount = shelves?.shelves?.length || 0;
+
+            return (
+              <div key={column.id} className="col-auto">
+                <button
+                  type="button"
+                  className={`btn btn-outline-primary btn-sm ${
+                    config.selectedColumnId === column.id ? "active" : ""
+                  }`}
+                  onClick={() => handleColumnClick(column.id)}
+                  title={`Section ${column.sectionName} - Colonne ${
+                    column.columnIndex + 1
+                  }`}
+                >
+                  <div className="text-center">
+                    <div>
+                      <strong>
+                        {column.sectionName}-{column.columnIndex + 1}
+                      </strong>
+                    </div>
+                    <small className="text-muted">
+                      {column.width}cm
+                      {shelvesCount > 0 && (
+                        <>
+                          <br />
+                          {shelvesCount} étagères
+                        </>
+                      )}
+                    </small>
+                  </div>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Quick stats */}
       <div className="mt-4 row text-center">
@@ -382,7 +422,6 @@ const EtagereSection: React.FC = () => {
           onClick={handleAccordionToggle}
         >
           5. Étagères
-          {isEtagereOpen && <span className="ms-2 text-success">🎯</span>}
         </button>
       </h2>
       <div
@@ -398,69 +437,26 @@ const EtagereSection: React.FC = () => {
             cm.
           </div>
 
-          {/* Debug Status Panel */}
-          <div className="alert alert-info mb-3">
-            <small>
-              <strong>🔧 Debug Status:</strong>
-              <br />
-              Mode étagères:{" "}
-              <span className={isEtagereOpen ? "text-success" : "text-danger"}>
-                {isEtagereOpen ? "✅ ACTIVÉ" : "❌ DÉSACTIVÉ"}
-              </span>
-              <br />
-              Accordion: <code>{config.accordionOpen}</code>
-              <br />
-              Selected Column: <code>{selectedColumnId || "null"}</code>
-              <br />
-              Total Columns:{" "}
-              {Object.values(config.wardrobeType.sections).reduce(
-                (total, section) => total + (section?.columns.length || 0),
-                0
-              )}
-            </small>
-          </div>
-
-          {/* Mode indicator */}
-          {isEtagereOpen && (
-            <div className="alert alert-success py-2 mb-3">
-              <small>
-                🎯 <strong>Mode étagères activé</strong> - Les colonnes sont
-                maintenant cliquables dans le modèle 3D.
-                <br />
-                <em>
-                  Vous devriez voir un cube vert dans le 3D et les colonnes
-                  surlignées.
-                </em>
-              </small>
-            </div>
-          )}
-
           {/* Manual column selection for testing */}
           {isEtagereOpen && (
             <div className="mb-3">
-              <h6>🧪 Test Manual Selection:</h6>
               <div className="d-flex gap-2 flex-wrap">
-                {Object.entries(config.wardrobeType.sections).map(
-                  ([sectionKey, section]) => {
-                    if (!section) return null;
-                    return section.columns.map((column, index) => (
-                      <button
-                        key={column.id}
-                        className={`btn btn-sm ${
-                          selectedColumnId === column.id
-                            ? "btn-primary"
-                            : "btn-outline-primary"
-                        }`}
-                        onClick={() => handleColumnClick(column.id)}
-                      >
-                        {sectionKey.replace("section", "")} - Col {index + 1}
-                      </button>
-                    ));
-                  }
-                )}
+                {allColumns.map((column) => (
+                  <button
+                    key={column.id}
+                    className={`btn btn-sm ${
+                      config.selectedColumnId === column.id
+                        ? "btn-primary"
+                        : "btn-outline-primary"
+                    }`}
+                    onClick={() => handleColumnClick(column.id)}
+                  >
+                    {column.sectionName} - Col {column.columnIndex + 1}
+                  </button>
+                ))}
                 <button
                   className="btn btn-sm btn-outline-secondary"
-                  onClick={() => setSelectedColumnId(null)}
+                  onClick={() => updateConfig("selectedColumnId", null)}
                 >
                   Clear
                 </button>
@@ -477,19 +473,6 @@ const EtagereSection: React.FC = () => {
                 selectedColumnData.columnIndex
               )
             : renderSelectionPrompt()}
-
-          {/* Back button when column is selected */}
-          {selectedColumnData && (
-            <div className="mt-3 text-center">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() => setSelectedColumnId(null)}
-              >
-                ← Retour à la sélection
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

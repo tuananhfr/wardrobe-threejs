@@ -49,7 +49,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
       {!hideLeftSide && (
         <mesh position={[-width / 2 + thickness / 2, 0, 0]} castShadow>
           <boxGeometry args={[thickness, height - baseBarHeight, depth]} />
-          <meshStandardMaterial map={texture} color={"red"} />
+          <meshStandardMaterial map={texture} color={materialColor} />
         </mesh>
       )}
 

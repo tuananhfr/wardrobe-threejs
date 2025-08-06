@@ -1,7 +1,6 @@
-// src/components/Wardrobe/SectionShelves.tsx
+// src/components/Wardrobe/SectionShelves.tsx - FIXED VERSION
 import React from "react";
 import * as THREE from "three";
-import ShelfInfoDisplay from "./ShelfInfoDisplay";
 
 interface SectionShelvesProps {
   sectionName: string;
@@ -31,15 +30,34 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   // Kiểm tra xem section này có đang được highlight không
   const isActive = showSections === sectionName;
 
-  // Màu sắc cho kệ - nổi bật hơn khi active
-  const shelfColor = isActive ? "#8B4513" : "#CD853F"; // Brown colors
+  /**
+   * Convert spacings array to shelf positions
+   * spacings = [sol->shelf1, shelf1->shelf2, shelf2->shelf3, shelf3->plafond]
+   * positions = [shelf1_pos, shelf2_pos, shelf3_pos]
+   */
+  const spacingsToPositions = (spacings: shelfSpacing[]): number[] => {
+    const positions: number[] = [];
+    let currentPosition = thickness; // Start from sol thickness
 
-  // Chiều cao khả dụng cho kệ (trừ base bar và frame thickness)
-  const availableHeight = height - baseBarHeight - 2 * thickness;
+    // Skip last spacing (to plafond), convert others to positions
+    for (let i = 0; i < spacings.length - 1; i++) {
+      currentPosition += spacings[i].spacing;
+      positions.push(currentPosition);
+    }
+
+    return positions;
+  };
 
   // Render kệ cho từng cột
   const renderColumnShelves = (column: WardrobeColumn, columnIndex: number) => {
     if (!column.shelves || !column.shelves.spacings) {
+      return null;
+    }
+
+    // Convert spacings to positions - ĐÂY LÀ KEY DIFFERENCE!
+    const shelfPositions = spacingsToPositions(column.shelves.spacings);
+
+    if (shelfPositions.length === 0) {
       return null;
     }
 
@@ -56,10 +74,13 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
 
     return (
       <group key={`${sectionName}-${column.id}-shelves`}>
-        {column.shelves.spacings.map((shelf) => {
-          // Convert shelf position từ cm to meters và adjust cho coordinate system
+        {/* RENDER THEO POSITIONS, KHÔNG PHẢI SPACINGS! */}
+        {shelfPositions.map((shelfPosition, index) => {
+          const shelf = column.shelves!.spacings![index];
+
+          // Convert shelf position - sử dụng actual position, không phải spacing
           const shelfPositionY =
-            shelf.spacing / 100 - height / 2 + baseBarHeight / 2;
+            shelfPosition / 100 - height / 2 + baseBarHeight / 100;
 
           // Kích thước kệ - hơi nhỏ hơn column để tạo khoảng trống
           const shelfWidth = column.width - 0.01; // 1cm padding
@@ -79,101 +100,12 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
               <boxGeometry args={[shelfWidth, shelfThickness, shelfDepth]} />
               <meshStandardMaterial
                 map={texture}
-                color={shelfColor}
                 transparent={!isActive}
                 opacity={isActive ? 1.0 : 0.8}
               />
-
-              {/* Shelf info display when active */}
-              {isActive && (
-                <ShelfInfoDisplay
-                  shelf={shelf}
-                  position={[0, 0, 0]}
-                  columnWidth={column.width}
-                  isVisible={true}
-                  totalHeight={availableHeight}
-                />
-              )}
             </mesh>
           );
         })}
-
-        {/* Optional: Hanging rod nếu có */}
-        {column.shelves.spacings.length > 0 && (
-          <group>
-            {/* Tìm khoảng trống lớn nhất để đặt thanh treo */}
-            {(() => {
-              const sortedShelves = [...column.shelves!.spacings!].sort(
-                (a, b) => a.spacing - b.spacing
-              );
-
-              // Tìm khoảng trống lớn nhất (> 50cm)
-              let largestGap = 0;
-              let gapPosition = 0;
-
-              // Check gap từ bottom đến shelf đầu tiên
-              if (sortedShelves.length > 0) {
-                const firstGap = sortedShelves[0].spacing - 5; // 5cm từ đáy
-                if (firstGap > largestGap && firstGap > 50) {
-                  largestGap = firstGap;
-                  gapPosition = (5 + sortedShelves[0].spacing) / 2;
-                }
-              }
-
-              // Check gaps giữa các shelf
-              for (let i = 0; i < sortedShelves.length - 1; i++) {
-                const gap =
-                  sortedShelves[i + 1].spacing - sortedShelves[i].spacing;
-                if (gap > largestGap && gap > 50) {
-                  largestGap = gap;
-                  gapPosition =
-                    (sortedShelves[i].spacing + sortedShelves[i + 1].spacing) /
-                    2;
-                }
-              }
-
-              // Check gap từ shelf cuối đến top
-              if (sortedShelves.length > 0) {
-                const topHeight = availableHeight * 100 - 5; // Convert to cm, minus 5cm from top
-                const lastGap =
-                  topHeight - sortedShelves[sortedShelves.length - 1].spacing;
-                if (lastGap > largestGap && lastGap > 50) {
-                  largestGap = lastGap;
-                  gapPosition =
-                    (sortedShelves[sortedShelves.length - 1].spacing +
-                      topHeight) /
-                    2;
-                }
-              }
-
-              // Render hanging rod nếu có khoảng trống đủ lớn
-              if (largestGap > 50) {
-                const rodPositionY =
-                  gapPosition / 100 - height / 2 + baseBarHeight / 2;
-                const rodLength = column.width - 0.02; // 2cm padding
-
-                return (
-                  <mesh
-                    position={[columnXPosition, rodPositionY, 0]}
-                    castShadow
-                    rotation={[0, 0, Math.PI / 2]}
-                  >
-                    <cylinderGeometry
-                      args={[0.005, 0.005, rodLength]} // 1cm diameter rod
-                    />
-                    <meshStandardMaterial
-                      color="#C0C0C0" // Silver color for rod
-                      metalness={0.8}
-                      roughness={0.2}
-                    />
-                  </mesh>
-                );
-              }
-
-              return null;
-            })()}
-          </group>
-        )}
       </group>
     );
   };
@@ -187,13 +119,15 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
       {/* Optional: Visual guides when section is active */}
       {isActive && (
         <group>
-          {/* Height markers */}
+          {/* Height markers for first column */}
           {sectionData.columns.length > 0 &&
             sectionData.columns[0].shelves?.spacings && (
               <group>
-                {sectionData.columns[0].shelves.spacings.map((shelf, index) => {
+                {spacingsToPositions(
+                  sectionData.columns[0].shelves.spacings
+                ).map((shelfPosition, index) => {
                   const shelfPositionY =
-                    shelf.spacing / 100 - height / 2 + baseBarHeight / 2;
+                    shelfPosition / 100 - height / 2 + baseBarHeight / 100;
 
                   return (
                     <mesh
@@ -205,7 +139,7 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
                       ]}
                     >
                       <sphereGeometry args={[0.005]} />
-                      <meshBasicMaterial color="red" />
+                      <meshBasicMaterial />
                     </mesh>
                   );
                 })}

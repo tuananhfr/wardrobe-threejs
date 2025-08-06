@@ -1,11 +1,9 @@
-// src/hooks/useWardrobeShelves.ts
+// src/hooks/useWardrobeShelves.ts - Fixed Spacing Logic
 import { useWardrobeConfig } from "./useWardrobeConfig";
 
 interface ShelfItem {
   id: string;
-  position: number; // Vị trí từ bottom (cm)
-  type: "shelf" | "rod"; // Kệ thường hoặc thanh treo
-  isFixed?: boolean; // Có thể di chuyển được không
+  position: number; // Vị trí từ bottom (cm) - calculated from spacing
 }
 
 interface ColumnShelves {
@@ -13,6 +11,7 @@ interface ColumnShelves {
   totalHeight: number; // Chiều cao có sẵn
   shelves: ShelfItem[];
   minSpacing: number; // Khoảng cách tối thiểu giữa các kệ
+  spacings: number[]; // Array of spacing values [sol->shelf1, shelf1->shelf2, ..., lastShelf->plafond]
 }
 
 export const useWardrobeShelves = () => {
@@ -20,8 +19,109 @@ export const useWardrobeShelves = () => {
 
   const MIN_SHELF_SPACING = 10; // cm
   const DEFAULT_SHELF_THICKNESS = 2; // cm
-  const MIN_BOTTOM_SPACING = 5; // cm từ đáy
-  const MIN_TOP_SPACING = 5; // cm từ đỉnh
+  const MIN_BOTTOM_SPACING = 10; // cm từ đáy
+  const MIN_TOP_SPACING = 10; // cm từ đỉnh
+
+  /**
+   * Convert spacings array to shelf positions
+   * spacings = [sol->shelf1, shelf1->shelf2, shelf2->shelf3, shelf3->plafond]
+   * positions = [shelf1_pos, shelf2_pos, shelf3_pos]
+   */
+  const spacingsToPositions = (spacings: number[]): number[] => {
+    const positions: number[] = [];
+    let currentPosition = config.thickness; // Start from sol thickness
+
+    // Skip last spacing (to plafond), convert others to positions
+    for (let i = 0; i < spacings.length - 1; i++) {
+      currentPosition += spacings[i];
+      positions.push(currentPosition);
+    }
+
+    console.log(`🔧 spacingsToPositions:`, {
+      spacings,
+      positions,
+      thickness: config.thickness,
+    });
+
+    return positions;
+  };
+
+  /**
+   * Convert shelf positions to spacings array
+   * positions = [shelf1_pos, shelf2_pos, shelf3_pos]
+   * spacings = [sol->shelf1, shelf1->shelf2, shelf2->shelf3, shelf3->plafond]
+   */
+  const positionsToSpacings = (
+    positions: number[],
+    totalHeight: number
+  ): number[] => {
+    if (positions.length === 0) return [];
+
+    const sortedPositions = [...positions].sort((a, b) => a - b);
+    const spacings: number[] = [];
+
+    // Sol (with thickness) to first shelf
+    spacings.push(sortedPositions[0] - config.thickness);
+
+    // Between shelves
+    for (let i = 1; i < sortedPositions.length; i++) {
+      spacings.push(sortedPositions[i] - sortedPositions[i - 1]);
+    }
+
+    // Last shelf to plafond (with thickness)
+    spacings.push(
+      totalHeight -
+        config.thickness -
+        sortedPositions[sortedPositions.length - 1]
+    );
+
+    console.log(`🔧 positionsToSpacings:`, {
+      positions,
+      sortedPositions,
+      totalHeight,
+      thickness: config.thickness,
+      spacings,
+    });
+
+    return spacings;
+  };
+
+  /**
+   * Calculate optimal spacings for given shelf count
+   */
+  const calculateOptimalSpacings = (
+    shelfCount: number,
+    totalHeight: number
+  ): number[] => {
+    if (shelfCount === 0) return [];
+
+    // Available height = totalHeight - thickness for sol/plafond (shelves thickness handled in spacing)
+    const availableHeight = totalHeight - 2 * config.thickness; // Only sol + plafond thickness
+
+    // Number of spacings = shelfCount + 1 (sol→shelf1, shelf1→shelf2, ..., lastShelf→plafond)
+    const spacingCount = shelfCount + 1;
+    const baseSpacing = Math.floor(availableHeight / spacingCount);
+    const remainder = availableHeight % spacingCount;
+
+    const spacings: number[] = [];
+    for (let i = 0; i < spacingCount; i++) {
+      // Distribute remainder evenly, starting from first spacings
+      spacings.push(baseSpacing + (i < remainder ? 1 : 0));
+    }
+
+    console.log(`🔧 calculateOptimalSpacings:`, {
+      shelfCount,
+      totalHeight,
+      thickness: config.thickness,
+      availableHeight,
+      spacingCount,
+      baseSpacing,
+      remainder,
+      spacings,
+    });
+
+    return spacings;
+  };
 
   /**
    * Get shelves configuration for a specific column
@@ -34,21 +134,36 @@ export const useWardrobeShelves = () => {
     if (!section) return null;
 
     const column = section.columns.find((col) => col.id === columnId);
-    if (!column || !column.shelves) return null;
+    if (!column) return null;
 
     const totalHeight = config.height - config.baseBarHeight;
+
+    // If no shelves data, return empty
+    if (!column.shelves || !column.shelves.spacings) {
+      return {
+        columnId,
+        totalHeight,
+        shelves: [],
+        minSpacing: MIN_SHELF_SPACING,
+        spacings: [],
+      };
+    }
+
+    // Convert spacings to positions for ShelfItem array
+    const spacings = column.shelves.spacings.map((s) => s.spacing);
+    const positions = spacingsToPositions(spacings);
+
+    const shelves: ShelfItem[] = positions.map((position, index) => ({
+      id: column.shelves!.spacings![index].id,
+      position,
+    }));
 
     return {
       columnId,
       totalHeight,
-      shelves:
-        column.shelves.spacings?.map((spacing) => ({
-          id: spacing.id,
-          position: spacing.spacing,
-          type: "shelf",
-          isFixed: false,
-        })) || [],
+      shelves,
       minSpacing: MIN_SHELF_SPACING,
+      spacings,
     };
   };
 
@@ -64,18 +179,13 @@ export const useWardrobeShelves = () => {
     if (!section) return;
 
     const totalHeight = config.height - config.baseBarHeight;
-    const availableHeight = totalHeight - MIN_BOTTOM_SPACING - MIN_TOP_SPACING;
+    const optimalSpacings = calculateOptimalSpacings(shelfCount, totalHeight);
 
-    // Distribute shelves evenly
-    const spacings: shelfSpacing[] = [];
-    for (let i = 0; i < shelfCount; i++) {
-      const position =
-        MIN_BOTTOM_SPACING + (availableHeight / (shelfCount + 1)) * (i + 1);
-      spacings.push({
-        id: `${columnId}-shelf-${i + 1}`,
-        spacing: Math.round(position),
-      });
-    }
+    // Convert spacings to shelfSpacing objects
+    const spacings: shelfSpacing[] = optimalSpacings.map((spacing, index) => ({
+      id: `${columnId}-spacing-${index + 1}`,
+      spacing,
+    }));
 
     const updatedColumns = section.columns.map((col) => {
       if (col.id === columnId) {
@@ -95,73 +205,49 @@ export const useWardrobeShelves = () => {
   };
 
   /**
-   * Add a new shelf to a column
+   * Set specific number of shelves for a column
    */
-  const addShelfToColumn = (
+  const setShelfCount = (
     sectionKey: SectionKey,
     columnId: string,
-    position?: number
+    newCount: number
   ) => {
     const section = config.wardrobeType.sections[sectionKey];
     if (!section) return;
 
-    const column = section.columns.find((col) => col.id === columnId);
-    if (!column) return;
-
-    const totalHeight = config.height - config.baseBarHeight;
-
-    // Initialize shelves if not exists
-    if (!column.shelves) {
-      initializeColumnShelves(sectionKey, columnId, 1);
-      return;
-    }
-
-    const currentShelves = column.shelves.spacings || [];
-
-    // Determine position for new shelf
-    let newPosition: number;
-    if (position !== undefined) {
-      newPosition = position;
-    } else {
-      // Find optimal position - in the middle of largest gap
-      const sortedPositions = [
-        MIN_BOTTOM_SPACING,
-        ...currentShelves.map((s) => s.spacing),
-        totalHeight - MIN_TOP_SPACING,
-      ].sort((a, b) => a - b);
-
-      let largestGap = 0;
-      let optimalPosition = MIN_BOTTOM_SPACING + 20;
-
-      for (let i = 0; i < sortedPositions.length - 1; i++) {
-        const gap = sortedPositions[i + 1] - sortedPositions[i];
-        if (gap > largestGap && gap > MIN_SHELF_SPACING * 2) {
-          largestGap = gap;
-          optimalPosition = sortedPositions[i] + gap / 2;
+    if (newCount === 0) {
+      // Remove all shelves
+      const updatedColumns = section.columns.map((col) => {
+        if (col.id === columnId) {
+          return {
+            ...col,
+            shelves: undefined,
+          };
         }
-      }
+        return col;
+      });
 
-      newPosition = Math.round(optimalPosition);
-    }
-
-    // Validate position
-    if (!isValidShelfPosition(currentShelves, newPosition, totalHeight)) {
-      console.warn(`Invalid shelf position: ${newPosition}cm`);
+      handleUpdateSection(sectionKey, { columns: updatedColumns });
       return;
     }
 
-    const newShelf: shelfSpacing = {
-      id: `${columnId}-shelf-${Date.now()}`,
-      spacing: newPosition,
-    };
+    // Generate optimal spacings for new count
+    const totalHeight = config.height - config.baseBarHeight;
+    const optimalSpacings = calculateOptimalSpacings(newCount, totalHeight);
+
+    const spacings: shelfSpacing[] = optimalSpacings.map((spacing, index) => ({
+      id: `${columnId}-spacing-${index + 1}`,
+      spacing,
+    }));
 
     const updatedColumns = section.columns.map((col) => {
       if (col.id === columnId) {
         return {
           ...col,
           shelves: {
-            ...col.shelves!,
-            spacings: [...(col.shelves?.spacings || []), newShelf],
+            id: `${columnId}-shelves`,
+            shelfSpacing: MIN_SHELF_SPACING,
+            spacings,
           },
         };
       }
@@ -172,31 +258,36 @@ export const useWardrobeShelves = () => {
   };
 
   /**
-   * Remove a shelf from a column
+   * Add a new shelf to a column (legacy - use setShelfCount instead)
+   */
+  const addShelfToColumn = (
+    sectionKey: SectionKey,
+    columnId: string,
+    position?: number
+  ) => {
+    const columnShelves = getColumnShelves(sectionKey, columnId);
+    if (!columnShelves) {
+      initializeColumnShelves(sectionKey, columnId, 1);
+      return;
+    }
+
+    const currentCount = columnShelves.shelves.length;
+    setShelfCount(sectionKey, columnId, currentCount + 1);
+  };
+
+  /**
+   * Remove a shelf from a column (legacy - use setShelfCount instead)
    */
   const removeShelfFromColumn = (
     sectionKey: SectionKey,
     columnId: string,
     shelfId: string
   ) => {
-    const section = config.wardrobeType.sections[sectionKey];
-    if (!section) return;
+    const columnShelves = getColumnShelves(sectionKey, columnId);
+    if (!columnShelves || columnShelves.shelves.length === 0) return;
 
-    const updatedColumns = section.columns.map((col) => {
-      if (col.id === columnId && col.shelves) {
-        return {
-          ...col,
-          shelves: {
-            ...col.shelves,
-            spacings:
-              col.shelves.spacings?.filter((s) => s.id !== shelfId) || [],
-          },
-        };
-      }
-      return col;
-    });
-
-    handleUpdateSection(sectionKey, { columns: updatedColumns });
+    const currentCount = columnShelves.shelves.length;
+    setShelfCount(sectionKey, columnId, Math.max(0, currentCount - 1));
   };
 
   /**
@@ -214,15 +305,29 @@ export const useWardrobeShelves = () => {
     const column = section.columns.find((col) => col.id === columnId);
     if (!column || !column.shelves) return;
 
-    const otherShelves =
-      column.shelves.spacings?.filter((s) => s.id !== shelfId) || [];
-    const totalHeight = config.height - config.baseBarHeight;
+    const columnShelves = getColumnShelves(sectionKey, columnId);
+    if (!columnShelves) return;
 
-    // Validate new position
-    if (!isValidShelfPosition(otherShelves, newPosition, totalHeight)) {
-      console.warn(`Invalid shelf position: ${newPosition}cm`);
-      return;
-    }
+    // Find the shelf and update its position
+    const shelfIndex = columnShelves.shelves.findIndex((s) => s.id === shelfId);
+    if (shelfIndex === -1) return;
+
+    // Create new positions array with updated position
+    const newPositions = columnShelves.shelves.map((shelf, index) =>
+      index === shelfIndex ? newPosition : shelf.position
+    );
+
+    // Convert back to spacings
+    const totalHeight = config.height - config.baseBarHeight;
+    const newSpacings = positionsToSpacings(newPositions, totalHeight);
+
+    // Update spacings in config
+    const spacings: shelfSpacing[] = newSpacings.map((spacing, index) => ({
+      id:
+        column.shelves!.spacings![index]?.id ||
+        `${columnId}-spacing-${index + 1}`,
+      spacing,
+    }));
 
     const updatedColumns = section.columns.map((col) => {
       if (col.id === columnId && col.shelves) {
@@ -230,10 +335,7 @@ export const useWardrobeShelves = () => {
           ...col,
           shelves: {
             ...col.shelves,
-            spacings:
-              col.shelves.spacings?.map((s) =>
-                s.id === shelfId ? { ...s, spacing: newPosition } : s
-              ) || [],
+            spacings,
           },
         };
       }
@@ -247,21 +349,21 @@ export const useWardrobeShelves = () => {
    * Validate if a shelf position is valid
    */
   const isValidShelfPosition = (
-    existingShelves: shelfSpacing[],
+    existingShelves: ShelfItem[],
     position: number,
     totalHeight: number
   ): boolean => {
-    // Check bounds
+    // Check bounds (account for thickness)
     if (
-      position < MIN_BOTTOM_SPACING ||
-      position > totalHeight - MIN_TOP_SPACING
+      position < config.thickness + MIN_SHELF_SPACING ||
+      position > totalHeight - config.thickness - MIN_SHELF_SPACING
     ) {
       return false;
     }
 
     // Check spacing with other shelves
     for (const shelf of existingShelves) {
-      if (Math.abs(shelf.spacing - position) < MIN_SHELF_SPACING) {
+      if (Math.abs(shelf.position - position) < MIN_SHELF_SPACING) {
         return false;
       }
     }
@@ -277,30 +379,26 @@ export const useWardrobeShelves = () => {
     columnId: string,
     shelfId: string
   ): { min: number; max: number } => {
-    const section = config.wardrobeType.sections[sectionKey];
-    if (!section) return { min: 0, max: 0 };
+    const columnShelves = getColumnShelves(sectionKey, columnId);
+    if (!columnShelves) return { min: 0, max: 0 };
 
-    const column = section.columns.find((col) => col.id === columnId);
-    if (!column || !column.shelves) return { min: 0, max: 0 };
+    const totalHeight = columnShelves.totalHeight;
+    const otherShelves = columnShelves.shelves.filter((s) => s.id !== shelfId);
 
-    const totalHeight = config.height - config.baseBarHeight;
-    const otherShelves =
-      column.shelves.spacings?.filter((s) => s.id !== shelfId) || [];
-
-    let min = MIN_BOTTOM_SPACING;
-    let max = totalHeight - MIN_TOP_SPACING;
+    let min = config.thickness + MIN_SHELF_SPACING;
+    let max = totalHeight - config.thickness - MIN_SHELF_SPACING;
 
     // Find constraints from other shelves
-    const sortedShelves = otherShelves
-      .map((s) => s.spacing)
+    const sortedPositions = otherShelves
+      .map((s) => s.position)
       .sort((a, b) => a - b);
 
-    for (const shelfPosition of sortedShelves) {
-      if (shelfPosition < min + MIN_SHELF_SPACING) {
-        min = Math.max(min, shelfPosition + MIN_SHELF_SPACING);
+    for (const position of sortedPositions) {
+      if (position < min + MIN_SHELF_SPACING) {
+        min = Math.max(min, position + MIN_SHELF_SPACING);
       }
-      if (shelfPosition > max - MIN_SHELF_SPACING) {
-        max = Math.min(max, shelfPosition - MIN_SHELF_SPACING);
+      if (position > max - MIN_SHELF_SPACING) {
+        max = Math.min(max, position - MIN_SHELF_SPACING);
       }
     }
 
@@ -314,40 +412,11 @@ export const useWardrobeShelves = () => {
     sectionKey: SectionKey,
     columnId: string
   ) => {
-    const section = config.wardrobeType.sections[sectionKey];
-    if (!section) return;
+    const columnShelves = getColumnShelves(sectionKey, columnId);
+    if (!columnShelves || columnShelves.shelves.length === 0) return;
 
-    const column = section.columns.find((col) => col.id === columnId);
-    if (!column || !column.shelves) return;
-
-    const currentShelves = column.shelves.spacings || [];
-    if (currentShelves.length === 0) return;
-
-    const totalHeight = config.height - config.baseBarHeight;
-    const availableHeight = totalHeight - MIN_BOTTOM_SPACING - MIN_TOP_SPACING;
-
-    const updatedShelves = currentShelves.map((shelf, index) => ({
-      ...shelf,
-      spacing: Math.round(
-        MIN_BOTTOM_SPACING +
-          (availableHeight / (currentShelves.length + 1)) * (index + 1)
-      ),
-    }));
-
-    const updatedColumns = section.columns.map((col) => {
-      if (col.id === columnId) {
-        return {
-          ...col,
-          shelves: {
-            ...col.shelves!,
-            spacings: updatedShelves,
-          },
-        };
-      }
-      return col;
-    });
-
-    handleUpdateSection(sectionKey, { columns: updatedColumns });
+    const shelfCount = columnShelves.shelves.length;
+    setShelfCount(sectionKey, columnId, shelfCount); // This will recalculate optimal spacings
   };
 
   /**
@@ -358,25 +427,18 @@ export const useWardrobeShelves = () => {
     columnId: string
   ) => {
     const columnShelves = getColumnShelves(sectionKey, columnId);
-    if (!columnShelves) return null;
+    if (!columnShelves || columnShelves.spacings.length === 0) return null;
 
-    const positions = [
-      0,
-      ...columnShelves.shelves.map((s) => s.position),
-      columnShelves.totalHeight,
-    ].sort((a, b) => a - b);
-
-    const spacings = [];
-    for (let i = 0; i < positions.length - 1; i++) {
-      const spacing = positions[i + 1] - positions[i];
-      spacings.push({
-        from: positions[i],
-        to: positions[i + 1],
-        height: spacing,
-        isValid: spacing >= MIN_SHELF_SPACING,
-        isOptimal: spacing >= 20 && spacing <= 50, // Optimal range for storage
-      });
-    }
+    const spacings = columnShelves.spacings.map((spacing, index) => ({
+      from: index === 0 ? 0 : columnShelves.shelves[index - 1]?.position || 0,
+      to:
+        index === columnShelves.spacings.length - 1
+          ? columnShelves.totalHeight
+          : columnShelves.shelves[index]?.position || 0,
+      height: spacing,
+      isValid: spacing >= MIN_SHELF_SPACING,
+      isOptimal: spacing >= 20 && spacing <= 50, // Optimal range for storage
+    }));
 
     return {
       totalHeight: columnShelves.totalHeight,
@@ -392,8 +454,9 @@ export const useWardrobeShelves = () => {
     // Core functions
     getColumnShelves,
     initializeColumnShelves,
+    setShelfCount, // New preferred method
 
-    // Shelf management
+    // Legacy shelf management (for backward compatibility)
     addShelfToColumn,
     removeShelfFromColumn,
     moveShelf,
@@ -403,6 +466,11 @@ export const useWardrobeShelves = () => {
     getShelfPositionRange,
     redistributeShelvesEvenly,
     getShelfSpacingAnalysis,
+
+    // Helper functions
+    spacingsToPositions,
+    positionsToSpacings,
+    calculateOptimalSpacings,
 
     // Constants
     MIN_SHELF_SPACING,

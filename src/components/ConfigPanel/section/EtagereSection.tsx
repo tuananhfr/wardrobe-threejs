@@ -1,4 +1,4 @@
-// src/components/ConfigPanel/section/EtagereSection.tsx (Completely Clean)
+// src/components/ConfigPanel/section/EtagereSection.tsx (From Your File with Fixed Logic)
 import React from "react";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useWardrobeShelves } from "@/hooks/useWardrobeShelves";
@@ -7,9 +7,7 @@ const EtagereSection: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
   const {
     getColumnShelves,
-    initializeColumnShelves,
-    addShelfToColumn,
-    removeShelfFromColumn,
+    setShelfCount, // Use new method instead of add/remove
     moveShelf,
     redistributeShelvesEvenly,
     getShelfSpacingAnalysis,
@@ -117,19 +115,6 @@ const EtagereSection: React.FC = () => {
     const columnShelves = getColumnShelves(sectionKey, column.id);
     const spacingAnalysis = getShelfSpacingAnalysis(sectionKey, column.id);
     const totalHeight = config.height - config.baseBarHeight;
-    const hasNoShelves = !columnShelves || columnShelves.shelves.length === 0;
-
-    const handleInitializeShelves = () => {
-      // Not needed anymore - using input control
-    };
-
-    const handleAddShelf = () => {
-      // Not needed anymore - using input control
-    };
-
-    const handleRemoveShelf = (shelfId: string) => {
-      // Not needed anymore - using input control
-    };
 
     const handleShelfPositionChange = (
       shelfId: string,
@@ -176,23 +161,7 @@ const EtagereSection: React.FC = () => {
                 max={10}
                 onChange={(e) => {
                   const newCount = parseInt(e.target.value) || 0;
-                  const currentCount = columnShelves?.shelves?.length || 0;
-
-                  if (newCount > currentCount) {
-                    // Add shelves
-                    for (let i = currentCount; i < newCount; i++) {
-                      addShelfToColumn(sectionKey, column.id);
-                    }
-                  } else if (newCount < currentCount) {
-                    // Remove shelves (from the end)
-                    const shelvesToRemove = columnShelves!.shelves
-                      .sort((a, b) => a.position - b.position)
-                      .slice(newCount);
-
-                    shelvesToRemove.forEach((shelf) => {
-                      removeShelfFromColumn(sectionKey, column.id, shelf.id);
-                    });
-                  }
+                  setShelfCount(sectionKey, column.id, newCount);
                 }}
               />
               <span className="input-group-text">étagères</span>
@@ -208,55 +177,178 @@ const EtagereSection: React.FC = () => {
               <div>
                 {/* Shelves List */}
                 <div className="mb-3">
-                  <h6>Position des étagères:</h6>
-                  {columnShelves!.shelves
-                    .sort((a, b) => b.position - a.position)
-                    .map((shelf, index) => {
-                      const range = getShelfPositionRange(
-                        sectionKey,
-                        column.id,
-                        shelf.id
+                  <h6>Espacements des étagères:</h6>
+                  <div className="mb-2">
+                    <small className="text-muted">
+                      Configurez les espacements entre les éléments (sol →
+                      étagère → étagère → plafond)
+                    </small>
+                  </div>
+                  {columnShelves!.spacings.map((spacing, index) => {
+                    const isLastSpacing =
+                      index === columnShelves!.spacings.length - 1;
+
+                    // Labels pour les espacements
+                    let fromLabel, toLabel;
+                    if (index === 0) {
+                      fromLabel = "Sol";
+                      toLabel = "Étagère 1";
+                    } else if (isLastSpacing) {
+                      fromLabel = `Étagère ${columnShelves!.shelves.length}`;
+                      toLabel = "Plafond";
+                    } else {
+                      fromLabel = `Étagère ${index}`;
+                      toLabel = `Étagère ${index + 1}`;
+                    }
+
+                    const handleSpacingChange = (newSpacing: number) => {
+                      // Get current section data
+                      const section = config.wardrobeType.sections[sectionKey];
+                      if (!section) return;
+
+                      const currentColumn = section.columns.find(
+                        (col) => col.id === column.id
                       );
-                      const distanceFromBottom = shelf.position;
-                      const distanceFromTop = totalHeight - shelf.position;
+                      if (!currentColumn?.shelves?.spacings) return;
 
-                      return (
-                        <div key={shelf.id} className="mb-3 p-2 border rounded">
-                          <div className="d-flex justify-content-between align-items-center mb-2">
-                            <label className="form-label mb-0">
-                              <strong>
-                                Étagère {columnShelves!.shelves.length - index}
-                              </strong>
-                              <small className="text-muted ms-2">
-                                (↑{distanceFromTop.toFixed(0)}cm / ↓
-                                {distanceFromBottom.toFixed(0)}cm)
-                              </small>
-                            </label>
-                          </div>
+                      const currentSpacings = [
+                        ...currentColumn.shelves.spacings,
+                      ];
+                      const oldSpacing = currentSpacings[index].spacing;
+                      const spacingDiff = newSpacing - oldSpacing;
 
-                          <div className="input-group">
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={shelf.position}
-                              min={range.min}
-                              max={range.max}
-                              step={1}
-                              onChange={(e) => {
-                                const newPos =
-                                  parseInt(e.target.value) || range.min;
-                                handleShelfPositionChange(shelf.id, newPos);
-                              }}
-                            />
-                            <span className="input-group-text">cm du sol</span>
-                          </div>
+                      // Update current spacing
+                      currentSpacings[index] = {
+                        ...currentSpacings[index],
+                        spacing: newSpacing,
+                      };
 
-                          <small className="text-muted">
-                            Position valide: {range.min}cm - {range.max}cm
-                          </small>
+                      let adjustmentApplied = false;
+                      let finalCurrentSpacing = newSpacing;
+
+                      // Try to adjust NEXT spacing first (forward adjustment)
+                      if (index < currentSpacings.length - 1) {
+                        const nextIndex = index + 1;
+                        const nextSpacing = currentSpacings[nextIndex].spacing;
+                        const newNextSpacing = nextSpacing - spacingDiff;
+
+                        if (newNextSpacing >= MIN_SHELF_SPACING) {
+                          // Can adjust next spacing
+                          currentSpacings[nextIndex] = {
+                            ...currentSpacings[nextIndex],
+                            spacing: newNextSpacing,
+                          };
+                          adjustmentApplied = true;
+                        } else {
+                          // Next spacing would be too small, limit current increase
+                          const maxAllowedIncrease =
+                            nextSpacing - MIN_SHELF_SPACING;
+                          finalCurrentSpacing = oldSpacing + maxAllowedIncrease;
+                          currentSpacings[index] = {
+                            ...currentSpacings[index],
+                            spacing: finalCurrentSpacing,
+                          };
+                          currentSpacings[nextIndex] = {
+                            ...currentSpacings[nextIndex],
+                            spacing: MIN_SHELF_SPACING,
+                          };
+                          adjustmentApplied = true;
+                        }
+                      }
+
+                      // If no next spacing available or couldn't adjust next, try PREVIOUS spacing (backward adjustment)
+                      if (!adjustmentApplied && index > 0) {
+                        const prevIndex = index - 1;
+                        const prevSpacing = currentSpacings[prevIndex].spacing;
+                        const newPrevSpacing = prevSpacing - spacingDiff;
+
+                        if (newPrevSpacing >= MIN_SHELF_SPACING) {
+                          // Can adjust previous spacing
+                          currentSpacings[prevIndex] = {
+                            ...currentSpacings[prevIndex],
+                            spacing: newPrevSpacing,
+                          };
+                          adjustmentApplied = true;
+                        } else {
+                          // Previous spacing would be too small, limit current increase
+                          const maxAllowedIncrease =
+                            prevSpacing - MIN_SHELF_SPACING;
+                          finalCurrentSpacing = oldSpacing + maxAllowedIncrease;
+                          currentSpacings[index] = {
+                            ...currentSpacings[index],
+                            spacing: finalCurrentSpacing,
+                          };
+                          currentSpacings[prevIndex] = {
+                            ...currentSpacings[prevIndex],
+                            spacing: MIN_SHELF_SPACING,
+                          };
+                          adjustmentApplied = true;
+                        }
+                      }
+
+                      // Update config with new spacings
+                      const updatedColumns = section.columns.map((col) => {
+                        if (col.id === column.id && col.shelves) {
+                          return {
+                            ...col,
+                            shelves: {
+                              ...col.shelves,
+                              spacings: currentSpacings,
+                            },
+                          };
+                        }
+                        return col;
+                      });
+
+                      updateConfig("wardrobeType", {
+                        ...config.wardrobeType,
+                        sections: {
+                          ...config.wardrobeType.sections,
+                          [sectionKey]: {
+                            ...section,
+                            columns: updatedColumns,
+                          },
+                        },
+                      });
+                    };
+
+                    return (
+                      <div
+                        key={`spacing-${index}`}
+                        className="mb-3 p-2 border rounded"
+                      >
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                          <label className="form-label mb-0">
+                            <strong>
+                              {fromLabel} → {toLabel}
+                            </strong>
+                            <small className="text-muted ms-2">
+                              ({isLastSpacing ? "vers le haut" : "espacement"})
+                            </small>
+                          </label>
                         </div>
-                      );
-                    })}
+
+                        <div className="input-group">
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={spacing}
+                            min={MIN_SHELF_SPACING}
+                            max={totalHeight - 50} // Leave some room
+                            step={1}
+                            onChange={(e) => {
+                              const newSpacing =
+                                parseInt(e.target.value) || MIN_SHELF_SPACING;
+                              handleSpacingChange(
+                                Math.max(MIN_SHELF_SPACING, newSpacing)
+                              );
+                            }}
+                          />
+                          <span className="input-group-text">cm</span>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Spacing Analysis */}
@@ -325,87 +417,10 @@ const EtagereSection: React.FC = () => {
 
   const renderSelectionPrompt = () => (
     <div className="text-center py-5">
-      <div className="mb-3">
-        <span style={{ fontSize: "3rem" }}>👆</span>
-      </div>
       <h5 className="text-muted mb-3">Sélectionnez une colonne</h5>
       <p className="text-secondary">
         Cliquez sur une colonne dans le modèle 3D pour configurer ses étagères.
-        <br />
-        <small className="text-muted">
-          Les colonnes sont surlignées en bleu clair et deviennent cliquables.
-        </small>
       </p>
-
-      {/* Quick Column Selection Grid */}
-      <div className="mt-4">
-        <h6 className="text-muted mb-3">🎯 Sélection rapide:</h6>
-        <div className="row g-2">
-          {allColumns.map((column) => {
-            const shelves = getColumnShelves(column.sectionKey, column.id);
-            const shelvesCount = shelves?.shelves?.length || 0;
-
-            return (
-              <div key={column.id} className="col-auto">
-                <button
-                  type="button"
-                  className={`btn btn-outline-primary btn-sm ${
-                    config.selectedColumnId === column.id ? "active" : ""
-                  }`}
-                  onClick={() => handleColumnClick(column.id)}
-                  title={`Section ${column.sectionName} - Colonne ${
-                    column.columnIndex + 1
-                  }`}
-                >
-                  <div className="text-center">
-                    <div>
-                      <strong>
-                        {column.sectionName}-{column.columnIndex + 1}
-                      </strong>
-                    </div>
-                    <small className="text-muted">
-                      {column.width}cm
-                      {shelvesCount > 0 && (
-                        <>
-                          <br />
-                          {shelvesCount} étagères
-                        </>
-                      )}
-                    </small>
-                  </div>
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Quick stats */}
-      <div className="mt-4 row text-center">
-        {Object.entries(config.wardrobeType.sections).map(([key, section]) => {
-          if (!section) return null;
-          const sectionName =
-            key === "sectionA" ? "A" : key === "sectionB" ? "B" : "C";
-          const totalShelves = section.columns.reduce((total, col) => {
-            return total + (col.shelves?.spacings?.length || 0);
-          }, 0);
-
-          return (
-            <div key={key} className="col">
-              <div className="card border-light">
-                <div className="card-body py-2">
-                  <h6 className="card-title mb-1">Section {sectionName}</h6>
-                  <small className="text-muted">
-                    {section.columns.length} colonnes
-                    <br />
-                    {totalShelves} étagères
-                  </small>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 

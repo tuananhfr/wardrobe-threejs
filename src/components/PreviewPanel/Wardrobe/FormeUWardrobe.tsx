@@ -2,6 +2,8 @@ import React, { useMemo } from "react";
 import * as THREE from "three";
 import SectionFrame from "./SectionFrame";
 import SectionColumns from "./SectionColumns";
+import SectionShelves from "./SectionShelves";
+import EtagereColumnHighlights from "./EtagereColumnHighlights";
 
 interface FormeUWardrobeProps {
   sections: {
@@ -113,6 +115,27 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
         texture={texture}
         showSections={showSections}
       />
+      {/* Section A Shelves */}
+      <SectionShelves
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        position={[0, 0, 0]}
+        thickness={thickness}
+        texture={texture}
+        showSections={showSections}
+      />
+
+      {/* Étagère Column Highlights - Based on working ColumnHighlights pattern */}
+      <EtagereColumnHighlights
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+      />
 
       {/* Section B - cánh trái */}
       <group position={sectionBPosition} rotation={[0, Math.PI / 2, 0]}>
@@ -140,6 +163,28 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           thickness={thickness}
           texture={texture}
           showSections={showSections}
+        />
+
+        {/* Section B Shelves */}
+        <SectionShelves
+          sectionName="sectionB"
+          sectionData={sections.sectionB}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          position={[0, 0, 0]}
+          thickness={thickness}
+          texture={texture}
+          showSections={showSections}
+        />
+
+        {/* Étagère Column Highlights - Based on working ColumnHighlights pattern */}
+        <EtagereColumnHighlights
+          sectionName="sectionB"
+          sectionData={sections.sectionB}
+          position={[0, 0, 0]}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
         />
       </group>
 
@@ -169,6 +214,28 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           thickness={thickness}
           texture={texture}
           showSections={showSections}
+        />
+
+        {/* Section C Shelves */}
+        <SectionShelves
+          sectionName="sectionC"
+          sectionData={sections.sectionC}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          position={[0, 0, 0]}
+          thickness={thickness}
+          texture={texture}
+          showSections={showSections}
+        />
+
+        {/* Étagère Column Highlights - Based on working ColumnHighlights pattern */}
+        <EtagereColumnHighlights
+          sectionName="sectionC"
+          sectionData={sections.sectionC}
+          position={[0, 0, 0]}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
         />
       </group>
     </group>

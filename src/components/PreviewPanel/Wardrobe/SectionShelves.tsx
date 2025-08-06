@@ -115,38 +115,6 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
       {sectionData.columns.map((column, columnIndex) =>
         renderColumnShelves(column, columnIndex)
       )}
-
-      {/* Optional: Visual guides when section is active */}
-      {isActive && (
-        <group>
-          {/* Height markers for first column */}
-          {sectionData.columns.length > 0 &&
-            sectionData.columns[0].shelves?.spacings && (
-              <group>
-                {spacingsToPositions(
-                  sectionData.columns[0].shelves.spacings
-                ).map((shelfPosition, index) => {
-                  const shelfPositionY =
-                    shelfPosition / 100 - height / 2 + baseBarHeight / 100;
-
-                  return (
-                    <mesh
-                      key={`guide-${index}`}
-                      position={[
-                        -width / 2 - 0.02, // Slightly outside left wall
-                        shelfPositionY,
-                        depth / 2 + 0.01, // Slightly in front
-                      ]}
-                    >
-                      <sphereGeometry args={[0.005]} />
-                      <meshBasicMaterial />
-                    </mesh>
-                  );
-                })}
-              </group>
-            )}
-        </group>
-      )}
     </group>
   );
 };

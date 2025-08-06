@@ -7,11 +7,8 @@ const EtagereSection: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
   const {
     getColumnShelves,
-    setShelfCount, // Use new method instead of add/remove
-    moveShelf,
-    redistributeShelvesEvenly,
+    setShelfCount,
     getShelfSpacingAnalysis,
-    getShelfPositionRange,
     MIN_SHELF_SPACING,
   } = useWardrobeShelves();
 
@@ -115,17 +112,6 @@ const EtagereSection: React.FC = () => {
     const columnShelves = getColumnShelves(sectionKey, column.id);
     const spacingAnalysis = getShelfSpacingAnalysis(sectionKey, column.id);
     const totalHeight = config.height - config.baseBarHeight;
-
-    const handleShelfPositionChange = (
-      shelfId: string,
-      newPosition: number
-    ) => {
-      moveShelf(sectionKey, column.id, shelfId, newPosition);
-    };
-
-    const handleRedistribute = () => {
-      redistributeShelvesEvenly(sectionKey, column.id);
-    };
 
     return (
       <div className="card border-primary">

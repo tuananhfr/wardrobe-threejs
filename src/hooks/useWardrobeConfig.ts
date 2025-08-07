@@ -557,12 +557,14 @@ export const useWardrobeConfig = () => {
     newData: Partial<WardrobeSection>
   ) => {
     const currentSection = config.wardrobeType.sections[sectionKey];
-    if (!currentSection) return;
+    if (!currentSection) {
+      return;
+    }
 
     let updatedSectionData = { ...currentSection, ...newData };
 
     // AUTO-UPDATE: Nếu width thay đổi, tự động recalculate constraints và columns
-    if (newData.width && newData.width !== currentSection.width) {
+    if (newData.width !== undefined && newData.width !== currentSection.width) {
       const newWidth = newData.width;
       const thickness = config.thickness;
 

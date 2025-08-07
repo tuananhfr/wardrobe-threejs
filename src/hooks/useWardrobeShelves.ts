@@ -15,7 +15,7 @@ interface ColumnShelves {
 }
 
 export const useWardrobeShelves = () => {
-  const { config, handleUpdateSection } = useWardrobeConfig();
+  const { config, handleUpdateSection, updateConfig } = useWardrobeConfig();
 
   const MIN_SHELF_SPACING = 10; // cm
 
@@ -72,10 +72,14 @@ export const useWardrobeShelves = () => {
     columnId: string
   ): ColumnShelves | null => {
     const section = config.wardrobeType.sections[sectionKey];
-    if (!section) return null;
+    if (!section) {
+      return null;
+    }
 
     const column = section.columns.find((col) => col.id === columnId);
-    if (!column) return null;
+    if (!column) {
+      return null;
+    }
 
     const totalHeight = config.height - config.baseBarHeight;
 
@@ -117,7 +121,9 @@ export const useWardrobeShelves = () => {
     newCount: number
   ) => {
     const section = config.wardrobeType.sections[sectionKey];
-    if (!section) return;
+    if (!section) {
+      return;
+    }
 
     if (newCount === 0) {
       // Remove all shelves
@@ -192,10 +198,82 @@ export const useWardrobeShelves = () => {
     };
   };
 
+  /**
+   * Set shelf count for multiple columns simultaneously
+   */
+  const setShelfCountForMultipleColumns = (
+    columnUpdates: Array<{
+      sectionKey: SectionKey;
+      columnId: string;
+      newCount: number;
+    }>
+  ) => {
+    // Process all updates in a single transaction
+    const updatedSections = { ...config.wardrobeType.sections };
+
+    columnUpdates.forEach(({ sectionKey, columnId, newCount }) => {
+      const section = updatedSections[sectionKey];
+      if (!section) {
+        console.error(`Section ${sectionKey} not found`);
+        return;
+      }
+
+      if (newCount === 0) {
+        // Remove all shelves
+        updatedSections[sectionKey] = {
+          ...section,
+          columns: section.columns.map((col) => {
+            if (col.id === columnId) {
+              return {
+                ...col,
+                shelves: undefined,
+              };
+            }
+            return col;
+          }),
+        };
+      } else {
+        // Generate optimal spacings for new count
+        const totalHeight = config.height - config.baseBarHeight;
+        const optimalSpacings = calculateOptimalSpacings(newCount, totalHeight);
+
+        const spacings: shelfSpacing[] = optimalSpacings.map(
+          (spacing, index) => ({
+            id: `${columnId}-spacing-${index + 1}`,
+            spacing,
+          })
+        );
+
+        updatedSections[sectionKey] = {
+          ...section,
+          columns: section.columns.map((col) => {
+            if (col.id === columnId) {
+              return {
+                ...col,
+                shelves: {
+                  id: `${columnId}-shelves`,
+                  shelfSpacing: MIN_SHELF_SPACING,
+                  spacings,
+                },
+              };
+            }
+            return col;
+          }),
+        };
+      }
+    });
+
+    // Single update to config - all sections at once
+    updateConfig("wardrobeType", {
+      ...config.wardrobeType,
+      sections: updatedSections,
+    });
+  };
+
   return {
     getColumnShelves,
     setShelfCount,
-
+    setShelfCountForMultipleColumns,
     getShelfSpacingAnalysis,
     MIN_SHELF_SPACING,
   };

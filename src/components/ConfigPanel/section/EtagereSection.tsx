@@ -1,5 +1,4 @@
-// src/components/ConfigPanel/section/EtagereSection.tsx (From Your File with Fixed Logic)
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useWardrobeShelves } from "@/hooks/useWardrobeShelves";
 
@@ -8,7 +7,7 @@ const EtagereSection: React.FC = () => {
   const {
     getColumnShelves,
     setShelfCount,
-
+    setShelfCountForMultipleColumns,
     getShelfSpacingAnalysis,
 
     MIN_SHELF_SPACING,
@@ -37,6 +36,31 @@ const EtagereSection: React.FC = () => {
       // Select new column
       updateConfig("selectedColumnId", columnId);
     }
+  };
+
+  // Handle Angle AB selection (treats A-last and B-first as one column)
+  const handleAngleABClick = () => {
+    if (config.selectedColumnId === "angle-ab") {
+      // Deselect if already selected
+      updateConfig("selectedColumnId", null);
+    } else {
+      // Select Angle AB as a single column
+      updateConfig("selectedColumnId", "angle-ab");
+    }
+  };
+
+  // Check if Angle AB button should be shown
+  const shouldShowAngleAB = () => {
+    const sectionA = config.wardrobeType.sections.sectionA;
+    const sectionB = config.wardrobeType.sections.sectionB;
+
+    return (
+      config.wardrobeType.id === "Angle" &&
+      sectionA &&
+      sectionB &&
+      sectionA.columns.length > 0 &&
+      sectionB.columns.length > 0
+    );
   };
 
   // Get selected column data
@@ -68,7 +92,7 @@ const EtagereSection: React.FC = () => {
     return null;
   };
 
-  // Get all available columns for selection
+  // Get all available columns for selection (excluding A-last and B-first for Angle type)
   const getAllColumns = () => {
     const columns: Array<{
       id: string;
@@ -83,6 +107,23 @@ const EtagereSection: React.FC = () => {
         if (!section) return;
 
         section.columns.forEach((column, index) => {
+          // For Angle type, exclude A-last and B-first columns as they're handled by Angle AB button
+          if (config.wardrobeType.id === "Angle") {
+            const sectionA = config.wardrobeType.sections.sectionA;
+            const sectionB = config.wardrobeType.sections.sectionB;
+
+            if (sectionA && sectionB) {
+              const isALastColumn =
+                sectionKey === "sectionA" &&
+                index === sectionA.columns.length - 1;
+              const isBFirstColumn = sectionKey === "sectionB" && index === 0;
+
+              if (isALastColumn || isBFirstColumn) {
+                return; // Skip these columns for individual buttons
+              }
+            }
+          }
+
           columns.push({
             id: column.id,
             sectionKey: sectionKey as SectionKey,
@@ -104,6 +145,89 @@ const EtagereSection: React.FC = () => {
 
   const selectedColumnData = getSelectedColumnData();
   const allColumns = getAllColumns();
+
+  // Local state for Angle AB shelf count
+  const [angleABShelfCount, setAngleABShelfCount] = useState<number>(0);
+  const [isUserChanging, setIsUserChanging] = useState<boolean>(false);
+
+  // Sync local state with actual data when Angle AB is selected
+  useEffect(() => {
+    if (config.selectedColumnId === "angle-ab") {
+      const sectionA = config.wardrobeType.sections.sectionA;
+      const sectionB = config.wardrobeType.sections.sectionB;
+
+      if (sectionA && sectionB) {
+        const aLastColumn = sectionA.columns[sectionA.columns.length - 1];
+        if (aLastColumn) {
+          const aColumnShelves = getColumnShelves("sectionA", aLastColumn.id);
+          const actualCount = aColumnShelves?.shelves?.length || 0;
+          // Only sync if local state is 0 (initial state) and actual count is different
+          if (angleABShelfCount === 0 && actualCount > 0 && !isUserChanging) {
+            setAngleABShelfCount(actualCount);
+          }
+        }
+      }
+    }
+  }, [config.selectedColumnId, config.wardrobeType.sections, isUserChanging]);
+
+  // Reset local state when switching away from Angle AB
+  useEffect(() => {
+    if (config.selectedColumnId !== "angle-ab") {
+      setAngleABShelfCount(0);
+      setIsUserChanging(false);
+    }
+  }, [config.selectedColumnId]);
+
+  // Sync with actual data after user changes
+  useEffect(() => {
+    if (!isUserChanging && config.selectedColumnId === "angle-ab") {
+      const sectionA = config.wardrobeType.sections.sectionA;
+      const sectionB = config.wardrobeType.sections.sectionB;
+
+      if (sectionA && sectionB) {
+        const aLastColumn = sectionA.columns[sectionA.columns.length - 1];
+        if (aLastColumn) {
+          const aColumnShelves = getColumnShelves("sectionA", aLastColumn.id);
+          const actualCount = aColumnShelves?.shelves?.length || 0;
+          // Sync with actual data after user changes
+          if (actualCount > 0) {
+            setAngleABShelfCount(actualCount);
+          }
+        }
+      }
+    }
+  }, [isUserChanging, config.selectedColumnId, config.wardrobeType.sections]);
+
+  // Get Angle AB data when selected as a single column
+  const getAngleABData = () => {
+    if (config.selectedColumnId !== "angle-ab" || !isEtagereOpen) return null;
+
+    const sectionA = config.wardrobeType.sections.sectionA;
+    const sectionB = config.wardrobeType.sections.sectionB;
+
+    if (!sectionA || !sectionB) return null;
+
+    const aLastColumnIndex = sectionA.columns.length - 1;
+    const bFirstColumnIndex = 0;
+
+    const aLastColumn = sectionA.columns[aLastColumnIndex];
+    const bFirstColumn = sectionB.columns[bFirstColumnIndex];
+
+    return {
+      aColumn: {
+        sectionKey: "sectionA" as SectionKey,
+        sectionName: "A",
+        column: aLastColumn,
+        columnIndex: aLastColumnIndex,
+      },
+      bColumn: {
+        sectionKey: "sectionB" as SectionKey,
+        sectionName: "B",
+        column: bFirstColumn,
+        columnIndex: bFirstColumnIndex,
+      },
+    };
+  };
 
   const renderColumnShelves = (
     sectionKey: SectionKey,
@@ -386,6 +510,369 @@ const EtagereSection: React.FC = () => {
     );
   };
 
+  const renderAngleABShelves = (angleData: {
+    aColumn: {
+      sectionKey: SectionKey;
+      sectionName: string;
+      column: WardrobeColumn;
+      columnIndex: number;
+    };
+    bColumn: {
+      sectionKey: SectionKey;
+      sectionName: string;
+      column: WardrobeColumn;
+      columnIndex: number;
+    };
+  }) => {
+    // Get shelves data for both columns
+    const aColumnShelves = getColumnShelves(
+      angleData.aColumn.sectionKey,
+      angleData.aColumn.column.id
+    );
+
+    const spacingAnalysis = getShelfSpacingAnalysis(
+      angleData.aColumn.sectionKey,
+      angleData.aColumn.column.id
+    );
+    const totalHeight = config.height - config.baseBarHeight;
+
+    // Use A column as primary for display, but ensure both columns are synchronized
+    const primaryShelves = aColumnShelves;
+
+    // Use local state for display, fallback to actual data
+    const aShelfCount = aColumnShelves?.shelves?.length || 0;
+    const displayShelfCount =
+      isUserChanging || angleABShelfCount > 0 ? angleABShelfCount : aShelfCount;
+
+    return (
+      <div className="card border-primary">
+        <div className="card-header bg-primary bg-opacity-10">
+          <div className="d-flex justify-content-between align-items-center">
+            <h6 className="mb-0">Angle AB - Colonnes A-last & B-first</h6>
+            <div className="d-flex gap-2 align-items-center">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-secondary"
+                onClick={() => {
+                  updateConfig("selectedColumnId", null);
+                }}
+                title="Désélectionner"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="card-body">
+          {/* Shelf Count Control - applies to both columns */}
+          <div className="mb-3">
+            <label className="form-label">
+              <strong>Nombre d'étagères:</strong>
+            </label>
+            <div className="input-group w-100">
+              <input
+                type="number"
+                className="form-control"
+                value={displayShelfCount}
+                min={0}
+                max={10}
+                onChange={(e) => {
+                  const newCount = parseInt(e.target.value) || 0;
+
+                  // Update local state immediately for responsive UI
+                  setIsUserChanging(true);
+                  setAngleABShelfCount(newCount);
+
+                  // Use new function to update both columns in single transaction
+                  setShelfCountForMultipleColumns([
+                    {
+                      sectionKey: angleData.aColumn.sectionKey,
+                      columnId: angleData.aColumn.column.id,
+                      newCount: newCount,
+                    },
+                    {
+                      sectionKey: angleData.bColumn.sectionKey,
+                      columnId: angleData.bColumn.column.id,
+                      newCount: newCount,
+                    },
+                  ]);
+
+                  // Reset user changing flag after a delay
+                  setTimeout(() => {
+                    setIsUserChanging(false);
+                  }, 500);
+                }}
+              />
+              <span className="input-group-text">étagères</span>
+            </div>
+            <small className="text-muted">
+              Ajustez le nombre d'étagères pour les colonnes A-last et B-first
+              (0-10)
+            </small>
+          </div>
+
+          {/* Shelves List - only show if shelves exist */}
+          {displayShelfCount > 0 ? (
+            <div>
+              {/* Shelves List */}
+              <div className="mb-3">
+                <h6>Espacements des étagères:</h6>
+                <div className="mb-2">
+                  <small className="text-muted">
+                    Configurez les espacements entre les éléments (sol → étagère
+                    → étagère → plafond) - appliqué aux deux colonnes
+                  </small>
+                </div>
+                {primaryShelves!.spacings.map((spacing, index) => {
+                  const isLastSpacing =
+                    index === primaryShelves!.spacings.length - 1;
+
+                  // Labels pour les espacements
+                  let fromLabel, toLabel;
+                  if (index === 0) {
+                    fromLabel = "Sol";
+                    toLabel = "Étagère 1";
+                  } else if (isLastSpacing) {
+                    fromLabel = `Étagère ${primaryShelves!.shelves.length}`;
+                    toLabel = "Plafond";
+                  } else {
+                    fromLabel = `Étagère ${index}`;
+                    toLabel = `Étagère ${index + 1}`;
+                  }
+
+                  // Fix handleSpacingChange trong renderAngleABShelves:
+
+                  const handleSpacingChange = (newSpacing: number) => {
+                    // Get both sections first
+                    const sectionA = config.wardrobeType.sections.sectionA;
+                    const sectionB = config.wardrobeType.sections.sectionB;
+
+                    if (!sectionA || !sectionB) {
+                      console.error("Missing sections");
+                      return;
+                    }
+
+                    // Update both columns' spacings in memory first
+                    const updatedSections = {
+                      ...config.wardrobeType.sections,
+                    };
+
+                    // Helper function to update spacing for one column
+                    const updateSpacingForColumn = (
+                      section: WardrobeSection,
+
+                      columnId: string
+                    ): WardrobeSection => {
+                      const currentColumn = section.columns.find(
+                        (col) => col.id === columnId
+                      );
+                      if (!currentColumn?.shelves?.spacings) return section;
+
+                      const currentSpacings = [
+                        ...currentColumn.shelves.spacings,
+                      ];
+                      const oldSpacing = currentSpacings[index].spacing;
+                      const spacingDiff = newSpacing - oldSpacing;
+
+                      // Update current spacing
+                      currentSpacings[index] = {
+                        ...currentSpacings[index],
+                        spacing: newSpacing,
+                      };
+
+                      let adjustmentApplied = false;
+                      let finalCurrentSpacing = newSpacing;
+
+                      // Try to adjust NEXT spacing first (forward adjustment)
+                      if (index < currentSpacings.length - 1) {
+                        const nextIndex = index + 1;
+                        const nextSpacing = currentSpacings[nextIndex].spacing;
+                        const newNextSpacing = nextSpacing - spacingDiff;
+
+                        if (newNextSpacing >= MIN_SHELF_SPACING) {
+                          // Can adjust next spacing
+                          currentSpacings[nextIndex] = {
+                            ...currentSpacings[nextIndex],
+                            spacing: newNextSpacing,
+                          };
+                          adjustmentApplied = true;
+                        } else {
+                          // Next spacing would be too small, limit current increase
+                          const maxAllowedIncrease =
+                            nextSpacing - MIN_SHELF_SPACING;
+                          finalCurrentSpacing = oldSpacing + maxAllowedIncrease;
+                          currentSpacings[index] = {
+                            ...currentSpacings[index],
+                            spacing: finalCurrentSpacing,
+                          };
+                          currentSpacings[nextIndex] = {
+                            ...currentSpacings[nextIndex],
+                            spacing: MIN_SHELF_SPACING,
+                          };
+                          adjustmentApplied = true;
+                        }
+                      }
+
+                      // If no next spacing available or couldn't adjust next, try PREVIOUS spacing (backward adjustment)
+                      if (!adjustmentApplied && index > 0) {
+                        const prevIndex = index - 1;
+                        const prevSpacing = currentSpacings[prevIndex].spacing;
+                        const newPrevSpacing = prevSpacing - spacingDiff;
+
+                        if (newPrevSpacing >= MIN_SHELF_SPACING) {
+                          // Can adjust previous spacing
+                          currentSpacings[prevIndex] = {
+                            ...currentSpacings[prevIndex],
+                            spacing: newPrevSpacing,
+                          };
+                          adjustmentApplied = true;
+                        } else {
+                          // Previous spacing would be too small, limit current increase
+                          const maxAllowedIncrease =
+                            prevSpacing - MIN_SHELF_SPACING;
+                          finalCurrentSpacing = oldSpacing + maxAllowedIncrease;
+                          currentSpacings[index] = {
+                            ...currentSpacings[index],
+                            spacing: finalCurrentSpacing,
+                          };
+                          currentSpacings[prevIndex] = {
+                            ...currentSpacings[prevIndex],
+                            spacing: MIN_SHELF_SPACING,
+                          };
+                          adjustmentApplied = true;
+                        }
+                      }
+
+                      // Return updated section
+                      const updatedColumns = section.columns.map((col) => {
+                        if (col.id === columnId && col.shelves) {
+                          return {
+                            ...col,
+                            shelves: {
+                              ...col.shelves,
+                              spacings: currentSpacings,
+                            },
+                          };
+                        }
+                        return col;
+                      });
+
+                      return {
+                        ...section,
+                        columns: updatedColumns,
+                      };
+                    };
+
+                    // Update both sections
+
+                    updatedSections.sectionA = updateSpacingForColumn(
+                      sectionA,
+
+                      angleData.aColumn.column.id
+                    );
+
+                    updatedSections.sectionB = updateSpacingForColumn(
+                      sectionB,
+
+                      angleData.bColumn.column.id
+                    );
+
+                    // Single config update for both columns
+                    updateConfig("wardrobeType", {
+                      ...config.wardrobeType,
+                      sections: updatedSections,
+                    });
+                  };
+
+                  return (
+                    <div
+                      key={`spacing-${index}`}
+                      className="mb-3 p-2 border rounded"
+                    >
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <label className="form-label mb-0">
+                          <strong>
+                            {fromLabel} → {toLabel}
+                          </strong>
+                          <small className="text-muted ms-2">
+                            ({isLastSpacing ? "vers le haut" : "espacement"})
+                          </small>
+                        </label>
+                      </div>
+
+                      <div className="input-group">
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={spacing}
+                          min={MIN_SHELF_SPACING}
+                          max={totalHeight - 50} // Leave some room
+                          step={1}
+                          onChange={(e) => {
+                            const newSpacing =
+                              parseInt(e.target.value) || MIN_SHELF_SPACING;
+                            handleSpacingChange(
+                              Math.max(MIN_SHELF_SPACING, newSpacing)
+                            );
+                          }}
+                        />
+                        <span className="input-group-text">cm</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Spacing Analysis */}
+              {spacingAnalysis && (
+                <div className="mt-3">
+                  <h6>Analyse des espacements:</h6>
+                  <div className="small">
+                    {spacingAnalysis.spacings.map((spacing, index) => (
+                      <div
+                        key={index}
+                        className={`d-flex justify-content-between align-items-center py-1 px-2 mb-1 rounded ${
+                          spacing.isValid
+                            ? spacing.isOptimal
+                              ? "bg-success bg-opacity-10"
+                              : "bg-light"
+                            : "bg-danger bg-opacity-10"
+                        }`}
+                      >
+                        <span>
+                          {index === 0
+                            ? "Sol"
+                            : `Étagère ${
+                                spacingAnalysis.spacings.length - index
+                              }`}
+                          →
+                          {index === spacingAnalysis.spacings.length - 1
+                            ? "Plafond"
+                            : `Étagère ${
+                                spacingAnalysis.spacings.length - index - 1
+                              }`}
+                        </span>
+                        <span
+                          className={
+                            spacing.isValid ? "text-success" : "text-danger"
+                          }
+                        >
+                          {spacing.height.toFixed(1)}cm
+                          {!spacing.isValid && ` (min: ${MIN_SHELF_SPACING}cm)`}
+                          {spacing.isOptimal && " ✓"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
   const renderSelectionPrompt = () => (
     <div className="text-center py-5">
       <h5 className="text-muted mb-3">Sélectionnez une colonne</h5>
@@ -427,6 +914,22 @@ const EtagereSection: React.FC = () => {
           {isEtagereOpen && (
             <div className="mb-3">
               <div className="d-flex gap-2 flex-wrap">
+                {/* Angle AB button - only show for Angle wardrobe type */}
+                {shouldShowAngleAB() && (
+                  <button
+                    className={`btn btn-sm ${
+                      config.selectedColumnId === "angle-ab"
+                        ? "btn-primary"
+                        : "btn-outline-primary"
+                    }`}
+                    onClick={handleAngleABClick}
+                    title="Sélectionner les colonnes A-last et B-first pour Angle"
+                  >
+                    Angle AB
+                  </button>
+                )}
+
+                {/* Individual column buttons */}
                 {allColumns.map((column) => (
                   <button
                     key={column.id}
@@ -442,7 +945,9 @@ const EtagereSection: React.FC = () => {
                 ))}
                 <button
                   className="btn btn-sm btn-outline-secondary"
-                  onClick={() => updateConfig("selectedColumnId", null)}
+                  onClick={() => {
+                    updateConfig("selectedColumnId", null);
+                  }}
                 >
                   Clear
                 </button>
@@ -451,14 +956,21 @@ const EtagereSection: React.FC = () => {
           )}
 
           {/* Show selected column config or selection prompt */}
-          {selectedColumnData
-            ? renderColumnShelves(
+          {(() => {
+            const angleABData = getAngleABData();
+            if (angleABData) {
+              return renderAngleABShelves(angleABData);
+            } else if (selectedColumnData) {
+              return renderColumnShelves(
                 selectedColumnData.sectionKey,
                 selectedColumnData.sectionName,
                 selectedColumnData.column,
                 selectedColumnData.columnIndex
-              )
-            : renderSelectionPrompt()}
+              );
+            } else {
+              return renderSelectionPrompt();
+            }
+          })()}
         </div>
       </div>
     </div>

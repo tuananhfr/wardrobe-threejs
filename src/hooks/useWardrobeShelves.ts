@@ -1,4 +1,4 @@
-// src/hooks/useWardrobeShelves.ts - Fixed Spacing Logic
+// src/hooks/useWardrobeShelves.ts - Updated with spacing change logic
 import { useWardrobeConfig } from "./useWardrobeConfig";
 
 interface ShelfItem {
@@ -34,12 +34,6 @@ export const useWardrobeShelves = () => {
       positions.push(currentPosition);
     }
 
-    console.log(`🔧 spacingsToPositions:`, {
-      spacings,
-      positions,
-      thickness: config.thickness,
-    });
-
     return positions;
   };
 
@@ -53,7 +47,8 @@ export const useWardrobeShelves = () => {
     if (shelfCount === 0) return [];
 
     // Available height = totalHeight - thickness for sol/plafond (shelves thickness handled in spacing)
-    const availableHeight = totalHeight - 2 * config.thickness; // Only sol + plafond thickness
+    const availableHeight =
+      totalHeight - 2 * config.thickness - config.thickness * shelfCount; // Only sol + plafond thickness
 
     // Number of spacings = shelfCount + 1 (sol→shelf1, shelf1→shelf2, ..., lastShelf→plafond)
     const spacingCount = shelfCount + 1;
@@ -65,17 +60,6 @@ export const useWardrobeShelves = () => {
       // Distribute remainder evenly, starting from first spacings
       spacings.push(baseSpacing + (i < remainder ? 1 : 0));
     }
-
-    console.log(`🔧 calculateOptimalSpacings:`, {
-      shelfCount,
-      totalHeight,
-      thickness: config.thickness,
-      availableHeight,
-      spacingCount,
-      baseSpacing,
-      remainder,
-      spacings,
-    });
 
     return spacings;
   };
@@ -211,6 +195,7 @@ export const useWardrobeShelves = () => {
   return {
     getColumnShelves,
     setShelfCount,
+
     getShelfSpacingAnalysis,
     MIN_SHELF_SPACING,
   };

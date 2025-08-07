@@ -12,10 +12,7 @@ import EtagereSection from "./section/EtagereSection";
 
 const ConfigPanel: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
-  console.log(config.wardrobeType.sections.sectionA.columns[0].shelves);
-  console.log(
-    config.wardrobeType.sections.sectionA.columns[0].shelves?.spacings
-  );
+
   const selectorOptions = ["Entière", "test"];
   const handleActiveViewChange = (value: string) => {
     updateConfig("activeView", value);

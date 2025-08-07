@@ -1,4 +1,5 @@
-// src/components/Wardrobe/SectionShelves.tsx - FIXED VERSION
+// src/components/Wardrobe/SectionShelves.tsx - WITH SPECIAL CASE
+import { useConfig } from "@/components/context/WardrobeContext";
 import React from "react";
 import * as THREE from "three";
 
@@ -26,7 +27,7 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   const width = sectionData.width;
   const depth = sectionData.depth;
   const shelfThickness = thickness; // Dùng cùng độ dày với frame
-
+  const { config } = useConfig();
   // Kiểm tra xem section này có đang được highlight không
   const isActive = showSections === sectionName;
 
@@ -48,66 +49,87 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
     return positions;
   };
 
-  // Render kệ cho từng cột
+  // Render kệ cho từng cột - REFACTORED VERSION
   const renderColumnShelves = (column: WardrobeColumn, columnIndex: number) => {
-    if (!column.shelves || !column.shelves.spacings) {
-      return null;
-    }
+    // Early returns for invalid data
+    if (!column.shelves?.spacings?.length) return null;
 
-    // Convert spacings to positions - ĐÂY LÀ KEY DIFFERENCE!
     const shelfPositions = spacingsToPositions(column.shelves.spacings);
+    if (shelfPositions.length === 0) return null;
 
-    if (shelfPositions.length === 0) {
-      return null;
-    }
+    // Calculate base column X position
+    const baseColumnXPosition = calculateColumnXPosition(columnIndex);
 
-    // Tính vị trí X của cột trong section
-    let columnXPosition = -width / 2 + thickness; // Bắt đầu từ left wall + thickness
+    // Get corner configuration
+    const cornerConfig = getCornerConfiguration(columnIndex);
 
-    // Cộng width của các cột trước đó + thickness của separators
-    for (let i = 0; i < columnIndex; i++) {
-      columnXPosition += sectionData.columns[i].width + thickness;
-    }
-
-    // Tính center của cột hiện tại
-    columnXPosition += column.width / 2;
+    // Apply corner adjustments
+    const shelfWidth =
+      column.width + (cornerConfig.isCorner ? 2 * thickness : 0);
+    const finalColumnXPosition =
+      baseColumnXPosition + column.width / 2 + cornerConfig.offset;
+    const shelfDepth = depth - 2 * thickness;
 
     return (
       <group key={`${sectionName}-${column.id}-shelves`}>
-        {/* RENDER THEO POSITIONS, KHÔNG PHẢI SPACINGS! */}
-        {shelfPositions.map((shelfPosition, index) => {
-          const shelf = column.shelves!.spacings![index];
-
-          // Convert shelf position - sử dụng actual position, không phải spacing
-          const shelfPositionY =
-            shelfPosition / 100 - height / 2 + baseBarHeight / 100;
-
-          // Kích thước kệ - hơi nhỏ hơn column để tạo khoảng trống
-          const shelfWidth = column.width - 0.01; // 1cm padding
-          const shelfDepth = depth - 2 * thickness - 0.01; // Không chạm vào back panel
-
-          return (
-            <mesh
-              key={shelf.id}
-              position={[
-                columnXPosition,
-                shelfPositionY,
-                0, // Center theo depth
-              ]}
-              castShadow
-              receiveShadow
-            >
-              <boxGeometry args={[shelfWidth, shelfThickness, shelfDepth]} />
-              <meshStandardMaterial
-                map={texture}
-                transparent={!isActive}
-                opacity={isActive ? 1.0 : 0.8}
-              />
-            </mesh>
-          );
-        })}
+        {shelfPositions.map((position, index) => (
+          <mesh
+            key={column.shelves!.spacings![index].id}
+            position={[
+              finalColumnXPosition,
+              convertToWorldY(position),
+              0, // Center theo depth
+            ]}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={[shelfWidth, shelfThickness, shelfDepth]} />
+            <meshStandardMaterial
+              map={texture}
+              transparent={!isActive}
+              opacity={1}
+            />
+          </mesh>
+        ))}
       </group>
     );
+  };
+
+  // Helper functions
+  const calculateColumnXPosition = (columnIndex: number): number => {
+    let position = -width / 2 + thickness; // Start from left wall + thickness
+
+    // Add width of previous columns + separators
+    for (let i = 0; i < columnIndex; i++) {
+      position += sectionData.columns[i].width + thickness;
+    }
+
+    return position;
+  };
+
+  const getCornerConfiguration = (columnIndex: number) => {
+    const { id } = config.wardrobeType;
+    const isFirst = columnIndex === 0;
+    const isLast = columnIndex === sectionData.columns.length - 1;
+
+    // Corner cases configuration
+    if (id === "Angle" && sectionName === "sectionB" && isFirst) {
+      return { isCorner: true, offset: -thickness };
+    }
+
+    if (id === "Forme U" && sectionName === "sectionB" && isLast) {
+      return { isCorner: true, offset: thickness };
+    }
+
+    if (id === "Forme U" && sectionName === "sectionC" && isFirst) {
+      return { isCorner: true, offset: -thickness };
+    }
+
+    return { isCorner: false, offset: 0 };
+  };
+
+  const convertToWorldY = (shelfPosition: number): number => {
+    return shelfPosition / 100 - height / 2 + baseBarHeight + thickness / 2;
   };
 
   return (

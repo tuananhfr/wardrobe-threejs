@@ -8,7 +8,9 @@ const EtagereSection: React.FC = () => {
   const {
     getColumnShelves,
     setShelfCount,
+
     getShelfSpacingAnalysis,
+
     MIN_SHELF_SPACING,
   } = useWardrobeShelves();
 
@@ -158,244 +160,227 @@ const EtagereSection: React.FC = () => {
           </div>
 
           {/* Shelves List - only show if shelves exist */}
-          {columnShelves?.shelves?.length &&
-            columnShelves.shelves.length > 0 && (
-              <div>
-                {/* Shelves List */}
-                <div className="mb-3">
-                  <h6>Espacements des étagères:</h6>
-                  <div className="mb-2">
-                    <small className="text-muted">
-                      Configurez les espacements entre les éléments (sol →
-                      étagère → étagère → plafond)
-                    </small>
-                  </div>
-                  {columnShelves!.spacings.map((spacing, index) => {
-                    const isLastSpacing =
-                      index === columnShelves!.spacings.length - 1;
+          {(columnShelves?.shelves?.length || 0) > 0 ? (
+            <div>
+              {/* Shelves List */}
+              <div className="mb-3">
+                <h6>Espacements des étagères:</h6>
+                <div className="mb-2">
+                  <small className="text-muted">
+                    Configurez les espacements entre les éléments (sol → étagère
+                    → étagère → plafond)
+                  </small>
+                </div>
+                {columnShelves!.spacings.map((spacing, index) => {
+                  const isLastSpacing =
+                    index === columnShelves!.spacings.length - 1;
 
-                    // Labels pour les espacements
-                    let fromLabel, toLabel;
-                    if (index === 0) {
-                      fromLabel = "Sol";
-                      toLabel = "Étagère 1";
-                    } else if (isLastSpacing) {
-                      fromLabel = `Étagère ${columnShelves!.shelves.length}`;
-                      toLabel = "Plafond";
-                    } else {
-                      fromLabel = `Étagère ${index}`;
-                      toLabel = `Étagère ${index + 1}`;
-                    }
+                  // Labels pour les espacements
+                  let fromLabel, toLabel;
+                  if (index === 0) {
+                    fromLabel = "Sol";
+                    toLabel = "Étagère 1";
+                  } else if (isLastSpacing) {
+                    fromLabel = `Étagère ${columnShelves!.shelves.length}`;
+                    toLabel = "Plafond";
+                  } else {
+                    fromLabel = `Étagère ${index}`;
+                    toLabel = `Étagère ${index + 1}`;
+                  }
 
-                    const handleSpacingChange = (newSpacing: number) => {
-                      // Get current section data
-                      const section = config.wardrobeType.sections[sectionKey];
-                      if (!section) return;
+                  const handleSpacingChange = (newSpacing: number) => {
+                    // Get current section data
+                    const section = config.wardrobeType.sections[sectionKey];
+                    if (!section) return;
 
-                      const currentColumn = section.columns.find(
-                        (col) => col.id === column.id
-                      );
-                      if (!currentColumn?.shelves?.spacings) return;
+                    const currentColumn = section.columns.find(
+                      (col) => col.id === column.id
+                    );
+                    if (!currentColumn?.shelves?.spacings) return;
 
-                      const currentSpacings = [
-                        ...currentColumn.shelves.spacings,
-                      ];
-                      const oldSpacing = currentSpacings[index].spacing;
-                      const spacingDiff = newSpacing - oldSpacing;
+                    const currentSpacings = [...currentColumn.shelves.spacings];
+                    const oldSpacing = currentSpacings[index].spacing;
+                    const spacingDiff = newSpacing - oldSpacing;
 
-                      // Update current spacing
-                      currentSpacings[index] = {
-                        ...currentSpacings[index],
-                        spacing: newSpacing,
-                      };
-
-                      let adjustmentApplied = false;
-                      let finalCurrentSpacing = newSpacing;
-
-                      // Try to adjust NEXT spacing first (forward adjustment)
-                      if (index < currentSpacings.length - 1) {
-                        const nextIndex = index + 1;
-                        const nextSpacing = currentSpacings[nextIndex].spacing;
-                        const newNextSpacing = nextSpacing - spacingDiff;
-
-                        if (newNextSpacing >= MIN_SHELF_SPACING) {
-                          // Can adjust next spacing
-                          currentSpacings[nextIndex] = {
-                            ...currentSpacings[nextIndex],
-                            spacing: newNextSpacing,
-                          };
-                          adjustmentApplied = true;
-                        } else {
-                          // Next spacing would be too small, limit current increase
-                          const maxAllowedIncrease =
-                            nextSpacing - MIN_SHELF_SPACING;
-                          finalCurrentSpacing = oldSpacing + maxAllowedIncrease;
-                          currentSpacings[index] = {
-                            ...currentSpacings[index],
-                            spacing: finalCurrentSpacing,
-                          };
-                          currentSpacings[nextIndex] = {
-                            ...currentSpacings[nextIndex],
-                            spacing: MIN_SHELF_SPACING,
-                          };
-                          adjustmentApplied = true;
-                        }
-                      }
-
-                      // If no next spacing available or couldn't adjust next, try PREVIOUS spacing (backward adjustment)
-                      if (!adjustmentApplied && index > 0) {
-                        const prevIndex = index - 1;
-                        const prevSpacing = currentSpacings[prevIndex].spacing;
-                        const newPrevSpacing = prevSpacing - spacingDiff;
-
-                        if (newPrevSpacing >= MIN_SHELF_SPACING) {
-                          // Can adjust previous spacing
-                          currentSpacings[prevIndex] = {
-                            ...currentSpacings[prevIndex],
-                            spacing: newPrevSpacing,
-                          };
-                          adjustmentApplied = true;
-                        } else {
-                          // Previous spacing would be too small, limit current increase
-                          const maxAllowedIncrease =
-                            prevSpacing - MIN_SHELF_SPACING;
-                          finalCurrentSpacing = oldSpacing + maxAllowedIncrease;
-                          currentSpacings[index] = {
-                            ...currentSpacings[index],
-                            spacing: finalCurrentSpacing,
-                          };
-                          currentSpacings[prevIndex] = {
-                            ...currentSpacings[prevIndex],
-                            spacing: MIN_SHELF_SPACING,
-                          };
-                          adjustmentApplied = true;
-                        }
-                      }
-
-                      // Update config with new spacings
-                      const updatedColumns = section.columns.map((col) => {
-                        if (col.id === column.id && col.shelves) {
-                          return {
-                            ...col,
-                            shelves: {
-                              ...col.shelves,
-                              spacings: currentSpacings,
-                            },
-                          };
-                        }
-                        return col;
-                      });
-
-                      updateConfig("wardrobeType", {
-                        ...config.wardrobeType,
-                        sections: {
-                          ...config.wardrobeType.sections,
-                          [sectionKey]: {
-                            ...section,
-                            columns: updatedColumns,
-                          },
-                        },
-                      });
+                    // Update current spacing
+                    currentSpacings[index] = {
+                      ...currentSpacings[index],
+                      spacing: newSpacing,
                     };
 
-                    return (
-                      <div
-                        key={`spacing-${index}`}
-                        className="mb-3 p-2 border rounded"
-                      >
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                          <label className="form-label mb-0">
-                            <strong>
-                              {fromLabel} → {toLabel}
-                            </strong>
-                            <small className="text-muted ms-2">
-                              ({isLastSpacing ? "vers le haut" : "espacement"})
-                            </small>
-                          </label>
-                        </div>
+                    let adjustmentApplied = false;
+                    let finalCurrentSpacing = newSpacing;
 
-                        <div className="input-group">
-                          <input
-                            type="number"
-                            className="form-control"
-                            value={spacing}
-                            min={MIN_SHELF_SPACING}
-                            max={totalHeight - 50} // Leave some room
-                            step={1}
-                            onChange={(e) => {
-                              const newSpacing =
-                                parseInt(e.target.value) || MIN_SHELF_SPACING;
-                              handleSpacingChange(
-                                Math.max(MIN_SHELF_SPACING, newSpacing)
-                              );
-                            }}
-                          />
-                          <span className="input-group-text">cm</span>
-                        </div>
+                    // Try to adjust NEXT spacing first (forward adjustment)
+                    if (index < currentSpacings.length - 1) {
+                      const nextIndex = index + 1;
+                      const nextSpacing = currentSpacings[nextIndex].spacing;
+                      const newNextSpacing = nextSpacing - spacingDiff;
+
+                      if (newNextSpacing >= MIN_SHELF_SPACING) {
+                        // Can adjust next spacing
+                        currentSpacings[nextIndex] = {
+                          ...currentSpacings[nextIndex],
+                          spacing: newNextSpacing,
+                        };
+                        adjustmentApplied = true;
+                      } else {
+                        // Next spacing would be too small, limit current increase
+                        const maxAllowedIncrease =
+                          nextSpacing - MIN_SHELF_SPACING;
+                        finalCurrentSpacing = oldSpacing + maxAllowedIncrease;
+                        currentSpacings[index] = {
+                          ...currentSpacings[index],
+                          spacing: finalCurrentSpacing,
+                        };
+                        currentSpacings[nextIndex] = {
+                          ...currentSpacings[nextIndex],
+                          spacing: MIN_SHELF_SPACING,
+                        };
+                        adjustmentApplied = true;
+                      }
+                    }
+
+                    // If no next spacing available or couldn't adjust next, try PREVIOUS spacing (backward adjustment)
+                    if (!adjustmentApplied && index > 0) {
+                      const prevIndex = index - 1;
+                      const prevSpacing = currentSpacings[prevIndex].spacing;
+                      const newPrevSpacing = prevSpacing - spacingDiff;
+
+                      if (newPrevSpacing >= MIN_SHELF_SPACING) {
+                        // Can adjust previous spacing
+                        currentSpacings[prevIndex] = {
+                          ...currentSpacings[prevIndex],
+                          spacing: newPrevSpacing,
+                        };
+                        adjustmentApplied = true;
+                      } else {
+                        // Previous spacing would be too small, limit current increase
+                        const maxAllowedIncrease =
+                          prevSpacing - MIN_SHELF_SPACING;
+                        finalCurrentSpacing = oldSpacing + maxAllowedIncrease;
+                        currentSpacings[index] = {
+                          ...currentSpacings[index],
+                          spacing: finalCurrentSpacing,
+                        };
+                        currentSpacings[prevIndex] = {
+                          ...currentSpacings[prevIndex],
+                          spacing: MIN_SHELF_SPACING,
+                        };
+                        adjustmentApplied = true;
+                      }
+                    }
+
+                    // Update config with new spacings
+                    const updatedColumns = section.columns.map((col) => {
+                      if (col.id === column.id && col.shelves) {
+                        return {
+                          ...col,
+                          shelves: {
+                            ...col.shelves,
+                            spacings: currentSpacings,
+                          },
+                        };
+                      }
+                      return col;
+                    });
+
+                    updateConfig("wardrobeType", {
+                      ...config.wardrobeType,
+                      sections: {
+                        ...config.wardrobeType.sections,
+                        [sectionKey]: {
+                          ...section,
+                          columns: updatedColumns,
+                        },
+                      },
+                    });
+                  };
+
+                  return (
+                    <div
+                      key={`spacing-${index}`}
+                      className="mb-3 p-2 border rounded"
+                    >
+                      <div className="d-flex justify-content-between align-items-center mb-2">
+                        <label className="form-label mb-0">
+                          <strong>
+                            {fromLabel} → {toLabel}
+                          </strong>
+                          <small className="text-muted ms-2">
+                            ({isLastSpacing ? "vers le haut" : "espacement"})
+                          </small>
+                        </label>
                       </div>
-                    );
-                  })}
-                </div>
 
-                {/* Spacing Analysis */}
-                {spacingAnalysis && (
-                  <div className="mt-3">
-                    <h6>Analyse des espacements:</h6>
-                    <div className="small">
-                      {spacingAnalysis.spacings.map((spacing, index) => (
-                        <div
-                          key={index}
-                          className={`d-flex justify-content-between align-items-center py-1 px-2 mb-1 rounded ${
-                            spacing.isValid
-                              ? spacing.isOptimal
-                                ? "bg-success bg-opacity-10"
-                                : "bg-light"
-                              : "bg-danger bg-opacity-10"
-                          }`}
-                        >
-                          <span>
-                            {index === 0
-                              ? "Sol"
-                              : `Étagère ${
-                                  spacingAnalysis.spacings.length - index
-                                }`}
-                            →
-                            {index === spacingAnalysis.spacings.length - 1
-                              ? "Plafond"
-                              : `Étagère ${
-                                  spacingAnalysis.spacings.length - index - 1
-                                }`}
-                          </span>
-                          <span
-                            className={
-                              spacing.isValid ? "text-success" : "text-danger"
-                            }
-                          >
-                            {spacing.height.toFixed(1)}cm
-                            {!spacing.isValid &&
-                              ` (min: ${MIN_SHELF_SPACING}cm)`}
-                            {spacing.isOptimal && " ✓"}
-                          </span>
-                        </div>
-                      ))}
+                      <div className="input-group">
+                        <input
+                          type="number"
+                          className="form-control"
+                          value={spacing}
+                          min={MIN_SHELF_SPACING}
+                          max={totalHeight - 50} // Leave some room
+                          step={1}
+                          onChange={(e) => {
+                            const newSpacing =
+                              parseInt(e.target.value) || MIN_SHELF_SPACING;
+                            handleSpacingChange(
+                              Math.max(MIN_SHELF_SPACING, newSpacing)
+                            );
+                          }}
+                        />
+                        <span className="input-group-text">cm</span>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            )}
 
-          {/* No shelves message */}
-          {(!columnShelves?.shelves?.length ||
-            columnShelves.shelves.length === 0) && (
-            <div className="text-center py-3">
-              <p className="text-muted mb-0">
-                <em>
-                  Aucune étagère configurée. Utilisez le champ ci-dessus pour en
-                  ajouter.
-                </em>
-              </p>
+              {/* Spacing Analysis */}
+              {spacingAnalysis && (
+                <div className="mt-3">
+                  <h6>Analyse des espacements:</h6>
+                  <div className="small">
+                    {spacingAnalysis.spacings.map((spacing, index) => (
+                      <div
+                        key={index}
+                        className={`d-flex justify-content-between align-items-center py-1 px-2 mb-1 rounded ${
+                          spacing.isValid
+                            ? spacing.isOptimal
+                              ? "bg-success bg-opacity-10"
+                              : "bg-light"
+                            : "bg-danger bg-opacity-10"
+                        }`}
+                      >
+                        <span>
+                          {index === 0
+                            ? "Sol"
+                            : `Étagère ${
+                                spacingAnalysis.spacings.length - index
+                              }`}
+                          →
+                          {index === spacingAnalysis.spacings.length - 1
+                            ? "Plafond"
+                            : `Étagère ${
+                                spacingAnalysis.spacings.length - index - 1
+                              }`}
+                        </span>
+                        <span
+                          className={
+                            spacing.isValid ? "text-success" : "text-danger"
+                          }
+                        >
+                          {spacing.height.toFixed(1)}cm
+                          {!spacing.isValid && ` (min: ${MIN_SHELF_SPACING}cm)`}
+                          {spacing.isOptimal && " ✓"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     );

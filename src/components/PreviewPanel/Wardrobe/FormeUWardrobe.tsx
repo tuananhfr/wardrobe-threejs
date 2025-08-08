@@ -16,6 +16,7 @@ interface FormeUWardrobeProps {
   baseBarHeight: number;
   texture: THREE.Texture;
   showSections: string;
+  ledColor: string;
 }
 
 const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
@@ -25,6 +26,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
   baseBarHeight,
   texture,
   showSections,
+  ledColor,
 }) => {
   // Convert dimensions to meters và tính toán vị trí
   const calculations = useMemo(() => {
@@ -102,6 +104,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
         thickness={thickness}
         texture={texture}
         showSections={showSections}
+        ledColor={ledColor}
       />
 
       {/* Section A Columns */}
@@ -112,6 +115,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
         position={sectionAPosition}
         thickness={thickness}
         texture={texture}
+        ledColor={ledColor}
       />
       {/* Section A Shelves */}
       <SectionShelves
@@ -149,6 +153,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           backPanelWidth={sections.sectionB.width - thickness}
           backPanelOffsetX={thickness / 2}
           showSections={showSections}
+          ledColor={ledColor}
         />
 
         {/* Section B Columns */}
@@ -159,6 +164,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           position={[0, 0, 0]}
           thickness={thickness}
           texture={texture}
+          ledColor={ledColor}
         />
 
         {/* Section B Shelves */}
@@ -198,6 +204,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           backPanelWidth={sections.sectionC.width - thickness}
           backPanelOffsetX={-thickness / 2}
           showSections={showSections}
+          ledColor={ledColor}
         />
 
         {/* Section C Columns */}
@@ -208,6 +215,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           position={[0, 0, 0]}
           thickness={thickness}
           texture={texture}
+          ledColor={ledColor}
         />
 
         {/* Section C Shelves */}

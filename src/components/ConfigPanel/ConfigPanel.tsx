@@ -6,18 +6,17 @@ import WardrobeTypeSelector from "./section/WardrobeTypeSelector";
 import DimensionSection from "./section/DimensionSection";
 import DimensionControl from "./section/DimensionControl";
 import ColumnsSection from "./section/ColumnsSection";
-import SelectorButtons from "./section/SelectorButtons";
+import MainSelector from "./section/MainSelector";
 import TextureSelector from "./section/TextureSelector";
+import LEDColorSelector from "./section/LEDColorSelector";
 import EtagereSection from "./section/EtagereSection";
 
 const ConfigPanel: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
   console.log("config", config.accordionOpen);
 
-  const selectorOptions = ["Entière", "test"];
-
-  const handleActiveViewChange = (value: string) => {
-    updateConfig("activeView", value);
+  const handleMainOptionChange = (option: string) => {
+    updateConfig("activeView", option);
   };
 
   // Generic accordion handler
@@ -152,12 +151,13 @@ const ConfigPanel: React.FC = () => {
           data-bs-parent="#configAccordion"
         >
           <div className="accordion-body">
-            <SelectorButtons
-              options={selectorOptions}
+            <MainSelector
               activeOption={config.activeView}
-              onChange={handleActiveViewChange}
+              onChange={handleMainOptionChange}
             />
-            <TextureSelector />
+            {config.activeView === "led" && <LEDColorSelector />}
+            {config.activeView === "entier" && <TextureSelector />}
+            {config.activeView === "test" && <div>Test content</div>}
           </div>
         </div>
       </div>

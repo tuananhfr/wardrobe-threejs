@@ -17,6 +17,7 @@ interface LinearWardrobeProps {
   thickness: number;
   texture: THREE.Texture;
   showSections: string;
+  ledColor: string;
 }
 
 const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
@@ -26,6 +27,7 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
   thickness,
   texture,
   showSections,
+  ledColor,
 }) => {
   return (
     <group>
@@ -39,6 +41,7 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
         thickness={thickness}
         texture={texture}
         showSections={showSections}
+        ledColor={ledColor}
       />
 
       {/* Section A Columns */}
@@ -49,6 +52,7 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
         position={[0, 0, 0]}
         thickness={thickness}
         texture={texture}
+        ledColor={ledColor}
       />
 
       {/* Section A Shelves */}

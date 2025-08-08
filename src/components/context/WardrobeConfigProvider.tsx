@@ -34,12 +34,13 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     originalPrice: 0,
     texture: textures[0],
     textures: textures,
+    ledColor: "",
     showMeasurements: false,
     showSections: "",
     accordionOpen: "collapseType",
     selectedColumnId: null,
     hoveredColumnId: null,
-    activeView: "Entière",
+    activeView: "",
   });
 
   // Hàm cập nhật cấu hình

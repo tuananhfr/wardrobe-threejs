@@ -72,6 +72,8 @@ const WardrobeModel: React.FC<WardrobeModelProps> = () => {
   // Convert base bar height from cm to meters
   const baseBarHeight = config.baseBarHeight / 100;
 
+  const ledColor = config.ledColor;
+
   // Common props for all wardrobe types
   const commonProps = {
     sections: sectionsInMeters.sections, // Pass sections object, not the whole wardrobe type
@@ -80,6 +82,7 @@ const WardrobeModel: React.FC<WardrobeModelProps> = () => {
     height,
     texture,
     showSections: config.showSections,
+    ledColor,
   };
 
   // For BaseBar, create a simplified sections object (only width/depth needed)

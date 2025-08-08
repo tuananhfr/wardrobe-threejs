@@ -15,6 +15,7 @@ interface SectionFrameProps {
   backPanelWidth?: number;
   backPanelOffsetX?: number;
   showSections: string;
+  ledColor?: string;
 }
 
 const SectionFrame: React.FC<SectionFrameProps> = ({
@@ -30,6 +31,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
   backPanelWidth,
   backPanelOffsetX,
   showSections,
+  ledColor = "",
 }) => {
   const width = sectionData.width;
   const depth = sectionData.depth;
@@ -39,6 +41,14 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
 
   // Kiểm tra xem section này có đang bật không
   const isActive = showSections === sectionName;
+
+  // Kiểm tra xem có LED không - chỉ hiển thị khi ledColor !== ""
+  const hasLed = ledColor !== "";
+
+  // LED strip configuration
+  const ledStripWidth = 0.02;
+  const ledStripHeight = 0.005;
+  const ledStripLength = height - baseBarHeight - 0.1; // Trừ một chút để không chạm top/bottom
 
   return (
     <group position={position}>
@@ -56,6 +66,89 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           <boxGeometry args={[thickness, height - baseBarHeight, depth]} />
           <meshStandardMaterial map={texture} color="white" />
         </mesh>
+      )}
+
+      {/* LED strips */}
+      {hasLed && (
+        <>
+          {/* LED strip on left side */}
+          {!hideLeftSide && (
+            <group
+              key={`left-led-group-${ledColor}`}
+              position={[
+                -width / 2 + thickness + ledStripHeight / 2,
+                0,
+                depth / 2 - 0.1,
+              ]}
+            >
+              {/* LED strip base */}
+              <mesh position={[0, 0, 0]}>
+                <boxGeometry
+                  args={[ledStripHeight, ledStripLength, ledStripWidth]}
+                />
+                <meshBasicMaterial color="#2c2c2c" />
+              </mesh>
+
+              {/* LED light effect */}
+              <mesh position={[ledStripHeight / 4, 0, 0]}>
+                <boxGeometry
+                  args={[
+                    ledStripHeight / 2,
+                    ledStripLength * 0.95,
+                    ledStripWidth * 0.8,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`left-led-material-${ledColor}`}
+                  color="#ffffff"
+                  emissive={ledColor}
+                  emissiveIntensity={0.8}
+                  transparent
+                  opacity={0.9}
+                />
+              </mesh>
+            </group>
+          )}
+
+          {/* LED strip on right side */}
+          {!hideRightSide && (
+            <group
+              key={`right-led-group-${ledColor}`}
+              position={[
+                width / 2 - thickness - ledStripHeight / 2,
+                0,
+                depth / 2 - 0.1,
+              ]}
+            >
+              {/* LED strip base */}
+              <mesh position={[0, 0, 0]}>
+                <boxGeometry
+                  args={[ledStripHeight, ledStripLength, ledStripWidth]}
+                />
+                <meshBasicMaterial color="#2c2c2c" />
+              </mesh>
+
+              {/* LED light effect */}
+              <mesh position={[-ledStripHeight / 4, 0, 0]}>
+                <boxGeometry
+                  args={[
+                    ledStripHeight / 2,
+                    ledStripLength * 0.95,
+                    ledStripWidth * 0.8,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`right-led-material-${ledColor}`}
+                  color="#ffffff"
+                  emissive={ledColor}
+                  emissiveIntensity={0.8}
+                  transparent
+                  opacity={0.9}
+                />
+              </mesh>
+            </group>
+          )}
+        </>
       )}
 
       {/* Top */}

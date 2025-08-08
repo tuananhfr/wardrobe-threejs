@@ -1513,6 +1513,37 @@ const EtagereSection: React.FC = () => {
                   </>
                 ) : config.wardrobeType.id === "Forme U" ? (
                   <>
+                    {/* Section B columns */}
+                    {allColumns
+                      .filter((column) => column.sectionName === "B")
+                      .map((column) => (
+                        <button
+                          key={column.id}
+                          className={`btn btn-sm ${
+                            config.selectedColumnId === column.id
+                              ? "btn-primary"
+                              : "btn-outline-primary"
+                          }`}
+                          onClick={() => handleColumnClick(column.id)}
+                        >
+                          {column.sectionName} - Col {column.columnIndex + 1}
+                        </button>
+                      ))}
+
+                    {/* Angle AB button - positioned between B and A sections */}
+                    {shouldShowAngleAB() && (
+                      <button
+                        className={`btn btn-sm ${
+                          config.selectedColumnId === "angle-ab"
+                            ? "btn-primary"
+                            : "btn-outline-primary"
+                        }`}
+                        onClick={handleAngleABClick}
+                      >
+                        Angle AB
+                      </button>
+                    )}
+
                     {/* Section A columns */}
                     {allColumns
                       .filter((column) => column.sectionName === "A")
@@ -1547,37 +1578,6 @@ const EtagereSection: React.FC = () => {
                     {/* Section C columns */}
                     {allColumns
                       .filter((column) => column.sectionName === "C")
-                      .map((column) => (
-                        <button
-                          key={column.id}
-                          className={`btn btn-sm ${
-                            config.selectedColumnId === column.id
-                              ? "btn-primary"
-                              : "btn-outline-primary"
-                          }`}
-                          onClick={() => handleColumnClick(column.id)}
-                        >
-                          {column.sectionName} - Col {column.columnIndex + 1}
-                        </button>
-                      ))}
-
-                    {/* Angle AB button - positioned between C and B sections */}
-                    {shouldShowAngleAB() && (
-                      <button
-                        className={`btn btn-sm ${
-                          config.selectedColumnId === "angle-ab"
-                            ? "btn-primary"
-                            : "btn-outline-primary"
-                        }`}
-                        onClick={handleAngleABClick}
-                      >
-                        Angle AB
-                      </button>
-                    )}
-
-                    {/* Section B columns */}
-                    {allColumns
-                      .filter((column) => column.sectionName === "B")
                       .map((column) => (
                         <button
                           key={column.id}

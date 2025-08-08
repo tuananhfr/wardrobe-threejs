@@ -25,6 +25,8 @@ declare global {
     accordionOpen: string;
     selectedColumnId: string | null;
     hoveredColumnId: string | null;
+
+    ledColor: string;
     showMeasurements: boolean;
   }
 

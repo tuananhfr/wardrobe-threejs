@@ -16,6 +16,7 @@ interface AngleWardrobeProps {
   baseBarHeight: number;
   texture: THREE.Texture;
   showSections: string;
+  ledColor: string;
 }
 
 const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
@@ -25,6 +26,7 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
   baseBarHeight,
   texture,
   showSections,
+  ledColor,
 }) => {
   // Convert dimensions to meters và tính toán vị trí
   const calculations = useMemo(() => {
@@ -90,6 +92,7 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
         thickness={thickness}
         texture={texture}
         showSections={showSections}
+        ledColor={ledColor}
       />
 
       {/* Section A Columns */}
@@ -100,6 +103,7 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
         position={sectionAPosition}
         thickness={thickness}
         texture={texture}
+        ledColor={ledColor}
       />
 
       {/* Section A Shelves */}
@@ -138,6 +142,7 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
           backPanelWidth={sections.sectionB.width - thickness}
           backPanelOffsetX={-thickness / 2}
           showSections={showSections}
+          ledColor={ledColor}
         />
 
         {/* Section B Columns */}
@@ -148,6 +153,7 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
           position={[0, 0, 0]}
           thickness={thickness}
           texture={texture}
+          ledColor={ledColor}
         />
 
         {/* Section B Shelves */}

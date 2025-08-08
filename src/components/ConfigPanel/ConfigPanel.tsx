@@ -12,11 +12,32 @@ import EtagereSection from "./section/EtagereSection";
 
 const ConfigPanel: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
+  console.log("config", config.accordionOpen);
 
   const selectorOptions = ["Entière", "test"];
+
   const handleActiveViewChange = (value: string) => {
     updateConfig("activeView", value);
   };
+
+  // Generic accordion handler
+  const createAccordionHandler = (accordionId: string) => {
+    const isOpen = config.accordionOpen === accordionId;
+
+    const handleToggle = () => {
+      const newState = isOpen ? "" : accordionId;
+      updateConfig("accordionOpen", newState);
+    };
+
+    return { isOpen, handleToggle };
+  };
+
+  // Create handlers for each accordion
+  const typeAccordion = createAccordionHandler("collapseType");
+
+  const socleAccordion = createAccordionHandler("collapseSocle");
+
+  const texturesAccordion = createAccordionHandler("collapseTextures");
 
   return (
     <div className="accordion" id="configAccordion">
@@ -24,19 +45,24 @@ const ConfigPanel: React.FC = () => {
       <div className="accordion-item">
         <h2 className="accordion-header">
           <button
-            className="accordion-button"
+            className={`accordion-button ${
+              !typeAccordion.isOpen ? "collapsed" : ""
+            }`}
             type="button"
             data-bs-toggle="collapse"
             data-bs-target="#collapseType"
-            aria-expanded="true"
+            aria-expanded={typeAccordion.isOpen}
             aria-controls="collapseType"
+            onClick={typeAccordion.handleToggle}
           >
             1. Type d'implantation
           </button>
         </h2>
         <div
           id="collapseType"
-          className="accordion-collapse collapse show"
+          className={`accordion-collapse collapse ${
+            typeAccordion.isOpen ? "show" : ""
+          }`}
           data-bs-parent="#configAccordion"
         >
           <div className="accordion-body">
@@ -55,19 +81,24 @@ const ConfigPanel: React.FC = () => {
       <div className="accordion-item">
         <h2 className="accordion-header" id="headingSocle">
           <button
-            className="accordion-button collapsed"
+            className={`accordion-button ${
+              !socleAccordion.isOpen ? "collapsed" : ""
+            }`}
             type="button"
             data-bs-toggle="collapse"
             data-bs-target="#collapseSocle"
-            aria-expanded="false"
+            aria-expanded={socleAccordion.isOpen}
             aria-controls="collapseSocle"
+            onClick={socleAccordion.handleToggle}
           >
             3. Ajuster le socle
           </button>
         </h2>
         <div
           id="collapseSocle"
-          className="accordion-collapse collapse"
+          className={`accordion-collapse collapse ${
+            socleAccordion.isOpen ? "show" : ""
+          }`}
           aria-labelledby="headingSocle"
           data-bs-parent="#configAccordion"
         >
@@ -91,6 +122,7 @@ const ConfigPanel: React.FC = () => {
 
       {/* 4. Colonnes */}
       <ColumnsSection />
+
       {/* 5. Étagères */}
       <EtagereSection />
 
@@ -98,19 +130,24 @@ const ConfigPanel: React.FC = () => {
       <div className="accordion-item">
         <h2 className="accordion-header" id="headingTextures">
           <button
-            className="accordion-button collapsed"
+            className={`accordion-button ${
+              !texturesAccordion.isOpen ? "collapsed" : ""
+            }`}
             type="button"
             data-bs-toggle="collapse"
             data-bs-target="#collapseTextures"
-            aria-expanded="false"
+            aria-expanded={texturesAccordion.isOpen}
             aria-controls="collapseTextures"
+            onClick={texturesAccordion.handleToggle}
           >
             n. Sélection & Textures
           </button>
         </h2>
         <div
           id="collapseTextures"
-          className="accordion-collapse collapse"
+          className={`accordion-collapse collapse ${
+            texturesAccordion.isOpen ? "show" : ""
+          }`}
           aria-labelledby="headingTextures"
           data-bs-parent="#configAccordion"
         >

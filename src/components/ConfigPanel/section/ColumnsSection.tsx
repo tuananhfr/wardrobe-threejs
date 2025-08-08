@@ -4,7 +4,7 @@ import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useWardrobeColumns } from "@/hooks/useWardrobeColumns";
 
 const ColumnsSection: React.FC = () => {
-  const { config, refreshAllSections, getLShapeConstraints } =
+  const { config, refreshAllSections, getLShapeConstraints, updateConfig } =
     useWardrobeConfig();
 
   const {
@@ -17,6 +17,86 @@ const ColumnsSection: React.FC = () => {
   useEffect(() => {
     refreshAllSections(); // ← Chỉ cần gọi thôi
   }, [config.wardrobeType.id]);
+
+  useEffect(() => {
+    let isManualClose = true; // Track if close is manual or auto-close
+
+    const handlerShown = (event: Event) => {
+      const target = (event.target as HTMLElement).closest(
+        ".accordion-collapse"
+      );
+      if (!target) return;
+
+      // Mark that next closes will be auto-closes (not manual)
+      isManualClose = false;
+
+      // Only handle section accordions when opened
+      switch (target.id) {
+        case "collapseColonnesSectionA":
+          updateConfig("showSections", "sectionA");
+          break;
+        case "collapseColonnesSectionB":
+          updateConfig("showSections", "sectionB");
+          break;
+        case "collapseColonnesSectionC":
+          updateConfig("showSections", "sectionC");
+          break;
+      }
+
+      // Reset flag after a small delay to allow for auto-closes
+      setTimeout(() => {
+        isManualClose = true;
+      }, 50);
+    };
+
+    const handlerHidden = (event: Event) => {
+      const target = (event.target as HTMLElement).closest(
+        ".accordion-collapse"
+      );
+      if (!target) return;
+
+      // If main Redimension accordion is closed, always reset showSections
+      if (target.id === "collapseColonnes") {
+        updateConfig("showSections", "");
+        return;
+      }
+
+      // Only reset if it's a manual close (not auto-close from opening another section)
+      if (
+        isManualClose &&
+        [
+          "collapseColonnesSectionA",
+          "collapseColonnesSectionB",
+          "collapseColonnesSectionC",
+        ].includes(target.id)
+      ) {
+        updateConfig("showSections", "");
+      }
+    };
+
+    // Listen to all accordion events in the document
+    document.addEventListener("shown.bs.collapse", handlerShown);
+    document.addEventListener("hidden.bs.collapse", handlerHidden);
+
+    return () => {
+      document.removeEventListener("shown.bs.collapse", handlerShown);
+      document.removeEventListener("hidden.bs.collapse", handlerHidden);
+    };
+  }, [updateConfig]);
+
+  // Check if étagère accordion is open
+  const isColumnsOpen = config.accordionOpen === "collapseColonnes";
+
+  // Handle accordion toggle
+  const handleAccordionToggle = () => {
+    const newState = isColumnsOpen ? "" : "collapseColonnes";
+    updateConfig("accordionOpen", newState);
+
+    // Clear selection when closing accordion
+    if (isColumnsOpen && config.selectedColumnId) {
+      updateConfig("selectedColumnId", null);
+    }
+  };
   const renderSectionColumns = (
     sectionKey: SectionKey,
     sectionName: string,
@@ -252,8 +332,9 @@ const ColumnsSection: React.FC = () => {
           type="button"
           data-bs-toggle="collapse"
           data-bs-target="#collapseColonnes"
-          aria-expanded="false"
           aria-controls="collapseColonnes"
+          onClick={handleAccordionToggle}
+          aria-expanded={isColumnsOpen}
         >
           4. Colonnes
         </button>
@@ -274,21 +355,21 @@ const ColumnsSection: React.FC = () => {
             {config.wardrobeType.sections.sectionA &&
               renderSectionColumns(
                 "sectionA",
-                "A",
+                "SectionA",
                 config.wardrobeType.sections.sectionA
               )}
 
             {config.wardrobeType.sections.sectionB &&
               renderSectionColumns(
                 "sectionB",
-                "B",
+                "SectionB",
                 config.wardrobeType.sections.sectionB
               )}
 
             {config.wardrobeType.sections.sectionC &&
               renderSectionColumns(
                 "sectionC",
-                "C",
+                "SectionC",
                 config.wardrobeType.sections.sectionC
               )}
           </div>

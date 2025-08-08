@@ -1,5 +1,5 @@
-// src/components/Wardrobe/EtagereColumnHighlights.tsx - COMPLETE FIXED VERSION
-import { useState, useEffect } from "react";
+// src/components/Wardrobe/EtagereColumnHighlights.tsx - UPDATED WITH ANGLE AB HOVER
+import { useEffect } from "react";
 import { Text } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
@@ -22,7 +22,13 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
   thickness,
 }) => {
   const { config, updateConfig } = useWardrobeConfig();
-  const [hoveredColumn, setHoveredColumn] = useState<number | null>(null);
+  // Use global state instead of local state for hover
+  const hoveredColumn = config.hoveredColumnId || null;
+
+  // Helper function to set global hover state
+  const setHoveredColumn = (columnId: string | null) => {
+    updateConfig("hoveredColumnId", columnId);
+  };
 
   const width = sectionData.width;
   const depth = sectionData.depth;
@@ -151,9 +157,31 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       }
     }
 
-    if (hoveredCol !== hoveredColumn) {
-      setHoveredColumn(hoveredCol);
-      document.body.style.cursor = hoveredCol !== null ? "pointer" : "auto";
+    // NEW: Special handling for Angle AB hover in Angle wardrobe type
+    let finalHoveredState: number | string | null = null;
+
+    if (hoveredCol !== null) {
+      // Create unique identifier for this specific column
+      const columnIdentifier = `${sectionName}-${hoveredCol}`;
+
+      if (config.wardrobeType.id === "Angle") {
+        const hoveredPosition = columnPositions[hoveredCol];
+
+        // If hovering over an Angle AB column, set special hover state
+        if (hoveredPosition.isAngleABColumn) {
+          finalHoveredState = "angle-ab";
+        } else {
+          finalHoveredState = columnIdentifier;
+        }
+      } else {
+        finalHoveredState = columnIdentifier;
+      }
+    }
+
+    if (finalHoveredState !== hoveredColumn) {
+      setHoveredColumn(finalHoveredState);
+      document.body.style.cursor =
+        finalHoveredState !== null ? "pointer" : "auto";
     }
   };
 
@@ -177,7 +205,11 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       {/* Column highlights */}
       {columnPositions.map((pos, index) => {
         const isSelected = selectedColumnId === pos.columnId;
-        const isHovered = hoveredColumn === index;
+        // UPDATED: Handle both number index and "angle-ab" string hover
+        const isDirectlyHovered = hoveredColumn === `${sectionName}-${index}`;
+        const isAngleABHovered =
+          hoveredColumn === "angle-ab" && pos.isAngleABColumn;
+        const isHovered = isDirectlyHovered || isAngleABHovered;
         const isAngleABHighlighted = isAngleABSelected && pos.isAngleABColumn;
 
         // For B-col-1 when Angle AB: extend width and shift position, hide left edge
@@ -211,10 +243,17 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
           highlightColor = "#e6f7f9"; // Blue
           opacity = 0.6;
         } else if (isHovered) {
-          // Just hovered (not selected or part of Angle AB)
+          // NEW: Handle Angle AB hover and normal hover
           shouldShowHighlight = true;
-          highlightColor = "#f8f9fa"; // Light gray
-          opacity = 0.4; // Lighter opacity for hover
+          if (hoveredColumn === "angle-ab" && pos.isAngleABColumn) {
+            // Hovering over Angle AB columns - use special color
+            highlightColor = "#f8f9fa"; // Light gray for Angle AB hover
+            opacity = 0.5;
+          } else {
+            // Just normal hovered (not selected or part of Angle AB)
+            highlightColor = "#f8f9fa"; // Light gray
+            opacity = 0.4; // Lighter opacity for hover
+          }
         }
 
         return (
@@ -243,7 +282,11 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       {/* Icons and labels */}
       {columnPositions.map((pos, index) => {
         const isSelected = selectedColumnId === pos.columnId;
-        const isHovered = hoveredColumn === index;
+        // UPDATED: Handle both number index and "angle-ab" string hover
+        const isDirectlyHovered = hoveredColumn === `${sectionName}-${index}`;
+        const isAngleABHovered =
+          hoveredColumn === "angle-ab" && pos.isAngleABColumn;
+        const isHovered = isDirectlyHovered || isAngleABHovered;
         const isAngleABHighlighted = isAngleABSelected && pos.isAngleABColumn;
 
         // Hide icon for section A last column when Angle AB is selected
@@ -255,7 +298,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
           return null; // Don't show icon for A-cuối when Angle AB selected
         }
 
-        // Show icon conditions
+        // UPDATED: Show icon conditions - include Angle AB hover
         const shouldShowIcon = isHovered || isSelected || isAngleABHighlighted;
         if (!shouldShowIcon) return null;
 
@@ -282,9 +325,16 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
           iconColor = "green";
           iconText = "✓";
         } else if (isHovered) {
-          // Just hovered (not selected)
-          iconColor = "#4169E1";
-          iconText = "+";
+          // UPDATED: Handle Angle AB hover and normal hover
+          if (hoveredColumn === "angle-ab" && pos.isAngleABColumn) {
+            // Hovering over Angle AB columns
+            iconColor = "#6c757d"; // Gray for Angle AB hover
+            iconText = "+";
+          } else {
+            // Just normal hovered (not selected)
+            iconColor = "#4169E1";
+            iconText = "+";
+          }
         }
 
         return (

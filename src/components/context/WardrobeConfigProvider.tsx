@@ -38,6 +38,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     showSections: "",
     accordionOpen: "collapseType",
     selectedColumnId: null,
+    hoveredColumnId: null,
     activeView: "Entière",
   });
 

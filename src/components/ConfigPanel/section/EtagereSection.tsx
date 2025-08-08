@@ -102,43 +102,63 @@ const EtagereSection: React.FC = () => {
       width: number;
     }> = [];
 
-    Object.entries(config.wardrobeType.sections).forEach(
-      ([sectionKey, section]) => {
-        if (!section) return;
+    // For Angle type, we need to organize columns by section and insert Angle AB in the middle
+    if (config.wardrobeType.id === "Angle") {
+      const sectionA = config.wardrobeType.sections.sectionA;
+      const sectionB = config.wardrobeType.sections.sectionB;
 
-        section.columns.forEach((column, index) => {
-          // For Angle type, exclude A-last and B-first columns as they're handled by Angle AB button
-          if (config.wardrobeType.id === "Angle") {
-            const sectionA = config.wardrobeType.sections.sectionA;
-            const sectionB = config.wardrobeType.sections.sectionB;
-
-            if (sectionA && sectionB) {
-              const isALastColumn =
-                sectionKey === "sectionA" &&
-                index === sectionA.columns.length - 1;
-              const isBFirstColumn = sectionKey === "sectionB" && index === 0;
-
-              if (isALastColumn || isBFirstColumn) {
-                return; // Skip these columns for individual buttons
-              }
-            }
+      if (sectionA && sectionB) {
+        // Add section A columns (excluding the last one)
+        sectionA.columns.forEach((column, index) => {
+          const isALastColumn = index === sectionA.columns.length - 1;
+          if (!isALastColumn) {
+            columns.push({
+              id: column.id,
+              sectionKey: "sectionA" as SectionKey,
+              sectionName: "A",
+              columnIndex: index,
+              width: column.width,
+            });
           }
+        });
 
-          columns.push({
-            id: column.id,
-            sectionKey: sectionKey as SectionKey,
-            sectionName:
-              sectionKey === "sectionA"
-                ? "A"
-                : sectionKey === "sectionB"
-                ? "B"
-                : "C",
-            columnIndex: index,
-            width: column.width,
-          });
+        // Add section B columns (excluding the first one)
+        sectionB.columns.forEach((column, index) => {
+          const isBFirstColumn = index === 0;
+          if (!isBFirstColumn) {
+            columns.push({
+              id: column.id,
+              sectionKey: "sectionB" as SectionKey,
+              sectionName: "B",
+              columnIndex: index,
+              width: column.width,
+            });
+          }
         });
       }
-    );
+    } else {
+      // For non-Angle types, use the original logic
+      Object.entries(config.wardrobeType.sections).forEach(
+        ([sectionKey, section]) => {
+          if (!section) return;
+
+          section.columns.forEach((column, index) => {
+            columns.push({
+              id: column.id,
+              sectionKey: sectionKey as SectionKey,
+              sectionName:
+                sectionKey === "sectionA"
+                  ? "A"
+                  : sectionKey === "sectionB"
+                  ? "B"
+                  : "C",
+              columnIndex: index,
+              width: column.width,
+            });
+          });
+        }
+      );
+    }
 
     return columns;
   };
@@ -548,7 +568,7 @@ const EtagereSection: React.FC = () => {
       <div className="card border-primary">
         <div className="card-header bg-primary bg-opacity-10">
           <div className="d-flex justify-content-between align-items-center">
-            <h6 className="mb-0">Angle AB - Colonnes A-last & B-first</h6>
+            <h6 className="mb-0">Angle AB</h6>
             <div className="d-flex gap-2 align-items-center">
               <button
                 type="button"
@@ -606,8 +626,7 @@ const EtagereSection: React.FC = () => {
               <span className="input-group-text">étagères</span>
             </div>
             <small className="text-muted">
-              Ajustez le nombre d'étagères pour les colonnes A-last et B-first
-              (0-10)
+              Ajustez le nombre d'étagères pour cette colonne (0-10)
             </small>
           </div>
 
@@ -914,35 +933,76 @@ const EtagereSection: React.FC = () => {
           {isEtagereOpen && (
             <div className="mb-3">
               <div className="d-flex gap-2 flex-wrap">
-                {/* Angle AB button - only show for Angle wardrobe type */}
-                {shouldShowAngleAB() && (
-                  <button
-                    className={`btn btn-sm ${
-                      config.selectedColumnId === "angle-ab"
-                        ? "btn-primary"
-                        : "btn-outline-primary"
-                    }`}
-                    onClick={handleAngleABClick}
-                    title="Sélectionner les colonnes A-last et B-first pour Angle"
-                  >
-                    Angle AB
-                  </button>
+                {/* Render buttons in the correct order for Angle type */}
+                {config.wardrobeType.id === "Angle" ? (
+                  <>
+                    {/* Section A columns */}
+                    {allColumns
+                      .filter((column) => column.sectionName === "A")
+                      .map((column) => (
+                        <button
+                          key={column.id}
+                          className={`btn btn-sm ${
+                            config.selectedColumnId === column.id
+                              ? "btn-primary"
+                              : "btn-outline-primary"
+                          }`}
+                          onClick={() => handleColumnClick(column.id)}
+                        >
+                          {column.sectionName} - Col {column.columnIndex + 1}
+                        </button>
+                      ))}
+
+                    {/* Angle AB button - positioned between A and B sections */}
+                    {shouldShowAngleAB() && (
+                      <button
+                        className={`btn btn-sm ${
+                          config.selectedColumnId === "angle-ab"
+                            ? "btn-primary"
+                            : "btn-outline-primary"
+                        }`}
+                        onClick={handleAngleABClick}
+                      >
+                        Angle AB
+                      </button>
+                    )}
+
+                    {/* Section B columns */}
+                    {allColumns
+                      .filter((column) => column.sectionName === "B")
+                      .map((column) => (
+                        <button
+                          key={column.id}
+                          className={`btn btn-sm ${
+                            config.selectedColumnId === column.id
+                              ? "btn-primary"
+                              : "btn-outline-primary"
+                          }`}
+                          onClick={() => handleColumnClick(column.id)}
+                        >
+                          {column.sectionName} - Col {column.columnIndex + 1}
+                        </button>
+                      ))}
+                  </>
+                ) : (
+                  /* For non-Angle types, render all columns normally */
+                  <>
+                    {allColumns.map((column) => (
+                      <button
+                        key={column.id}
+                        className={`btn btn-sm ${
+                          config.selectedColumnId === column.id
+                            ? "btn-primary"
+                            : "btn-outline-primary"
+                        }`}
+                        onClick={() => handleColumnClick(column.id)}
+                      >
+                        {column.sectionName} - Col {column.columnIndex + 1}
+                      </button>
+                    ))}
+                  </>
                 )}
 
-                {/* Individual column buttons */}
-                {allColumns.map((column) => (
-                  <button
-                    key={column.id}
-                    className={`btn btn-sm ${
-                      config.selectedColumnId === column.id
-                        ? "btn-primary"
-                        : "btn-outline-primary"
-                    }`}
-                    onClick={() => handleColumnClick(column.id)}
-                  >
-                    {column.sectionName} - Col {column.columnIndex + 1}
-                  </button>
-                ))}
                 <button
                   className="btn btn-sm btn-outline-secondary"
                   onClick={() => {

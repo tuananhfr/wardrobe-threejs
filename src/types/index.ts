@@ -24,7 +24,7 @@ declare global {
     showSections: string;
     accordionOpen: string;
     selectedColumnId: string | null;
-
+    hoveredColumnId: string | null;
     showMeasurements: boolean;
   }
 

@@ -10,6 +10,15 @@ const DimensionSection: React.FC = () => {
     handleSectionWidthChange,
     handleUpdateSection,
   } = useWardrobeConfig();
+
+  // Check if étagère accordion is open
+  const isDimensionOpen = config.accordionOpen === "collapseRedimension";
+
+  // Handle accordion toggle
+  const handleAccordionToggle = () => {
+    const newState = isDimensionOpen ? "" : "collapseRedimension";
+    updateConfig("accordionOpen", newState);
+  };
   useEffect(() => {
     let isManualClose = true; // Track if close is manual or auto-close
 
@@ -83,8 +92,9 @@ const DimensionSection: React.FC = () => {
           type="button"
           data-bs-toggle="collapse"
           data-bs-target="#collapseRedimension"
-          aria-expanded="false"
           aria-controls="collapseRedimension"
+          onClick={handleAccordionToggle}
+          aria-expanded={isDimensionOpen}
         >
           2. Redimension
         </button>

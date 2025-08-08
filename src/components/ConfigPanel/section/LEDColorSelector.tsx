@@ -1,5 +1,8 @@
 import React, { useState } from "react";
 import { useConfig } from "@/components/context/WardrobeContext";
+import SansLED from "@/assets/images/led/PanneauSansLED.webp";
+import BlancNaturelle from "@/assets/images/led/CordonLarge-BlancNaturelle.webp";
+import BlancChaud from "@/assets/images/led/CordonLarge-BlancChaud.webp";
 
 const LEDColorSelector: React.FC = () => {
   const { config, updateConfig } = useConfig();
@@ -14,17 +17,17 @@ const LEDColorSelector: React.FC = () => {
     {
       name: "Sans LED",
       value: "",
-      image: "/src/assets/images/led/PanneauSansLED.webp",
+      image: SansLED,
     },
     {
       name: "LED Forme I - Blanc naturel",
       value: "#ffffff",
-      image: "/src/assets/images/led/CordonLarge-BlancNaturelle.webp",
+      image: BlancNaturelle,
     },
     {
       name: "LED Forme I - Blanc chaud",
       value: "0xFBE0DF",
-      image: "/src/assets/images/led/CordonLarge-BlancChaud.webp",
+      image: BlancChaud,
     },
   ];
 

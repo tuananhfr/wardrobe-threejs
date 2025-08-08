@@ -40,16 +40,13 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
   // Kiểm tra xem section này có đang bật không
   const isActive = showSections === sectionName;
 
-  // Màu sắc tùy theo có bật hay không
-  const materialColor = isActive ? "black" : "white";
-
   return (
     <group position={position}>
       {/* Left side */}
       {!hideLeftSide && (
         <mesh position={[-width / 2 + thickness / 2, 0, 0]} castShadow>
           <boxGeometry args={[thickness, height - baseBarHeight, depth]} />
-          <meshStandardMaterial map={texture} color={materialColor} />
+          <meshStandardMaterial map={texture} color="white" />
         </mesh>
       )}
 
@@ -57,7 +54,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
       {!hideRightSide && (
         <mesh position={[width / 2 - thickness / 2, 0, 0]} castShadow>
           <boxGeometry args={[thickness, height - baseBarHeight, depth]} />
-          <meshStandardMaterial map={texture} color={materialColor} />
+          <meshStandardMaterial map={texture} color="white" />
         </mesh>
       )}
 
@@ -72,7 +69,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} color={materialColor} />
+          <meshStandardMaterial map={texture} color="white" />
         </mesh>
       ) : hideRightSide ? (
         <mesh
@@ -84,7 +81,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} color={materialColor} />
+          <meshStandardMaterial map={texture} color="white" />
         </mesh>
       ) : (
         <mesh
@@ -92,7 +89,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - 2 * thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} color={materialColor} />
+          <meshStandardMaterial map={texture} color="white" />
         </mesh>
       )}
 
@@ -107,7 +104,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} color={materialColor} />
+          <meshStandardMaterial map={texture} color="white" />
         </mesh>
       ) : hideRightSide ? (
         <mesh
@@ -119,7 +116,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} color={materialColor} />
+          <meshStandardMaterial map={texture} color="white" />
         </mesh>
       ) : (
         <mesh
@@ -127,7 +124,7 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
           castShadow
         >
           <boxGeometry args={[width - 2 * thickness, thickness, depth]} />
-          <meshStandardMaterial map={texture} color={materialColor} />
+          <meshStandardMaterial map={texture} color="white" />
         </mesh>
       )}
 
@@ -143,8 +140,161 @@ const SectionFrame: React.FC<SectionFrameProps> = ({
             thickness,
           ]}
         />
-        <meshStandardMaterial map={texture} color={materialColor} />
+        <meshStandardMaterial map={texture} color="white" />
       </mesh>
+
+      {/* Highlight overlay khi active */}
+      {isActive && (
+        <>
+          {/* Left side highlight */}
+          {!hideLeftSide && (
+            <mesh position={[-width / 2 + thickness / 2, 0, 0]}>
+              <boxGeometry args={[thickness, height - baseBarHeight, depth]} />
+              <meshBasicMaterial
+                color="#e6f7f9"
+                transparent
+                opacity={0.6}
+                depthWrite={false}
+                depthTest={false}
+              />
+            </mesh>
+          )}
+
+          {/* Right side highlight */}
+          {!hideRightSide && (
+            <mesh position={[width / 2 - thickness / 2, 0, 0]}>
+              <boxGeometry args={[thickness, height - baseBarHeight, depth]} />
+              <meshBasicMaterial
+                color="#e6f7f9"
+                transparent
+                opacity={0.6}
+                depthWrite={false}
+                depthTest={false}
+              />
+            </mesh>
+          )}
+
+          {/* Top highlight */}
+          {hideLeftSide ? (
+            <mesh
+              position={[
+                -thickness / 2,
+                height / 2 - baseBarHeight / 2 - thickness / 2,
+                0,
+              ]}
+            >
+              <boxGeometry args={[width - thickness, thickness, depth]} />
+              <meshBasicMaterial
+                color="#e6f7f9"
+                transparent
+                opacity={0.6}
+                depthWrite={false}
+                depthTest={false}
+              />
+            </mesh>
+          ) : hideRightSide ? (
+            <mesh
+              position={[
+                thickness / 2,
+                height / 2 - baseBarHeight / 2 - thickness / 2,
+                0,
+              ]}
+            >
+              <boxGeometry args={[width - thickness, thickness, depth]} />
+              <meshBasicMaterial
+                color="#e6f7f9"
+                transparent
+                opacity={0.6}
+                depthWrite={false}
+                depthTest={false}
+              />
+            </mesh>
+          ) : (
+            <mesh
+              position={[0, height / 2 - baseBarHeight / 2 - thickness / 2, 0]}
+            >
+              <boxGeometry args={[width - 2 * thickness, thickness, depth]} />
+              <meshBasicMaterial
+                color="#e6f7f9"
+                transparent
+                opacity={0.6}
+                depthWrite={false}
+                depthTest={false}
+              />
+            </mesh>
+          )}
+
+          {/* Bottom highlight */}
+          {hideLeftSide ? (
+            <mesh
+              position={[
+                -thickness / 2,
+                -height / 2 + baseBarHeight / 2 + thickness / 2,
+                0,
+              ]}
+            >
+              <boxGeometry args={[width - thickness, thickness, depth]} />
+              <meshBasicMaterial
+                color="#e6f7f9"
+                transparent
+                opacity={0.6}
+                depthWrite={false}
+                depthTest={false}
+              />
+            </mesh>
+          ) : hideRightSide ? (
+            <mesh
+              position={[
+                thickness / 2,
+                -height / 2 + baseBarHeight / 2 + thickness / 2,
+                0,
+              ]}
+            >
+              <boxGeometry args={[width - thickness, thickness, depth]} />
+              <meshBasicMaterial
+                color="#e6f7f9"
+                transparent
+                opacity={0.6}
+                depthWrite={false}
+                depthTest={false}
+              />
+            </mesh>
+          ) : (
+            <mesh
+              position={[0, -height / 2 + baseBarHeight / 2 + thickness / 2, 0]}
+            >
+              <boxGeometry args={[width - 2 * thickness, thickness, depth]} />
+              <meshBasicMaterial
+                color="#e6f7f9"
+                transparent
+                opacity={0.6}
+                depthWrite={false}
+                depthTest={false}
+              />
+            </mesh>
+          )}
+
+          {/* Back panel highlight */}
+          <mesh
+            position={[backPanelOffsetX || 0, 0, -depth / 2 + thickness / 2]}
+          >
+            <boxGeometry
+              args={[
+                actualBackPanelWidth,
+                height - 2 * thickness - baseBarHeight,
+                thickness,
+              ]}
+            />
+            <meshBasicMaterial
+              color="#e6f7f9"
+              transparent
+              opacity={0.6}
+              depthWrite={false}
+              depthTest={false}
+            />
+          </mesh>
+        </>
+      )}
     </group>
   );
 };

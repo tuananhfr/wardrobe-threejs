@@ -3,18 +3,15 @@ import React from "react";
 import * as THREE from "three";
 
 interface SectionColumnsProps {
-  sectionName: string;
   sectionData: WardrobeSection;
   position: [number, number, number];
   height: number;
   baseBarHeight: number;
   thickness: number;
   texture: THREE.Texture;
-  showSections: string;
 }
 
 const SectionColumns: React.FC<SectionColumnsProps> = ({
-  sectionName,
   sectionData,
   position,
 
@@ -22,15 +19,11 @@ const SectionColumns: React.FC<SectionColumnsProps> = ({
   baseBarHeight,
   thickness,
   texture,
-  showSections,
 }) => {
   const { width, depth, columns } = sectionData;
 
-  // Kiểm tra xem section này có đang bật không
-  const isActive = showSections === sectionName;
-
-  // Màu sắc tùy theo có bật hay không
-  const materialColor = isActive ? "black" : "white";
+  // Giữ màu trắng cho các thanh chắn column để tránh xung đột với highlight
+  const materialColor = "white";
 
   // Tính toán vị trí các cột dựa trên column widths
   const calculateColumnPositions = () => {

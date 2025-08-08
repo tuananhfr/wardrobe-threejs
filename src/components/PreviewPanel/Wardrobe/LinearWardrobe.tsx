@@ -43,14 +43,12 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
 
       {/* Section A Columns */}
       <SectionColumns
-        sectionName="sectionA"
         sectionData={sections.sectionA}
         height={height}
         baseBarHeight={baseBarHeight}
         position={[0, 0, 0]}
         thickness={thickness}
         texture={texture}
-        showSections={showSections}
       />
 
       {/* Section A Shelves */}

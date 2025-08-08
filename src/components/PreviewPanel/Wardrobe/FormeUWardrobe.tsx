@@ -106,14 +106,12 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
 
       {/* Section A Columns */}
       <SectionColumns
-        sectionName="sectionA"
         sectionData={sections.sectionA}
         height={height}
         baseBarHeight={baseBarHeight}
         position={sectionAPosition}
         thickness={thickness}
         texture={texture}
-        showSections={showSections}
       />
       {/* Section A Shelves */}
       <SectionShelves
@@ -155,14 +153,12 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
 
         {/* Section B Columns */}
         <SectionColumns
-          sectionName="sectionB"
           sectionData={sections.sectionB}
           height={height}
           baseBarHeight={baseBarHeight}
           position={[0, 0, 0]}
           thickness={thickness}
           texture={texture}
-          showSections={showSections}
         />
 
         {/* Section B Shelves */}
@@ -206,14 +202,12 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
 
         {/* Section C Columns */}
         <SectionColumns
-          sectionName="sectionC"
           sectionData={sections.sectionC}
           height={height}
           baseBarHeight={baseBarHeight}
           position={[0, 0, 0]}
           thickness={thickness}
           texture={texture}
-          showSections={showSections}
         />
 
         {/* Section C Shelves */}

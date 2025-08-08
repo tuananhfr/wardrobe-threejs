@@ -37,8 +37,9 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
   const isEtagereMode = config.accordionOpen === "collapseEtageres";
   const selectedColumnId = config.selectedColumnId;
 
-  // Check if Angle AB is selected
+  // Check if Angle AB or Angle AC is selected
   const isAngleABSelected = selectedColumnId === "angle-ab";
+  const isAngleACSelected = selectedColumnId === "angle-ac";
 
   // Reset when étagère mode is disabled
   useEffect(() => {
@@ -70,11 +71,26 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       // Center X position of column
       const centerX = startX + colWidth / 2;
 
-      // Check if this column should be highlighted for Angle AB
+      // Check if this column should be highlighted for Angle AB or Angle AC
       const isALastColumn =
         sectionName === "sectionA" && i === sectionData.columns.length - 1;
       const isBFirstColumn = sectionName === "sectionB" && i === 0;
-      const isAngleABColumn = isALastColumn || isBFirstColumn;
+      const isBLastColumn =
+        sectionName === "sectionB" && i === sectionData.columns.length - 1;
+      const isCFirstColumn = sectionName === "sectionC" && i === 0;
+      const isAFirstColumn = sectionName === "sectionA" && i === 0;
+
+      // Conditional logic for Angle AB based on wardrobe type
+      let isAngleABColumn = false;
+      if (config.wardrobeType.id === "Angle") {
+        // For Angle type: A-last and B-first
+        isAngleABColumn = isALastColumn || isBFirstColumn;
+      } else if (config.wardrobeType.id === "Forme U") {
+        // For Forme U type: B-last and A-first
+        isAngleABColumn = isBLastColumn || isAFirstColumn;
+      }
+
+      const isAngleACColumn = isCFirstColumn || isALastColumn;
 
       positions.push({
         col: i,
@@ -86,6 +102,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
         height: colHeight,
         shelvesCount: column.shelves?.spacings?.length || 0,
         isAngleABColumn,
+        isAngleACColumn,
       });
     }
 
@@ -97,21 +114,54 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
   // Handle column click
   const handleColumnClick = (columnId: string) => {
     // Check if this is an Angle AB column
+    const isBLastColumn =
+      sectionName === "sectionB" &&
+      columnId === sectionData.columns[sectionData.columns.length - 1]?.id;
+    const isAFirstColumn =
+      sectionName === "sectionA" && columnId === sectionData.columns[0]?.id;
     const isALastColumn =
       sectionName === "sectionA" &&
       columnId === sectionData.columns[sectionData.columns.length - 1]?.id;
     const isBFirstColumn =
       sectionName === "sectionB" && columnId === sectionData.columns[0]?.id;
-    const isAngleABColumn = isALastColumn || isBFirstColumn;
 
-    // If this is an Angle AB column and we're in Angle wardrobe type
-    if (isAngleABColumn && config.wardrobeType.id === "Angle") {
+    // Conditional logic for Angle AB based on wardrobe type
+    let isAngleABColumn = false;
+    if (config.wardrobeType.id === "Angle") {
+      // For Angle type: A-last and B-first
+      isAngleABColumn = isALastColumn || isBFirstColumn;
+    } else if (config.wardrobeType.id === "Forme U") {
+      // For Forme U type: B-last and A-first
+      isAngleABColumn = isBLastColumn || isAFirstColumn;
+    }
+
+    // Check if this is an Angle AC column
+    const isCFirstColumn =
+      sectionName === "sectionC" && columnId === sectionData.columns[0]?.id;
+    const isAngleACColumn = isCFirstColumn || isALastColumn;
+
+    // If this is an Angle AB column and we're in Angle or Forme U wardrobe type
+    if (
+      isAngleABColumn &&
+      (config.wardrobeType.id === "Angle" ||
+        config.wardrobeType.id === "Forme U")
+    ) {
       if (selectedColumnId === "angle-ab") {
         // Deselect if already selected
         updateConfig("selectedColumnId", null);
       } else {
         // Select Angle AB
         updateConfig("selectedColumnId", "angle-ab");
+      }
+    }
+    // If this is an Angle AC column and we're in Forme U wardrobe type
+    else if (isAngleACColumn && config.wardrobeType.id === "Forme U") {
+      if (selectedColumnId === "angle-ac") {
+        // Deselect if already selected
+        updateConfig("selectedColumnId", null);
+      } else {
+        // Select Angle AC
+        updateConfig("selectedColumnId", "angle-ac");
       }
     } else {
       // Normal column selection
@@ -134,14 +184,31 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
     for (let i = 0; i < columnPositions.length; i++) {
       const pos = columnPositions[i];
 
-      // Adjust hit detection for B-col-1 when Angle AB is selected
+      // Adjust hit detection for Angle AB columns when selected (conditional based on wardrobe type)
       let hitTestWidth = pos.width;
       let hitTestX = pos.x;
 
+      if (isAngleABSelected && pos.isAngleABColumn) {
+        if (config.wardrobeType.id === "Angle") {
+          // For Angle type: adjust A-last column
+          if (sectionName === "sectionA") {
+            hitTestWidth = pos.width + 2 * thickness;
+            hitTestX = pos.x - thickness;
+          }
+        } else if (config.wardrobeType.id === "Forme U") {
+          // For Forme U type: adjust B-last column
+          if (sectionName === "sectionB") {
+            hitTestWidth = pos.width + 2 * thickness;
+            hitTestX = pos.x + thickness;
+          }
+        }
+      }
+
+      // Adjust hit detection for C-col-1 when Angle AC is selected
       if (
-        isAngleABSelected &&
-        sectionName === "sectionB" &&
-        pos.isAngleABColumn
+        isAngleACSelected &&
+        sectionName === "sectionC" &&
+        pos.isAngleACColumn
       ) {
         hitTestWidth = pos.width + 2 * thickness;
         hitTestX = pos.x - thickness;
@@ -157,7 +224,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       }
     }
 
-    // NEW: Special handling for Angle AB hover in Angle wardrobe type
+    // NEW: Special handling for Angle AB and Angle AC hover
     let finalHoveredState: number | string | null = null;
 
     if (hoveredCol !== null) {
@@ -170,6 +237,17 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
         // If hovering over an Angle AB column, set special hover state
         if (hoveredPosition.isAngleABColumn) {
           finalHoveredState = "angle-ab";
+        } else {
+          finalHoveredState = columnIdentifier;
+        }
+      } else if (config.wardrobeType.id === "Forme U") {
+        const hoveredPosition = columnPositions[hoveredCol];
+
+        // If hovering over an Angle AB column, set special hover state
+        if (hoveredPosition.isAngleABColumn) {
+          finalHoveredState = "angle-ab";
+        } else if (hoveredPosition.isAngleACColumn) {
+          finalHoveredState = "angle-ac";
         } else {
           finalHoveredState = columnIdentifier;
         }
@@ -205,35 +283,53 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       {/* Column highlights */}
       {columnPositions.map((pos, index) => {
         const isSelected = selectedColumnId === pos.columnId;
-        // UPDATED: Handle both number index and "angle-ab" string hover
+        // UPDATED: Handle both number index and "angle-ab"/"angle-ac" string hover
         const isDirectlyHovered = hoveredColumn === `${sectionName}-${index}`;
         const isAngleABHovered =
           hoveredColumn === "angle-ab" && pos.isAngleABColumn;
-        const isHovered = isDirectlyHovered || isAngleABHovered;
+        const isAngleACHovered =
+          hoveredColumn === "angle-ac" && pos.isAngleACColumn;
+        const isHovered =
+          isDirectlyHovered || isAngleABHovered || isAngleACHovered;
         const isAngleABHighlighted = isAngleABSelected && pos.isAngleABColumn;
+        const isAngleACHighlighted = isAngleACSelected && pos.isAngleACColumn;
 
-        // For B-col-1 when Angle AB: extend width and shift position, hide left edge
-        // For A-col-cuối when Angle AB: keep normal width and position but highlight
+        // Conditional visual adjustments based on wardrobe type
         let highlightWidth = pos.width;
         let highlightX = pos.x;
 
-        if (
-          isAngleABSelected &&
-          sectionName === "sectionB" &&
-          pos.isAngleABColumn
-        ) {
-          highlightWidth = pos.width + 2 * thickness; // Extend width for B-col-1
-          highlightX = pos.x - thickness; // Shift left for B-col-1
+        if (isAngleABSelected && pos.isAngleABColumn) {
+          if (config.wardrobeType.id === "Angle") {
+            // For Angle type: extend A-last column
+            if (sectionName === "sectionA") {
+              highlightWidth = pos.width + 2 * thickness;
+              highlightX = pos.x - thickness; // Shift left for A-last
+            }
+          } else if (config.wardrobeType.id === "Forme U") {
+            // For Forme U type: extend B-last column
+            if (sectionName === "sectionB") {
+              highlightWidth = pos.width + 2 * thickness;
+              highlightX = pos.x + thickness; // Shift right for B-last
+            }
+          }
         }
-        // A-col-cuối keeps normal size when Angle AB (no special adjustment needed)
+
+        if (
+          isAngleACSelected &&
+          sectionName === "sectionC" &&
+          pos.isAngleACColumn
+        ) {
+          highlightWidth = pos.width + 2 * thickness; // Extend width for C-col-1
+          highlightX = pos.x - thickness; // Shift left for C-col-1
+        }
 
         // Determine highlight state and color
         let shouldShowHighlight = false;
         let highlightColor = "#E6E6FA"; // Default
         let opacity = 0;
 
-        if (isAngleABHighlighted) {
-          // Both A-cuối and B-đầu are highlighted when Angle AB selected
+        if (isAngleABHighlighted || isAngleACHighlighted) {
+          // Both A-cuối/A-đầu and B-đầu/C-đầu are highlighted when Angle AB/AC selected
           shouldShowHighlight = true;
           highlightColor = isHovered ? "#d4edda" : "#e6f7f9"; // Green when hovered, blue when selected
           opacity = 0.6;
@@ -243,14 +339,17 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
           highlightColor = "#e6f7f9"; // Blue
           opacity = 0.6;
         } else if (isHovered) {
-          // NEW: Handle Angle AB hover and normal hover
+          // NEW: Handle Angle AB/AC hover and normal hover
           shouldShowHighlight = true;
-          if (hoveredColumn === "angle-ab" && pos.isAngleABColumn) {
-            // Hovering over Angle AB columns - use special color
-            highlightColor = "#f8f9fa"; // Light gray for Angle AB hover
+          if (
+            (hoveredColumn === "angle-ab" && pos.isAngleABColumn) ||
+            (hoveredColumn === "angle-ac" && pos.isAngleACColumn)
+          ) {
+            // Hovering over Angle AB/AC columns - use special color
+            highlightColor = "#f8f9fa"; // Light gray for Angle AB/AC hover
             opacity = 0.5;
           } else {
-            // Just normal hovered (not selected or part of Angle AB)
+            // Just normal hovered (not selected or part of Angle AB/AC)
             highlightColor = "#f8f9fa"; // Light gray
             opacity = 0.4; // Lighter opacity for hover
           }
@@ -282,32 +381,94 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       {/* Icons and labels */}
       {columnPositions.map((pos, index) => {
         const isSelected = selectedColumnId === pos.columnId;
-        // UPDATED: Handle both number index and "angle-ab" string hover
+        // UPDATED: Handle both number index and "angle-ab"/"angle-ac" string hover
         const isDirectlyHovered = hoveredColumn === `${sectionName}-${index}`;
         const isAngleABHovered =
           hoveredColumn === "angle-ab" && pos.isAngleABColumn;
-        const isHovered = isDirectlyHovered || isAngleABHovered;
+        const isAngleACHovered =
+          hoveredColumn === "angle-ac" && pos.isAngleACColumn;
+        const isHovered =
+          isDirectlyHovered || isAngleABHovered || isAngleACHovered;
         const isAngleABHighlighted = isAngleABSelected && pos.isAngleABColumn;
+        const isAngleACHighlighted = isAngleACSelected && pos.isAngleACColumn;
 
-        // Hide icon for section A last column when Angle AB is selected
+        // Hide icon for section A column when Angle AB is selected (conditional based on wardrobe type)
         if (
           isAngleABSelected &&
           sectionName === "sectionA" &&
           pos.isAngleABColumn
         ) {
-          return null; // Don't show icon for A-cuối when Angle AB selected
+          if (config.wardrobeType.id === "Angle") {
+            // For Angle type: hide A-last column
+            return null; // Don't show icon for A-last when Angle AB selected
+          } else if (config.wardrobeType.id === "Forme U") {
+            // For Forme U type: hide A-first column
+            return null; // Don't show icon for A-first when Angle AB selected
+          }
         }
 
-        // UPDATED: Show icon conditions - include Angle AB hover
-        const shouldShowIcon = isHovered || isSelected || isAngleABHighlighted;
+        // Hide icon for section A last column when Angle AC is selected
+        if (
+          isAngleACSelected &&
+          sectionName === "sectionA" &&
+          pos.isAngleACColumn
+        ) {
+          return null; // Don't show icon for A-cuối when Angle AC selected
+        }
+
+        // Hide icon for section A column when Angle AB is hovered (conditional based on wardrobe type)
+        if (
+          hoveredColumn === "angle-ab" &&
+          sectionName === "sectionA" &&
+          pos.isAngleABColumn
+        ) {
+          if (config.wardrobeType.id === "Angle") {
+            // For Angle type: hide A-last column
+            return null; // Don't show icon for A-last when Angle AB hovered
+          } else if (config.wardrobeType.id === "Forme U") {
+            // For Forme U type: hide A-first column
+            return null; // Don't show icon for A-first when Angle AB hovered
+          }
+        }
+
+        // Hide icon for section A last column when Angle AC is hovered
+        if (
+          hoveredColumn === "angle-ac" &&
+          sectionName === "sectionA" &&
+          pos.isAngleACColumn
+        ) {
+          return null; // Don't show icon for A-cuối when Angle AC hovered
+        }
+
+        // UPDATED: Show icon conditions - include Angle AB/AC hover
+        const shouldShowIcon =
+          isHovered ||
+          isSelected ||
+          isAngleABHighlighted ||
+          isAngleACHighlighted;
         if (!shouldShowIcon) return null;
 
-        // Adjust icon position for section B first column when Angle AB is selected
+        // Adjust icon position for Angle AB columns when selected (conditional based on wardrobe type)
         let adjustedX = pos.x;
+        if (isAngleABSelected && pos.isAngleABColumn) {
+          if (config.wardrobeType.id === "Angle") {
+            // For Angle type: adjust A-last column
+            if (sectionName === "sectionA") {
+              adjustedX = pos.x - thickness; // Shift left for A-last
+            }
+          } else if (config.wardrobeType.id === "Forme U") {
+            // For Forme U type: adjust B-last column
+            if (sectionName === "sectionB") {
+              adjustedX = pos.x + thickness; // Shift right for B-last
+            }
+          }
+        }
+
+        // Adjust icon position for section C first column when Angle AC is selected
         if (
-          isAngleABSelected &&
-          sectionName === "sectionB" &&
-          pos.isAngleABColumn
+          isAngleACSelected &&
+          sectionName === "sectionC" &&
+          pos.isAngleACColumn
         ) {
           adjustedX = pos.x - thickness; // Shift icon to center of extended highlight
         }
@@ -317,7 +478,11 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
         let iconText = "+"; // Default plus
 
         if (isAngleABHighlighted) {
-          // B-đầu column when Angle AB selected (A-cuối won't reach here due to return null above)
+          // B-cuối column when Angle AB selected (A-1 won't reach here due to return null above)
+          iconColor = isHovered ? "#28a745" : "#20c997"; // Darker green when hovered, teal when just selected
+          iconText = "✓";
+        } else if (isAngleACHighlighted) {
+          // C-1 column when Angle AC selected (A-cuối won't reach here due to return null above)
           iconColor = isHovered ? "#28a745" : "#20c997"; // Darker green when hovered, teal when just selected
           iconText = "✓";
         } else if (isSelected) {
@@ -325,10 +490,13 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
           iconColor = "green";
           iconText = "✓";
         } else if (isHovered) {
-          // UPDATED: Handle Angle AB hover and normal hover
-          if (hoveredColumn === "angle-ab" && pos.isAngleABColumn) {
-            // Hovering over Angle AB columns
-            iconColor = "#6c757d"; // Gray for Angle AB hover
+          // UPDATED: Handle Angle AB/AC hover and normal hover
+          if (
+            (hoveredColumn === "angle-ab" && pos.isAngleABColumn) ||
+            (hoveredColumn === "angle-ac" && pos.isAngleACColumn)
+          ) {
+            // Hovering over Angle AB/AC columns
+            iconColor = "#6c757d"; // Gray for Angle AB/AC hover
             iconText = "+";
           } else {
             // Just normal hovered (not selected)

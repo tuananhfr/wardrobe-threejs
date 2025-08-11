@@ -29,13 +29,20 @@ const EtagereSection: React.FC = () => {
 
   // Handle column click
   const handleColumnClick = (columnId: string) => {
+    console.log("EtagereSection - handleColumnClick called with:", columnId);
+    console.log("Current selectedColumnId:", config.selectedColumnId);
+
     if (config.selectedColumnId === columnId) {
       // Deselect if already selected
+      console.log("Deselecting column:", columnId);
       updateConfig("selectedColumnId", null);
     } else {
       // Select new column
+      console.log("Selecting new column:", columnId);
       updateConfig("selectedColumnId", columnId);
     }
+
+    console.log("After update - selectedColumnId:", config.selectedColumnId);
   };
 
   // Handle Angle AB selection (treats A-last and B-first as one column)
@@ -299,6 +306,33 @@ const EtagereSection: React.FC = () => {
       setIsUserChanging(false);
     }
   }, [config.selectedColumnId]);
+
+  // Reset selection and hover when accordion changes
+  // useEffect(() => {
+  //   // Only reset when accordion changes to a different one, not when staying in the same accordion
+  //   if (
+  //     config.accordionOpen !== "collapseEtageres" &&
+  //     config.accordionOpen !== ""
+  //   ) {
+  //     // Reset selected column when this accordion is not open
+  //     if (config.selectedColumnId) {
+  //       updateConfig("selectedColumnId", null);
+  //     }
+  //     // Reset hovered column when this accordion is not open
+  //     if (config.hoveredColumnId) {
+  //       updateConfig("hoveredColumnId", null);
+  //     }
+  //   }
+  // }, [config.accordionOpen, updateConfig]);
+
+  // Debug: Monitor selectedColumnId changes
+  useEffect(() => {
+    console.log(
+      "EtagereSection - selectedColumnId changed to:",
+      config.selectedColumnId
+    );
+    console.log("Current accordionOpen:", config.accordionOpen);
+  }, [config.selectedColumnId, config.accordionOpen]);
 
   // Sync with actual data after user changes for Angle AB
   useEffect(() => {

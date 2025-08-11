@@ -38,12 +38,15 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
    */
   const spacingsToPositions = (spacings: shelfSpacing[]): number[] => {
     const positions: number[] = [];
-    let currentPosition = thickness; // Start from sol thickness
+
+    // Start from sol thickness (not baseBarHeight + thickness)
+    let currentPosition = baseBarHeight * 100 + thickness * 100; // Start from sol thickness
 
     // Skip last spacing (to plafond), convert others to positions
     for (let i = 0; i < spacings.length - 1; i++) {
       currentPosition += spacings[i].spacing;
       positions.push(currentPosition);
+      currentPosition += thickness * 100;
     }
 
     return positions;
@@ -72,25 +75,27 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
 
     return (
       <group key={`${sectionName}-${column.id}-shelves`}>
-        {shelfPositions.map((position, index) => (
-          <mesh
-            key={column.shelves!.spacings![index].id}
-            position={[
-              finalColumnXPosition,
-              convertToWorldY(position),
-              0, // Center theo depth
-            ]}
-            castShadow
-            receiveShadow
-          >
-            <boxGeometry args={[shelfWidth, shelfThickness, shelfDepth]} />
-            <meshStandardMaterial
-              map={texture}
-              transparent={!isActive}
-              opacity={1}
-            />
-          </mesh>
-        ))}
+        {shelfPositions.map((position, index) => {
+          return (
+            <mesh
+              key={column.shelves!.spacings![index].id}
+              position={[
+                finalColumnXPosition,
+                convertToWorldY(position),
+                0, // Center theo depth
+              ]}
+              castShadow
+              receiveShadow
+            >
+              <boxGeometry args={[shelfWidth, shelfThickness, shelfDepth]} />
+              <meshStandardMaterial
+                map={texture}
+                transparent={!isActive}
+                opacity={1}
+              />
+            </mesh>
+          );
+        })}
       </group>
     );
   };
@@ -129,7 +134,9 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   };
 
   const convertToWorldY = (shelfPosition: number): number => {
-    return shelfPosition / 100 - height / 2 + baseBarHeight + thickness / 2;
+    // Convert shelf position (in cm) to world coordinates
+    // shelfPosition is already calculated from baseBarHeight + thickness + spacings
+    return shelfPosition / 100 - height / 2;
   };
 
   return (

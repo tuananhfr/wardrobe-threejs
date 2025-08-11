@@ -5,6 +5,7 @@ import SectionFrame from "./SectionFrame";
 import SectionColumns from "./SectionColumns";
 import SectionShelves from "./SectionShelves";
 import EtagereColumnHighlights from "./EtagereColumnHighlights"; // New working component
+import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
 
 interface LinearWardrobeProps {
   sections: {
@@ -69,6 +70,16 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
 
       {/* Étagère Column Highlights - Based on working ColumnHighlights pattern */}
       <EtagereColumnHighlights
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+      />
+
+      {/* Internal Equipment Spacing Highlights - Always render for testing */}
+      <InternalEquipmentSpacingHighlights
         sectionName="sectionA"
         sectionData={sections.sectionA}
         position={[0, 0, 0]}

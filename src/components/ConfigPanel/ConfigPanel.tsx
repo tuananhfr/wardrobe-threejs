@@ -10,10 +10,10 @@ import MainSelector from "./section/MainSelector";
 import TextureSelector from "./section/TextureSelector";
 import LEDColorSelector from "./section/LEDColorSelector";
 import EtagereSection from "./section/EtagereSection";
+import InternalEquipmentSection from "./section/InternalEquipmentSection";
 
 const ConfigPanel: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
-  console.log("config", config.accordionOpen);
 
   const handleMainOptionChange = (option: string) => {
     updateConfig("activeView", option);
@@ -124,6 +124,9 @@ const ConfigPanel: React.FC = () => {
 
       {/* 5. Étagères */}
       <EtagereSection />
+
+      {/* 6. internal equipment */}
+      <InternalEquipmentSection />
 
       {/* n. Sélection & Textures */}
       <div className="accordion-item">

@@ -26,7 +26,7 @@ export const useWardrobeShelves = () => {
    */
   const spacingsToPositions = (spacings: number[]): number[] => {
     const positions: number[] = [];
-    let currentPosition = config.thickness; // Start from sol thickness
+    let currentPosition = config.baseBarHeight + config.thickness; // Start from baseBarHeight + sol thickness
 
     // Skip last spacing (to plafond), convert others to positions
     for (let i = 0; i < spacings.length - 1; i++) {
@@ -46,9 +46,12 @@ export const useWardrobeShelves = () => {
   ): number[] => {
     if (shelfCount === 0) return [];
 
-    // Available height = totalHeight - thickness for sol/plafond (shelves thickness handled in spacing)
+    // Calculate available space for spacings
+    // Total space needed: baseBarHeight + sol thickness + shelfCount * shelf thickness + plafond thickness
+    const spaceForShelves = shelfCount * config.thickness;
+    const spaceForWalls = 2 * config.thickness; // sol + plafond
     const availableHeight =
-      totalHeight - 2 * config.thickness - config.thickness * shelfCount; // Only sol + plafond thickness
+      totalHeight - config.baseBarHeight - spaceForWalls - spaceForShelves;
 
     // Number of spacings = shelfCount + 1 (sol→shelf1, shelf1→shelf2, ..., lastShelf→plafond)
     const spacingCount = shelfCount + 1;
@@ -81,7 +84,7 @@ export const useWardrobeShelves = () => {
       return null;
     }
 
-    const totalHeight = config.height - config.baseBarHeight;
+    const totalHeight = config.height;
 
     // If no shelves data, return empty
     if (!column.shelves || !column.shelves.spacings) {
@@ -142,7 +145,7 @@ export const useWardrobeShelves = () => {
     }
 
     // Generate optimal spacings for new count
-    const totalHeight = config.height - config.baseBarHeight;
+    const totalHeight = config.height;
     const optimalSpacings = calculateOptimalSpacings(newCount, totalHeight);
 
     const spacings: shelfSpacing[] = optimalSpacings.map((spacing, index) => ({
@@ -234,7 +237,7 @@ export const useWardrobeShelves = () => {
         };
       } else {
         // Generate optimal spacings for new count
-        const totalHeight = config.height - config.baseBarHeight;
+        const totalHeight = config.height;
         const optimalSpacings = calculateOptimalSpacings(newCount, totalHeight);
 
         const spacings: shelfSpacing[] = optimalSpacings.map(

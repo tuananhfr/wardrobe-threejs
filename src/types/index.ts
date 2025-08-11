@@ -25,6 +25,10 @@ declare global {
     accordionOpen: string;
     selectedColumnId: string | null;
     hoveredColumnId: string | null;
+    selectedSpacingId: string | null;
+    hoveredSpacingId: string | null;
+    selectedInternalEquipmentType: "vide" | "trigle" | null;
+    internalEquipmentConfig: { [spacingId: string]: "vide" | "trigle" };
 
     ledColor: string;
     showMeasurements: boolean;

@@ -4,6 +4,7 @@ import SectionFrame from "./SectionFrame";
 import SectionColumns from "./SectionColumns";
 import SectionShelves from "./SectionShelves";
 import EtagereColumnHighlights from "./EtagereColumnHighlights";
+import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
 
 interface AngleWardrobeProps {
   sections: {
@@ -127,6 +128,14 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
         baseBarHeight={baseBarHeight}
         thickness={thickness}
       />
+      <InternalEquipmentSpacingHighlights
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+      />
 
       {/* Section B */}
       <group position={sectionBPosition} rotation={[0, -Math.PI / 2, 0]}>
@@ -170,6 +179,15 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
 
         {/* Étagère Column Highlights - Based on working ColumnHighlights pattern */}
         <EtagereColumnHighlights
+          sectionName="sectionB"
+          sectionData={sections.sectionB}
+          position={[0, 0, 0]}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
+        />
+
+        <InternalEquipmentSpacingHighlights
           sectionName="sectionB"
           sectionData={sections.sectionB}
           position={[0, 0, 0]}

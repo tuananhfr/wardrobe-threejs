@@ -40,6 +40,10 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     accordionOpen: "collapseType",
     selectedColumnId: null,
     hoveredColumnId: null,
+    selectedSpacingId: null,
+    hoveredSpacingId: null,
+    selectedInternalEquipmentType: null,
+    internalEquipmentConfig: {},
     activeView: "",
   });
 
@@ -48,6 +52,10 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     key: K,
     value: WardrobeState[K]
   ) => {
+    console.log(`WardrobeConfigProvider - updateConfig called:`, {
+      key,
+      value,
+    });
     setConfig((prevConfig) => ({
       ...prevConfig,
       [key]: value,

@@ -49,6 +49,15 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
     }
   }, [isEtagereMode]);
 
+  // Debug: Monitor selectedColumnId changes
+  useEffect(() => {
+    console.log(
+      "EtagereColumnHighlights - selectedColumnId changed to:",
+      config.selectedColumnId
+    );
+    console.log("Current accordionOpen:", config.accordionOpen);
+  }, [config.selectedColumnId, config.accordionOpen]);
+
   // Helper function to get column X position
   const getColumnXPosition = (colIndex: number) => {
     let startX = -width / 2 + thickness;
@@ -113,6 +122,13 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
 
   // Handle column click
   const handleColumnClick = (columnId: string) => {
+    console.log(
+      "EtagereColumnHighlights - handleColumnClick called with:",
+      columnId
+    );
+    console.log("Current selectedColumnId:", selectedColumnId);
+    console.log("Current accordionOpen:", config.accordionOpen);
+
     // Check if this is an Angle AB column
     const isBLastColumn =
       sectionName === "sectionB" &&
@@ -148,9 +164,11 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
     ) {
       if (selectedColumnId === "angle-ab") {
         // Deselect if already selected
+        console.log("Deselecting angle-ab");
         updateConfig("selectedColumnId", null);
       } else {
         // Select Angle AB
+        console.log("Selecting angle-ab");
         updateConfig("selectedColumnId", "angle-ab");
       }
     }
@@ -158,21 +176,27 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
     else if (isAngleACColumn && config.wardrobeType.id === "Forme U") {
       if (selectedColumnId === "angle-ac") {
         // Deselect if already selected
+        console.log("Deselecting angle-ac");
         updateConfig("selectedColumnId", null);
       } else {
         // Select Angle AC
+        console.log("Selecting angle-ac");
         updateConfig("selectedColumnId", "angle-ac");
       }
     } else {
       // Normal column selection
       if (selectedColumnId === columnId) {
         // Deselect if already selected
+        console.log("Deselecting normal column:", columnId);
         updateConfig("selectedColumnId", null);
       } else {
         // Select new column
+        console.log("Selecting normal column:", columnId);
         updateConfig("selectedColumnId", columnId);
       }
     }
+
+    console.log("After update - selectedColumnId:", config.selectedColumnId);
   };
 
   // Handle pointer move for hover detection

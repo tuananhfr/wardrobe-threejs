@@ -9,6 +9,7 @@ import AngleWardrobe from "./AngleWardrobe";
 import FormeUWardrobe from "./FormeUWardrobe";
 import WardrobeInteractions from "./WardrobeInteractions";
 import BaseBar from "./BaseBar";
+import RailRenderer from "./RailRenderer";
 
 interface WardrobeModelProps {
   showMeasurements?: boolean;
@@ -134,6 +135,14 @@ const WardrobeModel: React.FC<WardrobeModelProps> = () => {
       />
       {/* Main wardrobe structure */}
       {renderWardrobeType()}
+
+      {/* Rail renderer for trigle equipment */}
+      <RailRenderer
+        sections={sectionsInMeters.sections}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+      />
 
       {/* Interactive behaviors */}
       <WardrobeInteractions />

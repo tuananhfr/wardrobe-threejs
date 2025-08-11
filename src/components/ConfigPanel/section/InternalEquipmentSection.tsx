@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import inner from "@/assets/images/inner.svg";
 import empty from "@/assets/images/empty.svg";
@@ -13,6 +13,9 @@ const InternalEquipmentSection: React.FC = () => {
     x: number;
     y: number;
   } | null>(null);
+
+  // Track previous accordionOpen to detect actual changes
+  const prevAccordionOpenRef = useRef<string | null>(null);
 
   // Check if internal equipment accordion is open
   const isInternalEquipmentOpen =
@@ -130,33 +133,40 @@ const InternalEquipmentSection: React.FC = () => {
 
   // Reset selection and hover when accordion changes
   useEffect(() => {
-    // Only reset when accordion changes to a different one, not when staying in the same accordion
+    const currentAccordionOpen = config.accordionOpen;
+    const prevAccordionOpen = prevAccordionOpenRef.current;
+
+    // Only reset when accordion actually changes to a different one
     if (
-      config.accordionOpen !== "collapseInternalEquipment" &&
-      config.accordionOpen !== "collapseEtageres" &&
-      config.accordionOpen !== ""
+      prevAccordionOpen !== null &&
+      prevAccordionOpen !== currentAccordionOpen &&
+      prevAccordionOpen !== "" &&
+      currentAccordionOpen !== ""
     ) {
-      // Reset selected column when this accordion is not open
+      // Reset selected column when switching to a different accordion
       if (config.selectedColumnId) {
         updateConfig("selectedColumnId", null);
       }
-      // Reset selected spacing when this accordion is not open
+      // Reset selected spacing when switching to a different accordion
       if (config.selectedSpacingId) {
         updateConfig("selectedSpacingId", null);
       }
-      // Reset hovered column when this accordion is not open
+      // Reset hovered column when switching to a different accordion
       if (config.hoveredColumnId) {
         updateConfig("hoveredColumnId", null);
       }
-      // Reset hovered spacing when this accordion is not open
+      // Reset hovered spacing when switching to a different accordion
       if (config.hoveredSpacingId) {
         updateConfig("hoveredSpacingId", null);
       }
-      // Reset selected internal equipment type when this accordion is not open
+      // Reset selected internal equipment type when switching to a different accordion
       if (config.selectedInternalEquipmentType) {
         updateConfig("selectedInternalEquipmentType", null);
       }
     }
+
+    // Update the previous accordion open reference
+    prevAccordionOpenRef.current = currentAccordionOpen;
   }, [config.accordionOpen, updateConfig]);
 
   // Handle internal equipment type selection

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useWardrobeShelves } from "@/hooks/useWardrobeShelves";
 
@@ -12,6 +12,9 @@ const EtagereSection: React.FC = () => {
 
     MIN_SHELF_SPACING,
   } = useWardrobeShelves();
+
+  // Track previous accordionOpen to detect actual changes
+  const prevAccordionOpenRef = useRef<string | null>(null);
 
   // Check if étagère accordion is open
   const isEtagereOpen = config.accordionOpen === "collapseEtageres";
@@ -308,22 +311,30 @@ const EtagereSection: React.FC = () => {
   }, [config.selectedColumnId]);
 
   // Reset selection and hover when accordion changes
-  // useEffect(() => {
-  //   // Only reset when accordion changes to a different one, not when staying in the same accordion
-  //   if (
-  //     config.accordionOpen !== "collapseEtageres" &&
-  //     config.accordionOpen !== ""
-  //   ) {
-  //     // Reset selected column when this accordion is not open
-  //     if (config.selectedColumnId) {
-  //       updateConfig("selectedColumnId", null);
-  //     }
-  //     // Reset hovered column when this accordion is not open
-  //     if (config.hoveredColumnId) {
-  //       updateConfig("hoveredColumnId", null);
-  //     }
-  //   }
-  // }, [config.accordionOpen, updateConfig]);
+  useEffect(() => {
+    const currentAccordionOpen = config.accordionOpen;
+    const prevAccordionOpen = prevAccordionOpenRef.current;
+
+    // Only reset when accordion actually changes to a different one
+    if (
+      prevAccordionOpen !== null &&
+      prevAccordionOpen !== currentAccordionOpen &&
+      prevAccordionOpen !== "" &&
+      currentAccordionOpen !== ""
+    ) {
+      // Reset selected column when switching to a different accordion
+      if (config.selectedColumnId) {
+        updateConfig("selectedColumnId", null);
+      }
+      // Reset hovered column when switching to a different accordion
+      if (config.hoveredColumnId) {
+        updateConfig("hoveredColumnId", null);
+      }
+    }
+
+    // Update the previous accordion open reference
+    prevAccordionOpenRef.current = currentAccordionOpen;
+  }, [config.accordionOpen, updateConfig]);
 
   // Debug: Monitor selectedColumnId changes
   useEffect(() => {

@@ -8,6 +8,7 @@ import EtagereColumnHighlights from "./EtagereColumnHighlights"; // New working 
 import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
 import DoorsDrawersHighlights from "./DoorsDrawersHighlights";
 import DoorsDrawersRenderer from "./DoorsDrawersRenderer";
+import RailRenderer from "./RailRenderer";
 
 interface LinearWardrobeProps {
   sections: {
@@ -108,6 +109,15 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
         baseBarHeight={baseBarHeight}
         thickness={thickness}
         texture={texture}
+      />
+
+      {/* Rail Renderer for Section A */}
+      <RailRenderer
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
       />
     </group>
   );

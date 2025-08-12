@@ -32,20 +32,14 @@ const EtagereSection: React.FC = () => {
 
   // Handle column click
   const handleColumnClick = (columnId: string) => {
-    console.log("EtagereSection - handleColumnClick called with:", columnId);
-    console.log("Current selectedColumnId:", config.selectedColumnId);
-
     if (config.selectedColumnId === columnId) {
       // Deselect if already selected
-      console.log("Deselecting column:", columnId);
+
       updateConfig("selectedColumnId", null);
     } else {
       // Select new column
-      console.log("Selecting new column:", columnId);
       updateConfig("selectedColumnId", columnId);
     }
-
-    console.log("After update - selectedColumnId:", config.selectedColumnId);
   };
 
   // Handle Angle AB selection (treats A-last and B-first as one column)
@@ -335,15 +329,6 @@ const EtagereSection: React.FC = () => {
     // Update the previous accordion open reference
     prevAccordionOpenRef.current = currentAccordionOpen;
   }, [config.accordionOpen, updateConfig]);
-
-  // Debug: Monitor selectedColumnId changes
-  useEffect(() => {
-    console.log(
-      "EtagereSection - selectedColumnId changed to:",
-      config.selectedColumnId
-    );
-    console.log("Current accordionOpen:", config.accordionOpen);
-  }, [config.selectedColumnId, config.accordionOpen]);
 
   // Sync with actual data after user changes for Angle AB
   useEffect(() => {

@@ -54,10 +54,6 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     key: K,
     value: WardrobeState[K]
   ) => {
-    console.log(`WardrobeConfigProvider - updateConfig called:`, {
-      key,
-      value,
-    });
     setConfig((prevConfig) => ({
       ...prevConfig,
       [key]: value,

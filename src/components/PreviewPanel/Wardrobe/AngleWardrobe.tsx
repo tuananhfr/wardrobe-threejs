@@ -7,6 +7,7 @@ import EtagereColumnHighlights from "./EtagereColumnHighlights";
 import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
 import DoorsDrawersHighlights from "./DoorsDrawersHighlights";
 import DoorsDrawersRenderer from "./DoorsDrawersRenderer";
+import RailRenderer from "./RailRenderer";
 
 interface AngleWardrobeProps {
   sections: {
@@ -159,6 +160,15 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
         texture={texture}
       />
 
+      {/* Rail Renderer for Section A */}
+      <RailRenderer
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+      />
+
       {/* Section B */}
       <group position={sectionBPosition} rotation={[0, -Math.PI / 2, 0]}>
         <SectionFrame
@@ -236,6 +246,15 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
           baseBarHeight={baseBarHeight}
           thickness={thickness}
           texture={texture}
+        />
+
+        {/* Rail Renderer for Section B */}
+        <RailRenderer
+          sectionName="sectionB"
+          sectionData={sections.sectionB}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
         />
       </group>
     </group>

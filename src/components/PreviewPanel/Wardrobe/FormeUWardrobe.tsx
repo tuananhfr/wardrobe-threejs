@@ -7,6 +7,7 @@ import EtagereColumnHighlights from "./EtagereColumnHighlights";
 import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
 import DoorsDrawersHighlights from "./DoorsDrawersHighlights";
 import DoorsDrawersRenderer from "./DoorsDrawersRenderer";
+import RailRenderer from "./RailRenderer";
 
 interface FormeUWardrobeProps {
   sections: {
@@ -170,6 +171,15 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
         texture={texture}
       />
 
+      {/* Rail Renderer for Section A */}
+      <RailRenderer
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+      />
+
       {/* Section B - cánh trái */}
       <group position={sectionBPosition} rotation={[0, Math.PI / 2, 0]}>
         <SectionFrame
@@ -246,6 +256,15 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           baseBarHeight={baseBarHeight}
           thickness={thickness}
           texture={texture}
+        />
+
+        {/* Rail Renderer for Section B */}
+        <RailRenderer
+          sectionName="sectionB"
+          sectionData={sections.sectionB}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
         />
       </group>
 
@@ -325,6 +344,15 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           baseBarHeight={baseBarHeight}
           thickness={thickness}
           texture={texture}
+        />
+
+        {/* Rail Renderer for Section C */}
+        <RailRenderer
+          sectionName="sectionC"
+          sectionData={sections.sectionC}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
         />
       </group>
     </group>

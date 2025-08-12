@@ -102,7 +102,6 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
 
       {/* Doors and Drawers Renderer */}
       <DoorsDrawersRenderer
-        sectionName="sectionA"
         sectionData={sections.sectionA}
         position={[0, 0, 0]}
         height={height}

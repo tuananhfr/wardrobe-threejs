@@ -151,7 +151,6 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
 
       {/* Doors and Drawers Renderer */}
       <DoorsDrawersRenderer
-        sectionName="sectionA"
         sectionData={sections.sectionA}
         position={[0, 0, 0]}
         height={height}
@@ -231,7 +230,6 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
 
         {/* Doors and Drawers Renderer */}
         <DoorsDrawersRenderer
-          sectionName="sectionB"
           sectionData={sections.sectionB}
           position={[0, 0, 0]}
           height={height}

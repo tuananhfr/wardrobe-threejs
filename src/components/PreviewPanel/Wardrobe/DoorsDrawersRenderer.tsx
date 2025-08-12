@@ -1,11 +1,10 @@
 // src/components/PreviewPanel/Wardrobe/DoorsDrawersRenderer.tsx
-import React, { useRef, useState } from "react";
+import React, { useRef } from "react";
 import * as THREE from "three";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useFrame } from "@react-three/fiber";
 
 interface DoorsDrawersRendererProps {
-  sectionName: string;
   sectionData: WardrobeSection;
   position: [number, number, number];
   height: number;
@@ -15,7 +14,6 @@ interface DoorsDrawersRendererProps {
 }
 
 const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
-  sectionName,
   sectionData,
   position,
   height,

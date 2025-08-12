@@ -162,7 +162,6 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
 
       {/* Doors and Drawers Renderer for Section A */}
       <DoorsDrawersRenderer
-        sectionName="sectionA"
         sectionData={sections.sectionA}
         position={[0, 0, 0]}
         height={height}
@@ -241,7 +240,6 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
 
         {/* Doors and Drawers Renderer for Section B */}
         <DoorsDrawersRenderer
-          sectionName="sectionB"
           sectionData={sections.sectionB}
           position={[0, 0, 0]}
           height={height}
@@ -321,7 +319,6 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
 
         {/* Doors and Drawers Renderer for Section C */}
         <DoorsDrawersRenderer
-          sectionName="sectionC"
           sectionData={sections.sectionC}
           position={[0, 0, 0]}
           height={height}

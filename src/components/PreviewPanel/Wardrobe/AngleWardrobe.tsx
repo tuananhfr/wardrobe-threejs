@@ -5,6 +5,8 @@ import SectionColumns from "./SectionColumns";
 import SectionShelves from "./SectionShelves";
 import EtagereColumnHighlights from "./EtagereColumnHighlights";
 import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
+import DoorsDrawersHighlights from "./DoorsDrawersHighlights";
+import DoorsDrawersRenderer from "./DoorsDrawersRenderer";
 
 interface AngleWardrobeProps {
   sections: {
@@ -137,6 +139,27 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
         thickness={thickness}
       />
 
+      {/* Doors and Drawers Highlights */}
+      <DoorsDrawersHighlights
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+      />
+
+      {/* Doors and Drawers Renderer */}
+      <DoorsDrawersRenderer
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+        texture={texture}
+      />
+
       {/* Section B */}
       <group position={sectionBPosition} rotation={[0, -Math.PI / 2, 0]}>
         <SectionFrame
@@ -194,6 +217,27 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
           height={height}
           baseBarHeight={baseBarHeight}
           thickness={thickness}
+        />
+
+        {/* Doors and Drawers Highlights */}
+        <DoorsDrawersHighlights
+          sectionName="sectionB"
+          sectionData={sections.sectionB}
+          position={[0, 0, 0]}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
+        />
+
+        {/* Doors and Drawers Renderer */}
+        <DoorsDrawersRenderer
+          sectionName="sectionB"
+          sectionData={sections.sectionB}
+          position={[0, 0, 0]}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
+          texture={texture}
         />
       </group>
     </group>

@@ -29,6 +29,24 @@ declare global {
     hoveredSpacingId: string | null;
     selectedInternalEquipmentType: "vide" | "trigle" | null;
     internalEquipmentConfig: { [spacingId: string]: "vide" | "trigle" };
+    selectedDoorsDrawersType:
+      | "vide"
+      | "leftDoor"
+      | "rightDoor"
+      | "drawer"
+      | "doubleSwingDoor"
+      | "slidingDoor"
+      | "slidingMirrorDoor"
+      | null;
+    doorsDrawersConfig: {
+      [spacingId: string]:
+        | "leftDoor"
+        | "rightDoor"
+        | "drawer"
+        | "doubleSwingDoor"
+        | "slidingDoor"
+        | "slidingMirrorDoor";
+    };
 
     ledColor: string;
     showMeasurements: boolean;

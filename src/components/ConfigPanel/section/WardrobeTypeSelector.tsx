@@ -14,6 +14,16 @@ const WardrobeTypeSelector: React.FC = () => {
   const selectedWardrobeType = config.wardrobeType;
 
   const handleWardrobeTypeSelect = (wardrobeType: WardrobeType) => {
+    // Reset facades when changing wardrobe type
+    updateConfig("doorsDrawersConfig", {});
+    updateConfig("internalEquipmentConfig", {});
+    updateConfig("selectedColumnId", null);
+    updateConfig("selectedSpacingId", null);
+    updateConfig("selectedDoorsDrawersType", null);
+    updateConfig("selectedInternalEquipmentType", null);
+    updateConfig("hoveredColumnId", null);
+    updateConfig("hoveredSpacingId", null);
+
     // Update config context
     updateConfig("wardrobeType", wardrobeType);
   };

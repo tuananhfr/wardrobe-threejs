@@ -6,6 +6,8 @@ import SectionColumns from "./SectionColumns";
 import SectionShelves from "./SectionShelves";
 import EtagereColumnHighlights from "./EtagereColumnHighlights"; // New working component
 import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
+import DoorsDrawersHighlights from "./DoorsDrawersHighlights";
+import DoorsDrawersRenderer from "./DoorsDrawersRenderer";
 
 interface LinearWardrobeProps {
   sections: {
@@ -86,6 +88,27 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
         height={height}
         baseBarHeight={baseBarHeight}
         thickness={thickness}
+      />
+
+      {/* Doors and Drawers Highlights */}
+      <DoorsDrawersHighlights
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+      />
+
+      {/* Doors and Drawers Renderer */}
+      <DoorsDrawersRenderer
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+        texture={texture}
       />
     </group>
   );

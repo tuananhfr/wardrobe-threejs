@@ -11,6 +11,7 @@ import TextureSelector from "./section/TextureSelector";
 import LEDColorSelector from "./section/LEDColorSelector";
 import EtagereSection from "./section/EtagereSection";
 import InternalEquipmentSection from "./section/InternalEquipmentSection";
+import DoorsDrawersSection from "./section/DoorsDrawersSection";
 
 const ConfigPanel: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
@@ -128,6 +129,9 @@ const ConfigPanel: React.FC = () => {
       {/* 6. internal equipment */}
       <InternalEquipmentSection />
 
+      {/* 7. doors & drawers */}
+      <DoorsDrawersSection />
+
       {/* n. Sélection & Textures */}
       <div className="accordion-item">
         <h2 className="accordion-header" id="headingTextures">
@@ -142,7 +146,7 @@ const ConfigPanel: React.FC = () => {
             aria-controls="collapseTextures"
             onClick={texturesAccordion.handleToggle}
           >
-            n. Sélection & Textures
+            8. Sélection & Textures
           </button>
         </h2>
         <div

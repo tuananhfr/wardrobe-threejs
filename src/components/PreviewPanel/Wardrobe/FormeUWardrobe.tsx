@@ -5,6 +5,8 @@ import SectionColumns from "./SectionColumns";
 import SectionShelves from "./SectionShelves";
 import EtagereColumnHighlights from "./EtagereColumnHighlights";
 import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
+import DoorsDrawersHighlights from "./DoorsDrawersHighlights";
+import DoorsDrawersRenderer from "./DoorsDrawersRenderer";
 
 interface FormeUWardrobeProps {
   sections: {
@@ -148,6 +150,27 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
         thickness={thickness}
       />
 
+      {/* Doors and Drawers Highlights for Section A */}
+      <DoorsDrawersHighlights
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+      />
+
+      {/* Doors and Drawers Renderer for Section A */}
+      <DoorsDrawersRenderer
+        sectionName="sectionA"
+        sectionData={sections.sectionA}
+        position={[0, 0, 0]}
+        height={height}
+        baseBarHeight={baseBarHeight}
+        thickness={thickness}
+        texture={texture}
+      />
+
       {/* Section B - cánh trái */}
       <group position={sectionBPosition} rotation={[0, Math.PI / 2, 0]}>
         <SectionFrame
@@ -204,6 +227,27 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           height={height}
           baseBarHeight={baseBarHeight}
           thickness={thickness}
+        />
+
+        {/* Doors and Drawers Highlights for Section B */}
+        <DoorsDrawersHighlights
+          sectionName="sectionB"
+          sectionData={sections.sectionB}
+          position={[0, 0, 0]}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
+        />
+
+        {/* Doors and Drawers Renderer for Section B */}
+        <DoorsDrawersRenderer
+          sectionName="sectionB"
+          sectionData={sections.sectionB}
+          position={[0, 0, 0]}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
+          texture={texture}
         />
       </group>
 
@@ -263,6 +307,27 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           height={height}
           baseBarHeight={baseBarHeight}
           thickness={thickness}
+        />
+
+        {/* Doors and Drawers Highlights for Section C */}
+        <DoorsDrawersHighlights
+          sectionName="sectionC"
+          sectionData={sections.sectionC}
+          position={[0, 0, 0]}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
+        />
+
+        {/* Doors and Drawers Renderer for Section C */}
+        <DoorsDrawersRenderer
+          sectionName="sectionC"
+          sectionData={sections.sectionC}
+          position={[0, 0, 0]}
+          height={height}
+          baseBarHeight={baseBarHeight}
+          thickness={thickness}
+          texture={texture}
         />
       </group>
     </group>

@@ -46,6 +46,8 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     internalEquipmentConfig: {},
     selectedDoorsDrawersType: null,
     doorsDrawersConfig: {},
+    handleType: "none",
+    handleConfig: {},
     activeView: "",
   });
 

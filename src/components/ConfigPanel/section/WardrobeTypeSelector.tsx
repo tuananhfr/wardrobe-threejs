@@ -1,5 +1,5 @@
 import { useConfig } from "@/components/context/WardrobeContext";
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 
 const WardrobeTypeSelector: React.FC = () => {
   const { config, updateConfig } = useConfig();
@@ -9,20 +9,27 @@ const WardrobeTypeSelector: React.FC = () => {
     x: number;
     y: number;
   } | null>(null);
+  const hasInitializedRef = useRef(false);
 
   // Get current selected wardrobe type from config
   const selectedWardrobeType = config.wardrobeType;
 
   const handleWardrobeTypeSelect = (wardrobeType: WardrobeType) => {
-    // Reset facades when changing wardrobe type
-    updateConfig("doorsDrawersConfig", {});
-    updateConfig("internalEquipmentConfig", {});
-    updateConfig("selectedColumnId", null);
-    updateConfig("selectedSpacingId", null);
-    updateConfig("selectedDoorsDrawersType", null);
-    updateConfig("selectedInternalEquipmentType", null);
-    updateConfig("hoveredColumnId", null);
-    updateConfig("hoveredSpacingId", null);
+    // Only reset if actually changing to a different wardrobe type AND not on first mount
+    if (
+      wardrobeType.id !== config.wardrobeType.id &&
+      hasInitializedRef.current
+    ) {
+      // Reset facades when changing wardrobe type
+      updateConfig("doorsDrawersConfig", {});
+      updateConfig("internalEquipmentConfig", {});
+      updateConfig("selectedColumnId", null);
+      updateConfig("selectedSpacingId", null);
+      updateConfig("selectedDoorsDrawersType", null);
+      updateConfig("selectedInternalEquipmentType", null);
+      updateConfig("hoveredColumnId", null);
+      updateConfig("hoveredSpacingId", null);
+    }
 
     // Update config context
     updateConfig("wardrobeType", wardrobeType);

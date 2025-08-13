@@ -48,6 +48,11 @@ declare global {
         | "slidingMirrorDoor";
     };
 
+    handleType: "none" | "round" | "bar" | "recessed";
+    handleConfig: {
+      [spacingId: string]: "none" | "round" | "bar" | "recessed";
+    };
+
     ledColor: string;
     showMeasurements: boolean;
   }

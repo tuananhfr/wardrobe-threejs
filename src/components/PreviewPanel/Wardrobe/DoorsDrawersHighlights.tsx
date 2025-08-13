@@ -281,12 +281,15 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
       }
     });
 
-    // NEW LOGIC: Remove drawer from spacings that are too small (< 60cm)
+    // NEW LOGIC: Remove drawer from spacings that are too small (< 10cm or > 60cm)
     Object.keys(updatedConfig).forEach((spacingId) => {
       if (updatedConfig[spacingId] === "drawer") {
         const spacingHeight = getSpacingHeight(spacingId);
-        if (spacingHeight !== null && spacingHeight < 60) {
-          // Remove drawer from spacing that's too small
+        if (
+          spacingHeight !== null &&
+          (spacingHeight < 10 || spacingHeight > 60)
+        ) {
+          // Remove drawer from spacing that's too small or too large
           delete updatedConfig[spacingId];
           hasChanges = true;
         }

@@ -99,18 +99,15 @@ const DoorsDrawersSection: React.FC = () => {
     const parts = spacingId.split("-");
     if (parts.length < 4) return null;
 
-    // Extract column ID and spacing index
+    // Extract column ID
     let columnId: string;
-    let spacingIndex: number;
 
     if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
       // Format: "sectionA-col-1-spacing-3"
       columnId = `${parts[0]}-${parts[1]}-${parts[2]}`; // "sectionA-col-1"
-      spacingIndex = parseInt(parts[4]); // 3
     } else {
       // Fallback to old format: "columnId-spacing-index"
       columnId = parts[0];
-      spacingIndex = parseInt(parts[2]);
     }
 
     // Find the column in sections
@@ -551,11 +548,6 @@ const DoorsDrawersSection: React.FC = () => {
 
   const renderDoorsDrawersTypeButtons = () => {
     const drawerDisabled = isDrawerDisabled();
-    const doubleSwingDoorDisabled = isDoubleSwingDoorDisabled();
-    const leftRightDoorDisabled = isLeftRightDoorDisabled();
-    const spacingHeight = config.selectedSpacingId
-      ? getSpacingHeight(config.selectedSpacingId)
-      : null;
 
     return (
       <div className="p-4">

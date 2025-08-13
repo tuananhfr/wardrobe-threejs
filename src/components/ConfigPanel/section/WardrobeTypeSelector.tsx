@@ -1,5 +1,5 @@
 import { useConfig } from "@/components/context/WardrobeContext";
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 
 const WardrobeTypeSelector: React.FC = () => {
   const { config, updateConfig } = useConfig();

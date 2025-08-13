@@ -3,7 +3,6 @@ import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import inner from "@/assets/images/inner.svg";
 import empty from "@/assets/images/empty.svg";
 import rail from "@/assets/images/rail.svg";
-import railRetractable from "@/assets/images/rail_retractable.svg";
 import pantograph from "@/assets/images/pantograph.svg";
 import doubleRail from "@/assets/images/double-rail.svg";
 

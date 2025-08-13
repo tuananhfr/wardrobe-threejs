@@ -3,6 +3,9 @@ import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import inner from "@/assets/images/inner.svg";
 import empty from "@/assets/images/empty.svg";
 import rail from "@/assets/images/rail.svg";
+import railRetractable from "@/assets/images/rail_retractable.svg";
+import pantograph from "@/assets/images/pantograph.svg";
+import doubleRail from "@/assets/images/double-rail.svg";
 
 const InternalEquipmentSection: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
@@ -90,6 +93,28 @@ const InternalEquipmentSection: React.FC = () => {
     return spacingHeight < 80;
   };
 
+  // Check if penderie escamotable button should be disabled
+  const isPenderieEscamotableDisabled = (): boolean => {
+    if (!config.selectedSpacingId) return false;
+
+    const spacingHeight = getSpacingHeight(config.selectedSpacingId);
+    if (spacingHeight === null) return false;
+
+    // Disable if spacing height is less than 160cm
+    return spacingHeight < 160;
+  };
+
+  // Check if double rail button should be disabled
+  const isDoubleRailDisabled = (): boolean => {
+    if (!config.selectedSpacingId) return false;
+
+    const spacingHeight = getSpacingHeight(config.selectedSpacingId);
+    if (spacingHeight === null) return false;
+
+    // Disable if spacing height is less than 200cm
+    return spacingHeight < 200;
+  };
+
   // Update selected equipment type based on selected spacing
   useEffect(() => {
     if (config.selectedSpacingId) {
@@ -119,6 +144,40 @@ const InternalEquipmentSection: React.FC = () => {
         currentEquipment === "trigle"
       ) {
         // Remove trigle from config
+        const updatedConfig = { ...config.internalEquipmentConfig };
+        delete updatedConfig[config.selectedSpacingId];
+
+        // Update config
+        updateConfig("internalEquipmentConfig", updatedConfig);
+
+        // Update selected equipment type to vide
+        updateConfig("selectedInternalEquipmentType", "vide");
+      }
+
+      // If spacing is too small and has penderie escamotable, remove it and set to vide
+      if (
+        spacingHeight !== null &&
+        spacingHeight < 160 &&
+        currentEquipment === "penderieEscamotable"
+      ) {
+        // Remove penderie escamotable from config
+        const updatedConfig = { ...config.internalEquipmentConfig };
+        delete updatedConfig[config.selectedSpacingId];
+
+        // Update config
+        updateConfig("internalEquipmentConfig", updatedConfig);
+
+        // Update selected equipment type to vide
+        updateConfig("selectedInternalEquipmentType", "vide");
+      }
+
+      // If spacing is too small and has double rail, remove it and set to vide
+      if (
+        spacingHeight !== null &&
+        spacingHeight < 200 &&
+        currentEquipment === "doubleRail"
+      ) {
+        // Remove double rail from config
         const updatedConfig = { ...config.internalEquipmentConfig };
         delete updatedConfig[config.selectedSpacingId];
 
@@ -170,9 +229,21 @@ const InternalEquipmentSection: React.FC = () => {
   }, [config.accordionOpen, updateConfig]);
 
   // Handle internal equipment type selection
-  const handleEquipmentTypeSelect = (type: "vide" | "trigle") => {
+  const handleEquipmentTypeSelect = (
+    type: "vide" | "trigle" | "penderieEscamotable" | "doubleRail"
+  ) => {
     // Prevent selecting trigle if spacing is too small
     if (type === "trigle" && isTrigleDisabled()) {
+      return;
+    }
+
+    // Prevent selecting penderie escamotable if spacing is too small
+    if (type === "penderieEscamotable" && isPenderieEscamotableDisabled()) {
+      return;
+    }
+
+    // Prevent selecting double rail if spacing is too small
+    if (type === "doubleRail" && isDoubleRailDisabled()) {
       return;
     }
 
@@ -203,6 +274,36 @@ const InternalEquipmentSection: React.FC = () => {
     setHoveredButton(null);
   };
 
+  const handlePenderieEscamotableMouseEnter = (event: React.MouseEvent) => {
+    if (isPenderieEscamotableDisabled()) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setHoveredButton({
+        type: "penderieEscamotable",
+        x: rect.left + rect.width / 2,
+        y: rect.top - 10,
+      });
+    }
+  };
+
+  const handlePenderieEscamotableMouseLeave = () => {
+    setHoveredButton(null);
+  };
+
+  const handleDoubleRailMouseEnter = (event: React.MouseEvent) => {
+    if (isDoubleRailDisabled()) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setHoveredButton({
+        type: "doubleRail",
+        x: rect.left + rect.width / 2,
+        y: rect.top - 10,
+      });
+    }
+  };
+
+  const handleDoubleRailMouseLeave = () => {
+    setHoveredButton(null);
+  };
+
   const renderSelectionPrompt = () => (
     <div className="text-center py-5">
       <p className="text-secondary">
@@ -219,6 +320,8 @@ const InternalEquipmentSection: React.FC = () => {
 
   const renderEquipmentTypeButtons = () => {
     const trigleDisabled = isTrigleDisabled();
+    const penderieEscamotableDisabled = isPenderieEscamotableDisabled();
+    const doubleRailDisabled = isDoubleRailDisabled();
     const spacingHeight = config.selectedSpacingId
       ? getSpacingHeight(config.selectedSpacingId)
       : null;
@@ -232,7 +335,7 @@ const InternalEquipmentSection: React.FC = () => {
               className="btn w-100 p-3"
               onClick={() => handleEquipmentTypeSelect("vide")}
               style={{
-                height: "120px",
+                height: "140px",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
@@ -249,7 +352,7 @@ const InternalEquipmentSection: React.FC = () => {
                 <img
                   src={empty}
                   alt="Vide"
-                  style={{ width: "40px", height: "40px" }}
+                  style={{ width: "50px", height: "50px" }}
                 />
               </div>
               <span
@@ -274,7 +377,7 @@ const InternalEquipmentSection: React.FC = () => {
                 onClick={() => handleEquipmentTypeSelect("trigle")}
                 disabled={trigleDisabled}
                 style={{
-                  height: "120px",
+                  height: "140px",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
@@ -294,8 +397,8 @@ const InternalEquipmentSection: React.FC = () => {
                     src={rail}
                     alt="Trigle"
                     style={{
-                      width: "40px",
-                      height: "40px",
+                      width: "50px",
+                      height: "50px",
                       opacity: trigleDisabled ? 0.5 : 1,
                     }}
                   />
@@ -309,7 +412,123 @@ const InternalEquipmentSection: React.FC = () => {
                       : ""
                   }`}
                 >
-                  Trigle
+                  Penderie
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+        <div className="row g-3 mt-3">
+          <div className="col-6">
+            <div
+              onMouseEnter={handlePenderieEscamotableMouseEnter}
+              onMouseLeave={handlePenderieEscamotableMouseLeave}
+              style={{ position: "relative" }}
+            >
+              <button
+                className={`btn w-100 p-3 ${
+                  penderieEscamotableDisabled ? "disabled" : ""
+                }`}
+                onClick={() => handleEquipmentTypeSelect("penderieEscamotable")}
+                disabled={penderieEscamotableDisabled}
+                style={{
+                  height: "140px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: `1px solid ${
+                    config.selectedInternalEquipmentType ===
+                    "penderieEscamotable"
+                      ? "#0d6efd"
+                      : "#dee2e6"
+                  }`,
+                  backgroundColor: penderieEscamotableDisabled
+                    ? "#f8f9fa"
+                    : "transparent",
+                  opacity: penderieEscamotableDisabled ? 0.6 : 1,
+                  cursor: penderieEscamotableDisabled
+                    ? "not-allowed"
+                    : "pointer",
+                }}
+              >
+                <div className="mb-2" style={{ fontSize: "2rem" }}>
+                  <img
+                    src={pantograph}
+                    alt="Penderie Escamotable"
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                      opacity: penderieEscamotableDisabled ? 0.5 : 1,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`fw-bold ${
+                    config.selectedInternalEquipmentType ===
+                    "penderieEscamotable"
+                      ? "text-primary"
+                      : penderieEscamotableDisabled
+                      ? "text-muted"
+                      : ""
+                  }`}
+                >
+                  Penderie escamotable
+                </span>
+              </button>
+            </div>
+          </div>
+          <div className="col-6">
+            <div
+              onMouseEnter={handleDoubleRailMouseEnter}
+              onMouseLeave={handleDoubleRailMouseLeave}
+              style={{ position: "relative" }}
+            >
+              <button
+                className={`btn w-100 p-3 ${
+                  doubleRailDisabled ? "disabled" : ""
+                }`}
+                onClick={() => handleEquipmentTypeSelect("doubleRail")}
+                disabled={doubleRailDisabled}
+                style={{
+                  height: "140px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: `1px solid ${
+                    config.selectedInternalEquipmentType === "doubleRail"
+                      ? "#0d6efd"
+                      : "#dee2e6"
+                  }`,
+                  backgroundColor: doubleRailDisabled
+                    ? "#f8f9fa"
+                    : "transparent",
+                  opacity: doubleRailDisabled ? 0.6 : 1,
+                  cursor: doubleRailDisabled ? "not-allowed" : "pointer",
+                }}
+              >
+                <div className="mb-2" style={{ fontSize: "2rem" }}>
+                  <img
+                    src={doubleRail}
+                    alt="Double Rail"
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                      opacity: doubleRailDisabled ? 0.5 : 1,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`fw-bold ${
+                    config.selectedInternalEquipmentType === "doubleRail"
+                      ? "text-primary"
+                      : doubleRailDisabled
+                      ? "text-muted"
+                      : ""
+                  }`}
+                >
+                  Double rail
                 </span>
               </button>
             </div>
@@ -317,7 +536,7 @@ const InternalEquipmentSection: React.FC = () => {
         </div>
 
         {/* Tooltip - message đơn giản như alert */}
-        {hoveredButton && trigleDisabled && (
+        {hoveredButton && trigleDisabled && hoveredButton.type === "trigle" && (
           <div
             className="position-fixed bg-white text-dark p-3 rounded shadow-lg border"
             style={{
@@ -339,6 +558,60 @@ const InternalEquipmentSection: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Tooltip for Penderie Escamotable */}
+        {hoveredButton &&
+          penderieEscamotableDisabled &&
+          hoveredButton.type === "penderieEscamotable" && (
+            <div
+              className="position-fixed bg-white text-dark p-3 rounded shadow-lg border"
+              style={{
+                left: hoveredButton.x - 175,
+                top: hoveredButton.y - 80,
+                zIndex: 9999,
+                pointerEvents: "none",
+                minWidth: "350px",
+                fontSize: "14px",
+              }}
+            >
+              <div className="d-flex align-items-center">
+                <span>
+                  <p className="fw-bold">
+                    Cette option est compatible avec des dimensions de casier de
+                    :
+                  </p>
+                  <p>❌ &lt; 160 cm de hauteur (courant {spacingHeight} cm)</p>
+                </span>
+              </div>
+            </div>
+          )}
+
+        {/* Tooltip for Double Rail */}
+        {hoveredButton &&
+          doubleRailDisabled &&
+          hoveredButton.type === "doubleRail" && (
+            <div
+              className="position-fixed bg-white text-dark p-3 rounded shadow-lg border"
+              style={{
+                left: hoveredButton.x - 175,
+                top: hoveredButton.y - 80,
+                zIndex: 9999,
+                pointerEvents: "none",
+                minWidth: "350px",
+                fontSize: "14px",
+              }}
+            >
+              <div className="d-flex align-items-center">
+                <span>
+                  <p className="fw-bold">
+                    Cette option est compatible avec des dimensions de casier de
+                    :
+                  </p>
+                  <p>❌ &lt; 200 cm de hauteur (courant {spacingHeight} cm)</p>
+                </span>
+              </div>
+            </div>
+          )}
       </div>
     );
   };

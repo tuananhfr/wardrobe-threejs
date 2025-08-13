@@ -27,8 +27,19 @@ declare global {
     hoveredColumnId: string | null;
     selectedSpacingId: string | null;
     hoveredSpacingId: string | null;
-    selectedInternalEquipmentType: "vide" | "trigle" | null;
-    internalEquipmentConfig: { [spacingId: string]: "vide" | "trigle" };
+    selectedInternalEquipmentType:
+      | "vide"
+      | "trigle"
+      | "penderieEscamotable"
+      | "doubleRail"
+      | null;
+    internalEquipmentConfig: {
+      [spacingId: string]:
+        | "vide"
+        | "trigle"
+        | "penderieEscamotable"
+        | "doubleRail";
+    };
     selectedDoorsDrawersType:
       | "vide"
       | "leftDoor"

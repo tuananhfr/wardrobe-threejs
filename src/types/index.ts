@@ -26,6 +26,7 @@ declare global {
     selectedColumnId: string | null;
     hoveredColumnId: string | null;
     selectedSpacingId: string | null;
+    selectedSpacingIds: string[];
     hoveredSpacingId: string | null;
     selectedInternalEquipmentType:
       | "vide"
@@ -43,20 +44,30 @@ declare global {
     selectedDoorsDrawersType:
       | "vide"
       | "leftDoor"
+      | "leftDoorVerre"
       | "rightDoor"
+      | "rightDoorVerre"
       | "drawer"
+      | "drawerVerre"
       | "doubleSwingDoor"
+      | "doubleSwingDoorVerre"
       | "slidingDoor"
       | "slidingMirrorDoor"
+      | "slidingGlassDoor"
       | null;
     doorsDrawersConfig: {
       [spacingId: string]:
         | "leftDoor"
+        | "leftDoorVerre"
         | "rightDoor"
+        | "rightDoorVerre"
         | "drawer"
+        | "drawerVerre"
         | "doubleSwingDoor"
+        | "doubleSwingDoorVerre"
         | "slidingDoor"
-        | "slidingMirrorDoor";
+        | "slidingMirrorDoor"
+        | "slidingGlassDoor";
     };
 
     handleType: "none" | "round" | "bar" | "recessed";

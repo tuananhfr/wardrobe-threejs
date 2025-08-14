@@ -41,6 +41,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     selectedColumnId: null,
     hoveredColumnId: null,
     selectedSpacingId: null,
+    selectedSpacingIds: [],
     hoveredSpacingId: null,
     selectedInternalEquipmentType: null,
     internalEquipmentConfig: {},
@@ -48,6 +49,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     doorsDrawersConfig: {},
     handleType: "none",
     handleConfig: {},
+
     activeView: "",
   });
 

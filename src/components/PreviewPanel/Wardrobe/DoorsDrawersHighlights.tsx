@@ -35,15 +35,18 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
 
   // Check if doors drawers mode is active
   const isDoorsDrawersMode = config.accordionOpen === "collapseDoorsDrawers";
-  // const selectedColumnId = config.selectedColumnId; // not used here
 
   // Reset when doors drawers mode is disabled
   useEffect(() => {
     if (!isDoorsDrawersMode) {
       setHoveredSpacing(null);
       document.body.style.cursor = "auto";
+      // Reset all selected spacings when closing accordion
+      updateConfig("selectedSpacingIds", []);
+      updateConfig("selectedSpacingId", null);
+      updateConfig("selectedDoorsDrawersType", null);
     }
-  }, [isDoorsDrawersMode]);
+  }, [isDoorsDrawersMode, updateConfig]);
 
   // Helper function to get column X position
   const getColumnXPosition = (colIndex: number) => {
@@ -79,6 +82,58 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
       }
       return false;
     }
+    return false;
+  };
+
+  // Helper function to check if spacing is neighbor of selected spacings
+  const isNeighborOfSelected = (spacingId: string): boolean => {
+    const selectedSpacings = config.selectedSpacingIds || [];
+    if (selectedSpacings.length === 0) return false;
+
+    // Parse spacingId to get columnId and spacingIndex
+    const parts = spacingId.split("-");
+    if (parts.length < 4) return false;
+
+    let columnId: string;
+    let spacingIndex: number;
+
+    if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+      columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      spacingIndex = parseInt(parts[4]);
+    } else {
+      columnId = parts[0];
+      spacingIndex = parseInt(parts[2]);
+    }
+
+    // Check if any selected spacing is in the same column and is a neighbor
+    for (const selectedId of selectedSpacings) {
+      const selectedParts = selectedId.split("-");
+      if (selectedParts.length < 4) continue;
+
+      let selectedColumnId: string;
+      let selectedSpacingIndex: number;
+
+      if (
+        selectedParts.length === 5 &&
+        selectedParts[1] === "col" &&
+        selectedParts[3] === "spacing"
+      ) {
+        selectedColumnId = `${selectedParts[0]}-${selectedParts[1]}-${selectedParts[2]}`;
+        selectedSpacingIndex = parseInt(selectedParts[4]);
+      } else {
+        selectedColumnId = selectedParts[0];
+        selectedSpacingIndex = parseInt(selectedParts[2]);
+      }
+
+      // Same column and adjacent spacing
+      if (
+        selectedColumnId === columnId &&
+        Math.abs(selectedSpacingIndex - spacingIndex) === 1
+      ) {
+        return true;
+      }
+    }
+
     return false;
   };
 
@@ -301,22 +356,93 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
     }
   }, [config.wardrobeType, config.doorsDrawersConfig, updateConfig]);
 
-  // Handle spacing click
+  // Handle spacing click with new logic
   const handleSpacingClick = (spacingId: string) => {
-    if (config.selectedSpacingId === spacingId) {
-      // Deselect if already selected
+    const selectedSpacings = config.selectedSpacingIds || [];
+    const isCurrentlySelected = selectedSpacings.includes(spacingId);
+    const hasExistingConfig = config.doorsDrawersConfig[spacingId];
+
+    if (isCurrentlySelected) {
+      // Deselect all if clicking on already selected spacing
+      updateConfig("selectedSpacingIds", []);
       updateConfig("selectedSpacingId", null);
       updateConfig("selectedDoorsDrawersType", null);
     } else {
-      // Select new spacing
-      updateConfig("selectedSpacingId", spacingId);
+      // Check if clicking on neighbor of selected spacings
+      const isNeighbor = isNeighborOfSelected(spacingId);
+
+      // If clicking on spacing that already has config and there are already selected spacings, reset all selections
+      if (hasExistingConfig && selectedSpacings.length > 0) {
+        updateConfig("selectedSpacingIds", []);
+        updateConfig("selectedSpacingId", null);
+        updateConfig("selectedDoorsDrawersType", null);
+        return;
+      }
+
+      // If first select and clicking on spacing that already has config, select all configured spacings in the same column
+      if (hasExistingConfig && selectedSpacings.length === 0) {
+        // Get all spacings in the same column that have config
+        const parts = spacingId.split("-");
+        let columnId: string;
+
+        if (
+          parts.length === 5 &&
+          parts[1] === "col" &&
+          parts[3] === "spacing"
+        ) {
+          columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+        } else {
+          columnId = parts[0];
+        }
+
+        const configuredSpacingsInColumn = spacingPositions
+          .filter((pos) => {
+            const posParts = pos.spacingId.split("-");
+            let posColumnId: string;
+
+            if (
+              posParts.length === 5 &&
+              posParts[1] === "col" &&
+              posParts[3] === "spacing"
+            ) {
+              posColumnId = `${posParts[0]}-${posParts[1]}-${posParts[2]}`;
+            } else {
+              posColumnId = posParts[0];
+            }
+
+            return (
+              posColumnId === columnId &&
+              config.doorsDrawersConfig[pos.spacingId]
+            );
+          })
+          .map((pos) => pos.spacingId);
+
+        updateConfig("selectedSpacingIds", configuredSpacingsInColumn);
+        updateConfig("selectedSpacingId", spacingId);
+        updateConfig(
+          "selectedDoorsDrawersType",
+          config.doorsDrawersConfig[spacingId] as any
+        );
+        return;
+      }
+
+      if (isNeighbor) {
+        // Add to selected spacings
+        const newSelectedSpacings = [...selectedSpacings, spacingId];
+        updateConfig("selectedSpacingIds", newSelectedSpacings);
+        updateConfig("selectedSpacingId", spacingId); // Keep for backward compatibility
+      } else {
+        // Clear all and select this spacing
+        updateConfig("selectedSpacingIds", [spacingId]);
+        updateConfig("selectedSpacingId", spacingId);
+      }
 
       // Check if this spacing already has a configuration
       const existingType = config.doorsDrawersConfig[spacingId] || null;
       if (existingType) {
         updateConfig("selectedDoorsDrawersType", existingType as any);
       } else {
-        // Do not auto-assign; wait for user to choose in the panel
+        // Reset selectedDoorsDrawersType when selecting a spacing without configuration
         updateConfig("selectedDoorsDrawersType", null);
       }
     }
@@ -375,7 +501,8 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
     >
       {/* Spacing highlights */}
       {spacingPositions.map((pos) => {
-        const isSelected = config.selectedSpacingId === pos.spacingId;
+        const selectedSpacings = config.selectedSpacingIds || [];
+        const isSelected = selectedSpacings.includes(pos.spacingId);
         const isHovered = hoveredSpacing === pos.spacingId;
 
         // Determine highlight state and color
@@ -418,20 +545,28 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
 
       {/* Icons and labels */}
       {spacingPositions.map((pos) => {
-        const isSelected = config.selectedSpacingId === pos.spacingId;
+        const selectedSpacings = config.selectedSpacingIds || [];
+        const isSelected = selectedSpacings.includes(pos.spacingId);
         const isHovered = hoveredSpacing === pos.spacingId;
+        const isNeighbor = isNeighborOfSelected(pos.spacingId);
 
-        // Show icon only when hovered or selected
-        const shouldShowIcon = isHovered || isSelected;
+        // Show icon when:
+        // 1. Hovered (normal behavior)
+        // 2. Selected (normal behavior)
+        // 3. Neighbor of selected spacing (new behavior)
+        const shouldShowIcon = isHovered || isSelected || isNeighbor;
         if (!shouldShowIcon) return null;
 
-        // Determine icon properties based on whether it's a full column or spacing
+        // Determine icon properties
         let iconColor = "#4169E1"; // Default blue
-        let iconText = "+"; // Default plus like EtagereColumnHighlights
+        let iconText = "+"; // Default plus
 
         if (isSelected) {
           iconColor = "green";
           iconText = "✓";
+        } else if (isNeighbor) {
+          iconColor = "#4169E1";
+          iconText = "+";
         } else if (isHovered) {
           iconColor = "#4169E1";
           iconText = "+";

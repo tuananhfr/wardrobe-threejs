@@ -164,7 +164,11 @@ const DoorsDrawersSection: React.FC = () => {
 
     for (const spacingId of sectionSpacingIds) {
       const doorType = config.doorsDrawersConfig[spacingId];
-      if (doorType === "slidingDoor" || doorType === "slidingMirrorDoor") {
+      if (
+        doorType === "slidingDoor" ||
+        doorType === "slidingMirrorDoor" ||
+        doorType === "slidingGlassDoor"
+      ) {
         return doorType;
       }
     }
@@ -207,27 +211,51 @@ const DoorsDrawersSection: React.FC = () => {
 
   // Update selected doors drawers type based on selected spacing
   useEffect(() => {
+    console.log(
+      "useEffect triggered - selectedSpacingId:",
+      config.selectedSpacingId
+    );
+    console.log("current doorsDrawersConfig:", config.doorsDrawersConfig);
+
     if (config.selectedSpacingId) {
+      // First, check if the selected spacing has a specific configuration
+      const doorsDrawersType =
+        config.doorsDrawersConfig[config.selectedSpacingId];
+      console.log("Found doorsDrawersType for spacing:", doorsDrawersType);
+
+      if (doorsDrawersType) {
+        console.log("Setting selectedDoorsDrawersType to:", doorsDrawersType);
+        updateConfig("selectedDoorsDrawersType", doorsDrawersType);
+        return; // Don't override user's choice
+      }
+
+      // If no specific configuration exists, check if user explicitly chose "vide" (null)
+      if (config.selectedDoorsDrawersType === null) {
+        console.log("User chose vide, keeping null");
+        return; // Don't override user's choice of "vide"
+      }
+
+      // Only apply sliding door logic if no specific configuration exists and user didn't choose vide
       const sectionName = getSectionNameFromSpacingId(config.selectedSpacingId);
       const sectionSlidingDoorType = getSectionSlidingDoorType(sectionName);
 
       // If section has sliding door, show it regardless of current spacing
       if (sectionSlidingDoorType) {
+        console.log(
+          "Section has sliding door, setting to:",
+          sectionSlidingDoorType
+        );
         updateConfig("selectedDoorsDrawersType", sectionSlidingDoorType as any);
         return;
       }
 
-      // Otherwise, show the door type of the selected spacing
-      const doorsDrawersType =
-        config.doorsDrawersConfig[config.selectedSpacingId];
-      if (doorsDrawersType) {
-        updateConfig("selectedDoorsDrawersType", doorsDrawersType);
-      }
-      // Don't reset to null if no config found - keep current selection
+      // No configuration found
+      console.log("No config found, setting to null");
+      updateConfig("selectedDoorsDrawersType", null);
     } else {
       updateConfig("selectedDoorsDrawersType", null);
     }
-  }, [config.selectedSpacingId, config.doorsDrawersConfig]);
+  }, [config.selectedSpacingId, config.doorsDrawersConfig]); // Restore dependency
 
   // NEW LOGIC: Update selected doors drawers type when doors/drawers are removed due to unsuitable dimensions
   useEffect(() => {
@@ -243,7 +271,8 @@ const DoorsDrawersSection: React.FC = () => {
       if (
         spacingWidth !== null &&
         (spacingWidth < 40 || spacingWidth > 109) &&
-        currentDoorsDrawers === "doubleSwingDoor"
+        (currentDoorsDrawers === "doubleSwingDoor" ||
+          currentDoorsDrawers === "doubleSwingDoorVerre")
       ) {
         shouldRemove = true;
       }
@@ -253,7 +282,9 @@ const DoorsDrawersSection: React.FC = () => {
         spacingWidth !== null &&
         (spacingWidth < 26 || spacingWidth > 60) &&
         (currentDoorsDrawers === "leftDoor" ||
-          currentDoorsDrawers === "rightDoor")
+          currentDoorsDrawers === "leftDoorVerre" ||
+          currentDoorsDrawers === "rightDoor" ||
+          currentDoorsDrawers === "rightDoorVerre")
       ) {
         shouldRemove = true;
       }
@@ -262,7 +293,8 @@ const DoorsDrawersSection: React.FC = () => {
       if (
         spacingHeight !== null &&
         (spacingHeight < 10 || spacingHeight > 60) &&
-        currentDoorsDrawers === "drawer" &&
+        (currentDoorsDrawers === "drawer" ||
+          currentDoorsDrawers === "drawerVerre") &&
         !justSelectedDrawerRef.current // Don't remove if user just selected it
       ) {
         shouldRemove = true;
@@ -299,7 +331,8 @@ const DoorsDrawersSection: React.FC = () => {
       if (
         spacingWidth !== null &&
         (spacingWidth < 40 || spacingWidth > 109) &&
-        doorsDrawersType === "doubleSwingDoor"
+        (doorsDrawersType === "doubleSwingDoor" ||
+          doorsDrawersType === "doubleSwingDoorVerre")
       ) {
         shouldRemove = true;
       }
@@ -308,7 +341,10 @@ const DoorsDrawersSection: React.FC = () => {
       if (
         spacingWidth !== null &&
         (spacingWidth < 26 || spacingWidth > 60) &&
-        (doorsDrawersType === "leftDoor" || doorsDrawersType === "rightDoor")
+        (doorsDrawersType === "leftDoor" ||
+          doorsDrawersType === "leftDoorVerre" ||
+          doorsDrawersType === "rightDoor" ||
+          doorsDrawersType === "rightDoorVerre")
       ) {
         shouldRemove = true;
       }
@@ -317,7 +353,7 @@ const DoorsDrawersSection: React.FC = () => {
       if (
         spacingHeight !== null &&
         (spacingHeight < 10 || spacingHeight > 60) &&
-        doorsDrawersType === "drawer" &&
+        (doorsDrawersType === "drawer" || doorsDrawersType === "drawerVerre") &&
         !justSelectedDrawerRef.current // Don't remove if user just selected it
       ) {
         shouldRemove = true;
@@ -391,14 +427,19 @@ const DoorsDrawersSection: React.FC = () => {
     type:
       | "vide"
       | "leftDoor"
+      | "leftDoorVerre"
       | "rightDoor"
+      | "rightDoorVerre"
       | "drawer"
+      | "drawerVerre"
       | "doubleSwingDoor"
+      | "doubleSwingDoorVerre"
       | "slidingDoor"
       | "slidingMirrorDoor"
+      | "slidingGlassDoor"
   ) => {
     // Set flag to prevent immediate removal of newly selected drawer
-    if (type === "drawer") {
+    if (type === "drawer" || type === "drawerVerre") {
       justSelectedDrawerRef.current = true;
       // Reset flag after a short delay
       setTimeout(() => {
@@ -407,73 +448,120 @@ const DoorsDrawersSection: React.FC = () => {
     }
 
     // Prevent selecting drawer if spacing height is not suitable
-    if (type === "drawer" && isDrawerDisabled()) {
+    if ((type === "drawer" || type === "drawerVerre") && isDrawerDisabled()) {
       console.log("Drawer selection prevented - height not suitable");
       return;
     }
 
     // Prevent selecting double swing door if spacing width is not suitable
-    if (type === "doubleSwingDoor" && isDoubleSwingDoorDisabled()) {
+    if (
+      (type === "doubleSwingDoor" || type === "doubleSwingDoorVerre") &&
+      isDoubleSwingDoorDisabled()
+    ) {
       return;
     }
 
     // Prevent selecting left/right door if spacing width is not suitable
     if (
-      (type === "leftDoor" || type === "rightDoor") &&
+      (type === "leftDoor" ||
+        type === "leftDoorVerre" ||
+        type === "rightDoor" ||
+        type === "rightDoorVerre") &&
       isLeftRightDoorDisabled()
     ) {
       return;
     }
 
     if (type === "vide") {
+      console.log("Selecting vide for spacing:", config.selectedSpacingId);
       updateConfig("selectedDoorsDrawersType", null);
+
+      // Apply vide to all spacings in section (like sliding door logic)
       if (config.selectedSpacingId) {
-        const updated = { ...config.doorsDrawersConfig } as any;
-        delete updated[config.selectedSpacingId];
-        updateConfig("doorsDrawersConfig", updated);
+        const sectionName = getSectionNameFromSpacingId(
+          config.selectedSpacingId
+        );
+        const sectionSpacingIds = getSpacingIdsInSection(sectionName);
+
+        const updatedConfig = { ...config.doorsDrawersConfig };
+
+        // Clear all door types in the section
+        sectionSpacingIds.forEach((spacingId) => {
+          delete updatedConfig[spacingId];
+        });
+
+        console.log("Removing all configs for section:", updatedConfig);
+        updateConfig("doorsDrawersConfig", updatedConfig);
       }
       return;
     }
 
     updateConfig("selectedDoorsDrawersType", type as any);
 
-    // Save doors drawers configuration for the selected spacing
-    if (config.selectedSpacingId) {
-      const sectionName = getSectionNameFromSpacingId(config.selectedSpacingId);
-      const sectionSpacingIds = getSpacingIdsInSection(sectionName);
+    // Save doors drawers configuration for the selected spacings
+    const selectedSpacings = config.selectedSpacingIds || [];
+    const hasMultipleSelected = selectedSpacings.length > 0;
+    const targetSpacings = hasMultipleSelected
+      ? selectedSpacings
+      : config.selectedSpacingId
+      ? [config.selectedSpacingId]
+      : [];
+
+    if (targetSpacings.length > 0) {
+      const updatedConfig = { ...config.doorsDrawersConfig };
 
       // If selecting sliding door, apply to all spacings in section
-      if (type === "slidingDoor" || type === "slidingMirrorDoor") {
-        const updatedConfig = { ...config.doorsDrawersConfig };
-
-        // Clear all other door types in the section
-        sectionSpacingIds.forEach((spacingId) => {
-          delete updatedConfig[spacingId];
+      if (
+        type === "slidingDoor" ||
+        type === "slidingMirrorDoor" ||
+        type === "slidingGlassDoor"
+      ) {
+        // Get all sections that contain selected spacings
+        const sectionsToUpdate = new Set<string>();
+        targetSpacings.forEach((spacingId) => {
+          const sectionName = getSectionNameFromSpacingId(spacingId);
+          sectionsToUpdate.add(sectionName);
         });
 
-        // Apply sliding door to all spacings in section
-        sectionSpacingIds.forEach((spacingId) => {
-          updatedConfig[spacingId] = type as any;
+        // Apply sliding door to all spacings in affected sections
+        sectionsToUpdate.forEach((sectionName) => {
+          const sectionSpacingIds = getSpacingIdsInSection(sectionName);
+
+          // Clear all other door types in the section
+          sectionSpacingIds.forEach((spacingId) => {
+            delete updatedConfig[spacingId];
+          });
+
+          // Apply sliding door to all spacings in section
+          sectionSpacingIds.forEach((spacingId) => {
+            updatedConfig[spacingId] = type as any;
+          });
         });
 
         updateConfig("doorsDrawersConfig", updatedConfig);
       } else {
-        // If selecting other door types, remove sliding doors from section first
-        const updatedConfig = { ...config.doorsDrawersConfig };
+        // If selecting other door types, apply to all selected spacings
+        targetSpacings.forEach((spacingId) => {
+          if (spacingId) {
+            // Remove sliding doors from the section first
+            const sectionName = getSectionNameFromSpacingId(spacingId);
+            const sectionSpacingIds = getSpacingIdsInSection(sectionName);
 
-        // Remove sliding doors from all spacings in section
-        sectionSpacingIds.forEach((spacingId) => {
-          const currentType = updatedConfig[spacingId];
-          if (
-            currentType === "slidingDoor" ||
-            currentType === "slidingMirrorDoor"
-          ) {
-            delete updatedConfig[spacingId];
+            sectionSpacingIds.forEach((sectionSpacingId) => {
+              const currentType = updatedConfig[sectionSpacingId];
+              if (
+                currentType === "slidingDoor" ||
+                currentType === "slidingMirrorDoor" ||
+                currentType === "slidingGlassDoor"
+              ) {
+                delete updatedConfig[sectionSpacingId];
+              }
+            });
+
+            // Apply new door type to this spacing
+            updatedConfig[spacingId] = type as any;
           }
         });
-
-        // Apply new door type to selected spacing
-        updatedConfig[config.selectedSpacingId] = type as any;
 
         updateConfig("doorsDrawersConfig", updatedConfig);
       }
@@ -487,12 +575,18 @@ const DoorsDrawersSection: React.FC = () => {
   ) => {
     let isDisabled = false;
 
-    if (type === "drawer" && isDrawerDisabled()) {
-      isDisabled = true;
-    } else if (type === "doubleSwingDoor" && isDoubleSwingDoorDisabled()) {
+    if ((type === "drawer" || type === "drawerVerre") && isDrawerDisabled()) {
       isDisabled = true;
     } else if (
-      (type === "leftDoor" || type === "rightDoor") &&
+      (type === "doubleSwingDoor" || type === "doubleSwingDoorVerre") &&
+      isDoubleSwingDoorDisabled()
+    ) {
+      isDisabled = true;
+    } else if (
+      (type === "leftDoor" ||
+        type === "leftDoorVerre" ||
+        type === "rightDoor" ||
+        type === "rightDoorVerre") &&
       isLeftRightDoorDisabled()
     ) {
       isDisabled = true;
@@ -579,13 +673,14 @@ const DoorsDrawersSection: React.FC = () => {
                 className={`fw-bold ${
                   config.selectedDoorsDrawersType === null ? "text-primary" : ""
                 }`}
+                style={{ fontSize: "12px", paddingBottom: "8px" }}
               >
                 Vide
               </span>
             </button>
           </div>
 
-          {/* Porte Gauche */}
+          {/* Porte Gauche (Bois) */}
           <div className="col-6">
             <div
               onMouseEnter={(e) =>
@@ -637,6 +732,7 @@ const DoorsDrawersSection: React.FC = () => {
                       ? "text-muted"
                       : ""
                   }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
                 >
                   Porte Gauche
                 </span>
@@ -644,7 +740,67 @@ const DoorsDrawersSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Porte Droite */}
+          {/* Porte Gauche en Verre */}
+          <div className="col-6">
+            <div
+              onMouseEnter={(e) =>
+                handleDisabledButtonMouseEnter(e, "leftDoorVerre")
+              }
+              onMouseLeave={handleDisabledButtonMouseLeave}
+              style={{ position: "relative" }}
+            >
+              <button
+                className={`btn w-100 p-3 ${
+                  isLeftRightDoorDisabled() ? "disabled" : ""
+                }`}
+                onClick={() => handleDoorsDrawersTypeSelect("leftDoorVerre")}
+                disabled={isLeftRightDoorDisabled()}
+                style={{
+                  height: "120px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: `1px solid ${
+                    config.selectedDoorsDrawersType === "leftDoorVerre"
+                      ? "#0d6efd"
+                      : "#dee2e6"
+                  }`,
+                  backgroundColor: isLeftRightDoorDisabled()
+                    ? "#f8f9fa"
+                    : "transparent",
+                  opacity: isLeftRightDoorDisabled() ? 0.6 : 1,
+                  cursor: isLeftRightDoorDisabled() ? "not-allowed" : "pointer",
+                }}
+              >
+                <div className="mb-2" style={{ fontSize: "2rem" }}>
+                  <img
+                    src={leftDoor}
+                    alt="Porte Gauche en Verre"
+                    style={{
+                      width: 40,
+                      height: 40,
+                      opacity: isLeftRightDoorDisabled() ? 0.5 : 1,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`fw-bold ${
+                    config.selectedDoorsDrawersType === "leftDoorVerre"
+                      ? "text-primary"
+                      : isLeftRightDoorDisabled()
+                      ? "text-muted"
+                      : ""
+                  }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
+                >
+                  Porte Gauche en Verre
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Porte Droite (Bois) */}
           <div className="col-6">
             <div
               onMouseEnter={(e) =>
@@ -696,6 +852,7 @@ const DoorsDrawersSection: React.FC = () => {
                       ? "text-muted"
                       : ""
                   }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
                 >
                   Porte Droite
                 </span>
@@ -703,7 +860,67 @@ const DoorsDrawersSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Tiroir */}
+          {/* Porte Droite en Verre */}
+          <div className="col-6">
+            <div
+              onMouseEnter={(e) =>
+                handleDisabledButtonMouseEnter(e, "rightDoorVerre")
+              }
+              onMouseLeave={handleDisabledButtonMouseLeave}
+              style={{ position: "relative" }}
+            >
+              <button
+                className={`btn w-100 p-3 ${
+                  isLeftRightDoorDisabled() ? "disabled" : ""
+                }`}
+                onClick={() => handleDoorsDrawersTypeSelect("rightDoorVerre")}
+                disabled={isLeftRightDoorDisabled()}
+                style={{
+                  height: "120px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: `1px solid ${
+                    config.selectedDoorsDrawersType === "rightDoorVerre"
+                      ? "#0d6efd"
+                      : "#dee2e6"
+                  }`,
+                  backgroundColor: isLeftRightDoorDisabled()
+                    ? "#f8f9fa"
+                    : "transparent",
+                  opacity: isLeftRightDoorDisabled() ? 0.6 : 1,
+                  cursor: isLeftRightDoorDisabled() ? "not-allowed" : "pointer",
+                }}
+              >
+                <div className="mb-2" style={{ fontSize: "2rem" }}>
+                  <img
+                    src={rightDoor}
+                    alt="Porte Droite en Verre"
+                    style={{
+                      width: 40,
+                      height: 40,
+                      opacity: isLeftRightDoorDisabled() ? 0.5 : 1,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`fw-bold ${
+                    config.selectedDoorsDrawersType === "rightDoorVerre"
+                      ? "text-primary"
+                      : isLeftRightDoorDisabled()
+                      ? "text-muted"
+                      : ""
+                  }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
+                >
+                  Porte Droite en Verre
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Tiroir (Bois) */}
           <div className="col-6">
             <div
               onMouseEnter={(e) => handleDisabledButtonMouseEnter(e, "drawer")}
@@ -749,6 +966,7 @@ const DoorsDrawersSection: React.FC = () => {
                       ? "text-muted"
                       : ""
                   }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
                 >
                   Tiroir
                 </span>
@@ -756,7 +974,63 @@ const DoorsDrawersSection: React.FC = () => {
             </div>
           </div>
 
-          {/* Porte double battant */}
+          {/* Tiroir en Verre */}
+          <div className="col-6">
+            <div
+              onMouseEnter={(e) =>
+                handleDisabledButtonMouseEnter(e, "drawerVerre")
+              }
+              onMouseLeave={handleDisabledButtonMouseLeave}
+              style={{ position: "relative" }}
+            >
+              <button
+                className={`btn w-100 p-3 ${drawerDisabled ? "disabled" : ""}`}
+                onClick={() => handleDoorsDrawersTypeSelect("drawerVerre")}
+                disabled={drawerDisabled}
+                style={{
+                  height: "120px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: `1px solid ${
+                    config.selectedDoorsDrawersType === "drawerVerre"
+                      ? "#0d6efd"
+                      : "#dee2e6"
+                  }`,
+                  backgroundColor: drawerDisabled ? "#f8f9fa" : "transparent",
+                  opacity: drawerDisabled ? 0.6 : 1,
+                  cursor: drawerDisabled ? "not-allowed" : "pointer",
+                }}
+              >
+                <div className="mb-2" style={{ fontSize: "2rem" }}>
+                  <img
+                    src={drawer}
+                    alt="Tiroir en Verre"
+                    style={{
+                      width: 40,
+                      height: 40,
+                      opacity: drawerDisabled ? 0.5 : 1,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`fw-bold ${
+                    config.selectedDoorsDrawersType === "drawerVerre"
+                      ? "text-primary"
+                      : drawerDisabled
+                      ? "text-muted"
+                      : ""
+                  }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
+                >
+                  Tiroir en Verre
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Porte double battant (Bois) */}
           <div className="col-6">
             <div
               onMouseEnter={(e) =>
@@ -810,8 +1084,73 @@ const DoorsDrawersSection: React.FC = () => {
                       ? "text-muted"
                       : ""
                   }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
                 >
                   Porte double battant
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Porte double battant en Verre */}
+          <div className="col-6">
+            <div
+              onMouseEnter={(e) =>
+                handleDisabledButtonMouseEnter(e, "doubleSwingDoorVerre")
+              }
+              onMouseLeave={handleDisabledButtonMouseLeave}
+              style={{ position: "relative" }}
+            >
+              <button
+                className={`btn w-100 p-3 ${
+                  isDoubleSwingDoorDisabled() ? "disabled" : ""
+                }`}
+                onClick={() =>
+                  handleDoorsDrawersTypeSelect("doubleSwingDoorVerre")
+                }
+                disabled={isDoubleSwingDoorDisabled()}
+                style={{
+                  height: "120px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: `1px solid ${
+                    config.selectedDoorsDrawersType === "doubleSwingDoorVerre"
+                      ? "#0d6efd"
+                      : "#dee2e6"
+                  }`,
+                  backgroundColor: isDoubleSwingDoorDisabled()
+                    ? "#f8f9fa"
+                    : "transparent",
+                  opacity: isDoubleSwingDoorDisabled() ? 0.6 : 1,
+                  cursor: isDoubleSwingDoorDisabled()
+                    ? "not-allowed"
+                    : "pointer",
+                }}
+              >
+                <div className="mb-2" style={{ fontSize: "2rem" }}>
+                  <img
+                    src={doubleSwingDoor}
+                    alt="Porte double battant en Verre"
+                    style={{
+                      width: 40,
+                      height: 40,
+                      opacity: isDoubleSwingDoorDisabled() ? 0.5 : 1,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`fw-bold ${
+                    config.selectedDoorsDrawersType === "doubleSwingDoorVerre"
+                      ? "text-primary"
+                      : isDoubleSwingDoorDisabled()
+                      ? "text-muted"
+                      : ""
+                  }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
+                >
+                  Porte double battant en Verre
                 </span>
               </button>
             </div>
@@ -857,6 +1196,7 @@ const DoorsDrawersSection: React.FC = () => {
                       ? "text-primary"
                       : ""
                   }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
                 >
                   Porte coulissante
                 </span>
@@ -906,8 +1246,57 @@ const DoorsDrawersSection: React.FC = () => {
                       ? "text-primary"
                       : ""
                   }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
                 >
                   Porte coulissante en miroir
+                </span>
+              </button>
+            </div>
+          </div>
+
+          {/* Porte coulissante en verre */}
+          <div className="col-6">
+            <div
+              onMouseEnter={(e) =>
+                handleSlidingDoorMouseEnter(e, "slidingGlassDoor")
+              }
+              onMouseLeave={handleSlidingDoorMouseLeave}
+              style={{ position: "relative" }}
+            >
+              <button
+                className="btn w-100 p-3"
+                onClick={() => handleDoorsDrawersTypeSelect("slidingGlassDoor")}
+                style={{
+                  height: "120px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: `1px solid ${
+                    config.selectedDoorsDrawersType === "slidingGlassDoor"
+                      ? "#0d6efd"
+                      : "#dee2e6"
+                  }`,
+                  backgroundColor: "transparent",
+                }}
+              >
+                <div className="mb-2" style={{ fontSize: "2rem" }}>
+                  {/* placeholder */}
+                  <img
+                    src={door}
+                    alt="Porte coulissante en verre"
+                    style={{ width: 40, height: 40 }}
+                  />
+                </div>
+                <span
+                  className={`fw-bold ${
+                    config.selectedDoorsDrawersType === "slidingGlassDoor"
+                      ? "text-primary"
+                      : ""
+                  }`}
+                  style={{ fontSize: "12px", paddingBottom: "8px" }}
+                >
+                  Porte coulissante en verre
                 </span>
               </button>
             </div>
@@ -1011,10 +1400,16 @@ const DoorsDrawersSection: React.FC = () => {
         </div>
       </div>
 
-      {/* Section chọn tay nắm */}
-      {config.selectedSpacingId &&
+      {/* Section chọn tay nắm - chỉ hiển thị cho porte (không phải tiroir hoặc cửa kéo) */}
+      {isDoorsDrawersOpen &&
+        config.selectedSpacingId &&
         config.selectedDoorsDrawersType &&
-        config.selectedDoorsDrawersType !== "vide" && (
+        config.selectedDoorsDrawersType !== "vide" &&
+        config.selectedDoorsDrawersType !== "drawer" &&
+        config.selectedDoorsDrawersType !== "drawerVerre" &&
+        config.selectedDoorsDrawersType !== "slidingDoor" &&
+        config.selectedDoorsDrawersType !== "slidingMirrorDoor" &&
+        config.selectedDoorsDrawersType !== "slidingGlassDoor" && (
           <div className="mt-4">
             <h6 className="mb-3">Choisir le type de poignée</h6>
             <div className="row g-2">

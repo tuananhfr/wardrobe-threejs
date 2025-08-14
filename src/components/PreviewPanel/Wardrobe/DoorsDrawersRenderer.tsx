@@ -80,13 +80,497 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     return "";
   };
 
-  // Helper function to get all spacingIds in the same section
-  const getSpacingIdsInSection = (sectionName: string): string[] => {
-    return spacingPositions
-      .map((pos) => pos.spacingId)
-      .filter(
-        (spacingId) => getSectionNameFromSpacingId(spacingId) === sectionName
+  // Helper function to get column X position
+  const getColumnXPosition = (colIndex: number) => {
+    let startX = -width / 2 + thickness;
+    for (let i = 0; i < colIndex; i++) {
+      startX += sectionData.columns[i].width + thickness;
+    }
+    return startX;
+  };
+
+  // Generate spacing positions for all columns (same logic as DoorsDrawersHighlights)
+  const getSpacingPositions = () => {
+    const positions: Array<{
+      spacingId: string;
+      columnId: string;
+      columnIndex: number;
+      spacingIndex: number;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      spacing: number;
+      isFullColumn: boolean;
+    }> = [];
+
+    for (let colIndex = 0; colIndex < sectionData.columns.length; colIndex++) {
+      const column = sectionData.columns[colIndex];
+      const colWidth = column.width;
+      const colHeight = height - baseBarHeight - 2 * thickness;
+      const startX = getColumnXPosition(colIndex);
+
+      // Get shelf spacings for this column
+      const spacings = column.shelves?.spacings || [];
+
+      // If no spacings, create a default spacing for the entire column height
+      if (spacings.length === 0) {
+        const spacingId = `${column.id}-spacing-0`;
+        positions.push({
+          spacingId,
+          columnId: column.id,
+          columnIndex: colIndex,
+          spacingIndex: 0,
+          x: startX + colWidth / 2,
+          y: 0,
+          width: colWidth,
+          height: colHeight,
+          spacing: colHeight,
+          isFullColumn: true,
+        });
+        continue;
+      }
+
+      // Calculate spacing heights and positions
+      let currentY = baseBarHeight * 100; // Keep in cm for calculation
+
+      for (
+        let spacingIndex = 0;
+        spacingIndex < spacings.length;
+        spacingIndex++
+      ) {
+        const spacing = spacings[spacingIndex];
+        const spacingHeightCm = spacing.spacing;
+        const spacingHeight = spacingHeightCm / 100;
+        const worldY = (currentY + spacingHeightCm / 2) / 100 - height / 2;
+        const spacingId = `${column.id}-spacing-${spacingIndex}`;
+
+        positions.push({
+          spacingId,
+          columnId: column.id,
+          columnIndex: colIndex,
+          spacingIndex,
+          x: startX + colWidth / 2,
+          y: worldY,
+          width: colWidth,
+          height: spacingHeight,
+          spacing: spacingHeight,
+          isFullColumn: false,
+        });
+
+        currentY += spacingHeightCm + thickness * 100;
+      }
+    }
+
+    return positions;
+  };
+
+  const spacingPositions = getSpacingPositions();
+
+  // Helper function to create group data
+  const createGroupData = (
+    spacingIds: string[],
+    columnId: string,
+    startIndex: number,
+    endIndex: number
+  ) => {
+    // Find column data
+    const column = sectionData.columns.find((col) => col.id === columnId);
+    if (!column) return null;
+
+    const columnWidth = column.width;
+    const columnIndex = sectionData.columns.findIndex(
+      (col) => col.id === columnId
+    );
+    const startX = getColumnXPosition(columnIndex);
+
+    // Calculate total height and center position
+    let totalHeight = 0;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    // Sort spacingIds by index to calculate height correctly
+    const sortedSpacingIds = spacingIds.sort((a, b) => {
+      const partsA = a.split("-");
+      const partsB = b.split("-");
+      const indexA =
+        partsA.length === 5 ? parseInt(partsA[4]) : parseInt(partsA[2]);
+      const indexB =
+        partsB.length === 5 ? parseInt(partsB[4]) : parseInt(partsB[2]);
+      return indexA - indexB;
+    });
+
+    sortedSpacingIds.forEach((spacingId, index) => {
+      const spacingPos = spacingPositions.find(
+        (pos) => pos.spacingId === spacingId
       );
+      if (spacingPos) {
+        totalHeight += spacingPos.height;
+        minY = Math.min(minY, spacingPos.y - spacingPos.height / 2);
+        maxY = Math.max(maxY, spacingPos.y + spacingPos.height / 2);
+
+        // Add thickness between spacings (except for the last one)
+        if (index < sortedSpacingIds.length - 1) {
+          totalHeight += thickness;
+        }
+      }
+    });
+
+    const centerY = (minY + maxY) / 2;
+    const groupId = `${columnId}-group-${startIndex}-${endIndex}`;
+
+    return {
+      groupId,
+      spacingIds,
+      startIndex,
+      endIndex,
+      columnId,
+      totalHeight,
+      centerY,
+      width: columnWidth,
+      x: startX + columnWidth / 2,
+    };
+  };
+
+  // Helper function to group consecutive spacings with same config by column
+  const getGroupedConfiguredSpacings = () => {
+    // Get all spacings that have config
+    const configuredSpacings = spacingPositions
+      .filter((pos) => config.doorsDrawersConfig[pos.spacingId])
+      .map((pos) => pos.spacingId);
+
+    if (configuredSpacings.length === 0) return [];
+
+    // Group by column
+    const columnGroups: Record<string, string[]> = {};
+
+    configuredSpacings.forEach((spacingId) => {
+      const parts = spacingId.split("-");
+      if (parts.length < 4) return;
+
+      let columnId: string;
+
+      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      } else {
+        columnId = parts[0];
+      }
+
+      if (!columnGroups[columnId]) {
+        columnGroups[columnId] = [];
+      }
+      columnGroups[columnId].push(spacingId);
+    });
+
+    // For each column, group consecutive spacings with same config
+    const groupedSpacings: Array<{
+      groupId: string;
+      spacingIds: string[];
+      startIndex: number;
+      endIndex: number;
+      columnId: string;
+      totalHeight: number;
+      centerY: number;
+      width: number;
+      x: number;
+    }> = [];
+
+    Object.entries(columnGroups).forEach(([columnId, spacingIds]) => {
+      // Sort by spacing index
+      const sortedSpacings = spacingIds.sort((a, b) => {
+        const partsA = a.split("-");
+        const partsB = b.split("-");
+        const indexA =
+          partsA.length === 5 ? parseInt(partsA[4]) : parseInt(partsA[2]);
+        const indexB =
+          partsB.length === 5 ? parseInt(partsB[4]) : parseInt(partsB[2]);
+        return indexA - indexB;
+      });
+
+      // Find consecutive groups with same config
+      let currentGroup: string[] = [];
+      let currentStartIndex = -1;
+      let currentConfig: string | null = null;
+
+      sortedSpacings.forEach((spacingId) => {
+        const parts = spacingId.split("-");
+        const spacingIndex =
+          parts.length === 5 ? parseInt(parts[4]) : parseInt(parts[2]);
+        const spacingConfig = config.doorsDrawersConfig[spacingId];
+
+        // Check if this is a drawer - drawers should not be grouped
+        const isDrawer =
+          spacingConfig === "drawer" || spacingConfig === "drawerVerre";
+
+        // Check if this is a sliding door - sliding doors have their own logic
+        const isSlidingDoor =
+          spacingConfig === "slidingDoor" ||
+          spacingConfig === "slidingMirrorDoor" ||
+          spacingConfig === "slidingGlassDoor";
+
+        if (currentGroup.length === 0) {
+          currentGroup = [spacingId];
+          currentStartIndex = spacingIndex;
+          currentConfig = spacingConfig;
+        } else {
+          const lastParts = currentGroup[currentGroup.length - 1].split("-");
+          const lastIndex =
+            lastParts.length === 5
+              ? parseInt(lastParts[4])
+              : parseInt(lastParts[2]);
+
+          // For drawers, never group them
+          if (
+            isDrawer ||
+            currentConfig === "drawer" ||
+            currentConfig === "drawerVerre"
+          ) {
+            // Create individual group for drawer
+            if (currentGroup.length > 0) {
+              const groupData = createGroupData(
+                currentGroup,
+                columnId,
+                currentStartIndex,
+                lastIndex
+              );
+              if (groupData) {
+                groupedSpacings.push(groupData);
+              }
+            }
+            currentGroup = [spacingId];
+            currentStartIndex = spacingIndex;
+            currentConfig = spacingConfig;
+          }
+          // For sliding doors, never group them (they have their own logic)
+          else if (
+            isSlidingDoor ||
+            currentConfig === "slidingDoor" ||
+            currentConfig === "slidingMirrorDoor" ||
+            currentConfig === "slidingGlassDoor"
+          ) {
+            // Create individual group for sliding door
+            if (currentGroup.length > 0) {
+              const groupData = createGroupData(
+                currentGroup,
+                columnId,
+                currentStartIndex,
+                lastIndex
+              );
+              if (groupData) {
+                groupedSpacings.push(groupData);
+              }
+            }
+            currentGroup = [spacingId];
+            currentStartIndex = spacingIndex;
+            currentConfig = spacingConfig;
+          }
+          // For other door types, group if consecutive and same config
+          else if (
+            spacingIndex === lastIndex + 1 &&
+            spacingConfig === currentConfig
+          ) {
+            // Consecutive with same config
+            currentGroup.push(spacingId);
+          } else {
+            // Not consecutive or different config, create group and start new one
+            if (currentGroup.length > 0) {
+              const groupData = createGroupData(
+                currentGroup,
+                columnId,
+                currentStartIndex,
+                lastIndex
+              );
+              if (groupData) {
+                groupedSpacings.push(groupData);
+              }
+            }
+            currentGroup = [spacingId];
+            currentStartIndex = spacingIndex;
+            currentConfig = spacingConfig;
+          }
+        }
+      });
+
+      // Add the last group
+      if (currentGroup.length > 0) {
+        const lastParts = currentGroup[currentGroup.length - 1].split("-");
+        const lastIndex =
+          lastParts.length === 5
+            ? parseInt(lastParts[4])
+            : parseInt(lastParts[2]);
+        const groupData = createGroupData(
+          currentGroup,
+          columnId,
+          currentStartIndex,
+          lastIndex
+        );
+        if (groupData) {
+          groupedSpacings.push(groupData);
+        }
+      }
+    });
+
+    return groupedSpacings;
+  };
+
+  // Helper function to group consecutive selected spacings by column
+  const getGroupedSelectedSpacings = () => {
+    const selectedSpacings = config.selectedSpacingIds || [];
+    if (selectedSpacings.length === 0) return [];
+
+    // Group by column
+    const columnGroups: Record<string, string[]> = {};
+
+    selectedSpacings.forEach((spacingId) => {
+      const parts = spacingId.split("-");
+      if (parts.length < 4) return;
+
+      let columnId: string;
+
+      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      } else {
+        columnId = parts[0];
+      }
+
+      if (!columnGroups[columnId]) {
+        columnGroups[columnId] = [];
+      }
+      columnGroups[columnId].push(spacingId);
+    });
+
+    // For each column, group consecutive spacings
+    const groupedSpacings: Array<{
+      groupId: string;
+      spacingIds: string[];
+      startIndex: number;
+      endIndex: number;
+      columnId: string;
+      totalHeight: number;
+      centerY: number;
+      width: number;
+      x: number;
+    }> = [];
+
+    Object.entries(columnGroups).forEach(([columnId, spacingIds]) => {
+      // Sort by spacing index
+      const sortedSpacings = spacingIds.sort((a, b) => {
+        const partsA = a.split("-");
+        const partsB = b.split("-");
+        const indexA =
+          partsA.length === 5 ? parseInt(partsA[4]) : parseInt(partsA[2]);
+        const indexB =
+          partsB.length === 5 ? parseInt(partsB[4]) : parseInt(partsB[2]);
+        return indexA - indexB;
+      });
+
+      // Find consecutive groups
+      let currentGroup: string[] = [];
+      let currentStartIndex = -1;
+
+      sortedSpacings.forEach((spacingId) => {
+        const parts = spacingId.split("-");
+        const spacingIndex =
+          parts.length === 5 ? parseInt(parts[4]) : parseInt(parts[2]);
+        const spacingConfig = config.doorsDrawersConfig[spacingId];
+
+        // Check if this is a drawer - drawers should not be grouped
+        const isDrawer =
+          spacingConfig === "drawer" || spacingConfig === "drawerVerre";
+
+        // Check if this is a sliding door - sliding doors have their own logic
+        const isSlidingDoor =
+          spacingConfig === "slidingDoor" ||
+          spacingConfig === "slidingMirrorDoor" ||
+          spacingConfig === "slidingGlassDoor";
+
+        if (currentGroup.length === 0) {
+          currentGroup = [spacingId];
+          currentStartIndex = spacingIndex;
+        } else {
+          const lastParts = currentGroup[currentGroup.length - 1].split("-");
+          const lastIndex =
+            lastParts.length === 5
+              ? parseInt(lastParts[4])
+              : parseInt(lastParts[2]);
+
+          // For drawers, never group them
+          if (isDrawer) {
+            // Create individual group for drawer
+            if (currentGroup.length > 0) {
+              const groupData = createGroupData(
+                currentGroup,
+                columnId,
+                currentStartIndex,
+                lastIndex
+              );
+              if (groupData) {
+                groupedSpacings.push(groupData);
+              }
+            }
+            currentGroup = [spacingId];
+            currentStartIndex = spacingIndex;
+          }
+          // For sliding doors, never group them (they have their own logic)
+          else if (isSlidingDoor) {
+            // Create individual group for sliding door
+            if (currentGroup.length > 0) {
+              const groupData = createGroupData(
+                currentGroup,
+                columnId,
+                currentStartIndex,
+                lastIndex
+              );
+              if (groupData) {
+                groupedSpacings.push(groupData);
+              }
+            }
+            currentGroup = [spacingId];
+            currentStartIndex = spacingIndex;
+          }
+          // For other door types, group if consecutive
+          else if (spacingIndex === lastIndex + 1) {
+            // Consecutive
+            currentGroup.push(spacingId);
+          } else {
+            // Not consecutive, create group and start new one
+            if (currentGroup.length > 0) {
+              const groupData = createGroupData(
+                currentGroup,
+                columnId,
+                currentStartIndex,
+                lastIndex
+              );
+              if (groupData) {
+                groupedSpacings.push(groupData);
+              }
+            }
+            currentGroup = [spacingId];
+            currentStartIndex = spacingIndex;
+          }
+        }
+      });
+
+      // Add the last group
+      if (currentGroup.length > 0) {
+        const lastParts = currentGroup[currentGroup.length - 1].split("-");
+        const lastIndex =
+          lastParts.length === 5
+            ? parseInt(lastParts[4])
+            : parseInt(lastParts[2]);
+        const groupData = createGroupData(
+          currentGroup,
+          columnId,
+          currentStartIndex,
+          lastIndex
+        );
+        if (groupData) {
+          groupedSpacings.push(groupData);
+        }
+      }
+    });
+
+    return groupedSpacings;
   };
 
   // useFrame to step animations
@@ -194,7 +678,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     const group = sliderGroupsRef.current[key];
     if (!group) return;
     const currentX = group.position.x;
-    const travel = Math.min(widthAmt * 0.35, 0.35); // slide 35% of width, cap 35cm
+    // Mảnh 1 di chuyển tới vị trí của mảnh 2 và ngược lại
+    const travel = widthAmt; // Di chuyển toàn bộ width của mảnh cửa
     const targetX = open ? baseX + dir * travel : baseX;
 
     // Disable animation when accordion 7 is open
@@ -213,97 +698,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     };
   };
 
-  // Helper function to get column X position
-  const getColumnXPosition = (colIndex: number) => {
-    let startX = -width / 2 + thickness;
-    for (let i = 0; i < colIndex; i++) {
-      startX += sectionData.columns[i].width + thickness;
-    }
-    return startX;
-  };
-
-  // Generate spacing positions for all columns (same logic as DoorsDrawersHighlights)
-  const getSpacingPositions = () => {
-    const positions: Array<{
-      spacingId: string;
-      columnId: string;
-      columnIndex: number;
-      spacingIndex: number;
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      spacing: number;
-      isFullColumn: boolean;
-    }> = [];
-
-    for (let colIndex = 0; colIndex < sectionData.columns.length; colIndex++) {
-      const column = sectionData.columns[colIndex];
-      const colWidth = column.width;
-      const colHeight = height - baseBarHeight - 2 * thickness;
-      const startX = getColumnXPosition(colIndex);
-
-      // Get shelf spacings for this column
-      const spacings = column.shelves?.spacings || [];
-
-      // If no spacings, create a default spacing for the entire column height
-      if (spacings.length === 0) {
-        const spacingId = `${column.id}-spacing-0`;
-        positions.push({
-          spacingId,
-          columnId: column.id,
-          columnIndex: colIndex,
-          spacingIndex: 0,
-          x: startX + colWidth / 2,
-          y: 0,
-          width: colWidth,
-          height: colHeight,
-          spacing: colHeight,
-          isFullColumn: true,
-        });
-        continue;
-      }
-
-      // Calculate spacing heights and positions
-      let currentY = baseBarHeight * 100; // Keep in cm for calculation
-
-      for (
-        let spacingIndex = 0;
-        spacingIndex < spacings.length;
-        spacingIndex++
-      ) {
-        const spacing = spacings[spacingIndex];
-        const spacingHeightCm = spacing.spacing;
-        const spacingHeight = spacingHeightCm / 100;
-        const worldY = (currentY + spacingHeightCm / 2) / 100 - height / 2;
-        const spacingId = `${column.id}-spacing-${spacingIndex}`;
-
-        positions.push({
-          spacingId,
-          columnId: column.id,
-          columnIndex: colIndex,
-          spacingIndex,
-          x: startX + colWidth / 2,
-          y: worldY,
-          width: colWidth,
-          height: spacingHeight,
-          spacing: spacingHeight,
-          isFullColumn: false,
-        });
-
-        currentY += spacingHeightCm + thickness * 100;
-      }
-    }
-
-    return positions;
-  };
-
-  const spacingPositions = getSpacingPositions();
-
-  // Render different facade types
-  const renderFacade = (
+  // Render different facade types for grouped spacings
+  const renderGroupedFacade = (
     type: string,
-    pos: any,
+    groupData: any,
     facadeWidth: number,
     facadeHeight: number
   ) => {
@@ -348,39 +746,45 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       }
     };
 
-    // Get handle type for this spacing
-    const handleType = config.handleConfig[pos.spacingId] || config.handleType;
+    // Get handle type for the first spacing in the group
+    const firstSpacingId = groupData.spacingIds[0];
+    const handleType = config.handleConfig[firstSpacingId] || config.handleType;
 
     switch (type) {
       case "leftDoor":
         // Porte Gauche - door hinged on left side
-
         return (
-          <group position={[pos.x - facadeWidth / 2, pos.y, facadeZ]}>
+          <group
+            position={[
+              groupData.x - facadeWidth / 2,
+              groupData.centerY,
+              facadeZ,
+            ]}
+          >
             <group
               ref={(ref) => {
                 if (ref)
-                  doorGroupsRef.current[`${pos.spacingId}-leftDoor`] = ref;
+                  doorGroupsRef.current[`${groupData.groupId}-leftDoor`] = ref;
               }}
               position={[0, 0, 0]} // Hinge tại vị trí này
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-leftDoor`;
+                const k = `${groupData.groupId}-leftDoor`;
                 if (!openedDoorsRef.current[k])
                   triggerDoorSwing(k, true, "left");
               }}
               onPointerOut={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-leftDoor`;
+                const k = `${groupData.groupId}-leftDoor`;
                 if (!openedDoorsRef.current[k])
                   triggerDoorSwing(k, false, "left");
               }}
               onClick={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-leftDoor`;
+                const k = `${groupData.groupId}-leftDoor`;
                 const next = !openedDoorsRef.current[k];
                 openedDoorsRef.current[k] = next;
                 triggerDoorSwing(k, next, "left");
@@ -388,7 +792,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
             >
               {/* Door panel - pivot từ left edge */}
               <mesh position={[facadeWidth / 2, 0, 0]}>
-                <boxGeometry args={[facadeWidth, facadeHeight, thickness]} />
+                <boxGeometry
+                  args={[facadeWidth, facadeHeight + thickness, thickness]}
+                />
                 <meshStandardMaterial map={texture} color="white" />
               </mesh>
               {/* Door handle ở RIGHT SIDE của door */}
@@ -403,31 +809,37 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
 
       case "rightDoor":
         return (
-          <group position={[pos.x + facadeWidth / 2, pos.y, facadeZ]}>
+          <group
+            position={[
+              groupData.x + facadeWidth / 2,
+              groupData.centerY,
+              facadeZ,
+            ]}
+          >
             <group
               ref={(ref) => {
                 if (ref)
-                  doorGroupsRef.current[`${pos.spacingId}-rightDoor`] = ref;
+                  doorGroupsRef.current[`${groupData.groupId}-rightDoor`] = ref;
               }}
               position={[0, 0, 0]} // Hinge tại vị trí này
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-rightDoor`;
+                const k = `${groupData.groupId}-rightDoor`;
                 if (!openedDoorsRef.current[k])
                   triggerDoorSwing(k, true, "right");
               }}
               onPointerOut={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-rightDoor`;
+                const k = `${groupData.groupId}-rightDoor`;
                 if (!openedDoorsRef.current[k])
                   triggerDoorSwing(k, false, "right");
               }}
               onClick={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-rightDoor`;
+                const k = `${groupData.groupId}-rightDoor`;
                 const next = !openedDoorsRef.current[k];
                 openedDoorsRef.current[k] = next;
                 triggerDoorSwing(k, next, "right");
@@ -435,7 +847,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
             >
               {/* Door panel - pivot từ right edge */}
               <mesh position={[-facadeWidth / 2, 0, 0]}>
-                <boxGeometry args={[facadeWidth, facadeHeight, thickness]} />
+                <boxGeometry
+                  args={[facadeWidth, facadeHeight + thickness, thickness]}
+                />
                 <meshStandardMaterial map={texture} color="white" />
               </mesh>
               {/* Door handle ở LEFT SIDE của door */}
@@ -449,721 +863,1749 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         );
 
       case "drawer":
-        // Tiroir - drawer with handle
+        // Tiroir - complete drawer with all sides
+        const drawerDepth = depth * 0.6; // Độ sâu của ngăn kéo
+        const drawerHeight = facadeHeight * 0.8; // Chiều cao bên trong ngăn kéo
+        const sideThickness = thickness * 0.5; // Độ dày thành bên
 
         return (
           <group
-            position={[pos.x, pos.y, facadeZ]}
+            position={[groupData.x, groupData.centerY, facadeZ]}
             ref={(ref) => {
-              if (ref) drawerGroupsRef.current[`${pos.spacingId}-drawer`] = ref;
+              if (ref)
+                drawerGroupsRef.current[`${groupData.groupId}-drawer`] = ref;
             }}
             onPointerOver={(e) => {
               if (shouldDisableInteractions()) return;
               e.stopPropagation();
-              const k = `${pos.spacingId}-drawer`;
-              if (!openedDrawersRef.current[k]) triggerDrawer(k, true, facadeZ); // ✅ FIXED: sử dụng facadeZ
+              const k = `${groupData.groupId}-drawer`;
+              if (!openedDrawersRef.current[k]) triggerDrawer(k, true, facadeZ);
             }}
             onPointerOut={(e) => {
               if (shouldDisableInteractions()) return;
               e.stopPropagation();
-              const k = `${pos.spacingId}-drawer`;
+              const k = `${groupData.groupId}-drawer`;
               if (!openedDrawersRef.current[k])
-                triggerDrawer(k, false, facadeZ); // ✅ FIXED: sử dụng facadeZ
+                triggerDrawer(k, false, facadeZ);
             }}
             onClick={(e) => {
               if (shouldDisableInteractions()) return;
               e.stopPropagation();
-              const k = `${pos.spacingId}-drawer`;
+              const k = `${groupData.groupId}-drawer`;
               const next = !openedDrawersRef.current[k];
               openedDrawersRef.current[k] = next;
-              triggerDrawer(k, next, facadeZ); // ✅ FIXED: sử dụng drawerBaseZ
+              triggerDrawer(k, next, facadeZ);
             }}
           >
             {/* Drawer front panel */}
-            <mesh>
-              <boxGeometry args={[facadeWidth, facadeHeight, thickness]} />
+            <mesh position={[0, 0, 0]}>
+              <boxGeometry
+                args={[facadeWidth, facadeHeight + thickness, thickness]}
+              />
               <meshStandardMaterial map={texture} color="white" />
             </mesh>
+
+            {/* Left side panel */}
+            <mesh
+              position={[
+                -facadeWidth / 2 + sideThickness / 2,
+                0,
+                -drawerDepth / 2,
+              ]}
+            >
+              <boxGeometry args={[sideThickness, drawerHeight, drawerDepth]} />
+              <meshStandardMaterial map={texture} color="white" />
+            </mesh>
+
+            {/* Right side panel */}
+            <mesh
+              position={[
+                facadeWidth / 2 - sideThickness / 2,
+                0,
+                -drawerDepth / 2,
+              ]}
+            >
+              <boxGeometry args={[sideThickness, drawerHeight, drawerDepth]} />
+              <meshStandardMaterial map={texture} color="white" />
+            </mesh>
+
+            {/* Bottom panel */}
+            <mesh
+              position={[
+                0,
+                -drawerHeight / 2 + sideThickness / 2,
+                -drawerDepth / 2,
+              ]}
+            >
+              <boxGeometry
+                args={[
+                  facadeWidth - sideThickness * 2,
+                  sideThickness,
+                  drawerDepth,
+                ]}
+              />
+              <meshStandardMaterial map={texture} color="white" />
+            </mesh>
+
+            {/* Back panel */}
+            <mesh position={[0, 0, -drawerDepth]}>
+              <boxGeometry
+                args={[
+                  facadeWidth - sideThickness * 2,
+                  drawerHeight,
+                  sideThickness,
+                ]}
+              />
+              <meshStandardMaterial map={texture} color="white" />
+            </mesh>
+
             {/* Drawer handle in center */}
             {renderHandle(handleType, [0, 0, thickness / 2 + 0.01])}
           </group>
         );
-      case "doubleSwingDoor":
-        // Porte double battant - two doors with swing animation
-        const totalDoorWidth = facadeWidth; // ✅ Tổng width vừa khít
-        const doorWidth = totalDoorWidth / 2; // Slight gap between doors
+
+      case "leftDoorVerre":
+        // Porte Gauche en Verre - door hinged on left side with glass material
         return (
-          <group position={[pos.x, pos.y, facadeZ]}>
-            {/* ✅ Left door - positioned at LEFT side */}
-            <group position={[-totalDoorWidth / 2 + doorWidth / 2, 0, 0]}>
-              <group
-                ref={(ref) => {
-                  if (ref)
-                    doorGroupsRef.current[`${pos.spacingId}-double-left`] = ref;
-                }}
-                position={[-doorWidth / 2, 0, 0]} // ✅ Hinge at LEFT edge of door
-                onPointerOver={(e) => {
-                  if (shouldDisableInteractions()) return;
-                  e.stopPropagation();
-                  const kl = `${pos.spacingId}-double`;
-                  if (!openedDoorsRef.current[kl]) {
-                    triggerDoorSwing(
-                      `${pos.spacingId}-double-left`,
-                      true,
-                      "left"
-                    );
-                    triggerDoorSwing(
-                      `${pos.spacingId}-double-right`,
-                      true,
-                      "right"
-                    );
-                  }
-                }}
-                onPointerOut={(e) => {
-                  if (shouldDisableInteractions()) return;
-                  e.stopPropagation();
-                  const kl = `${pos.spacingId}-double`;
-                  if (!openedDoorsRef.current[kl]) {
-                    triggerDoorSwing(
-                      `${pos.spacingId}-double-left`,
-                      false,
-                      "left"
-                    );
-                    triggerDoorSwing(
-                      `${pos.spacingId}-double-right`,
-                      false,
-                      "right"
-                    );
-                  }
-                }}
-                onClick={(e) => {
-                  if (shouldDisableInteractions()) return;
-                  e.stopPropagation();
-                  const kl = `${pos.spacingId}-double`;
-                  const next = !openedDoorsRef.current[kl];
-                  openedDoorsRef.current[kl] = next;
-                  triggerDoorSwing(
-                    `${pos.spacingId}-double-left`,
-                    next,
-                    "left"
-                  );
-                  triggerDoorSwing(
-                    `${pos.spacingId}-double-right`,
-                    next,
-                    "right"
-                  );
-                }}
-              >
-                {/* ✅ Door panel positioned relative to hinge */}
-                <mesh position={[doorWidth / 2, 0, 0]}>
-                  <boxGeometry args={[doorWidth, facadeHeight, thickness]} />
-                  <meshStandardMaterial map={texture} color="white" />
-                </mesh>
-                {/* ✅ Handle at RIGHT side of left door (near center gap) */}
-                {renderHandle(handleType, [
-                  doorWidth - 0.02,
-                  0,
-                  thickness / 2 + 0.01,
-                ])}
-              </group>
+          <group
+            position={[
+              groupData.x - facadeWidth / 2,
+              groupData.centerY,
+              facadeZ,
+            ]}
+          >
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[`${groupData.groupId}-leftDoorVerre`] =
+                    ref;
+              }}
+              position={[0, 0, 0]} // Hinge tại vị trí này
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-leftDoorVerre`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "left");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-leftDoorVerre`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "left");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-leftDoorVerre`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "left");
+              }}
+            >
+              {/* Door panel - pivot từ left edge */}
+              <mesh position={[facadeWidth / 2, 0, 0]}>
+                <boxGeometry
+                  args={[facadeWidth, facadeHeight + thickness, thickness]}
+                />
+                <meshPhysicalMaterial
+                  key={`glass-door-material-${groupData.groupId}-left`}
+                  color="#000000"
+                  transparent={true}
+                  opacity={0.15}
+                  metalness={0.1}
+                  roughness={0.0}
+                  transmission={0.85}
+                  thickness={0.1}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+              {/* Glass border */}
+              <mesh position={[facadeWidth / 2, 0, 0.001]}>
+                <boxGeometry
+                  args={[
+                    facadeWidth + 0.01,
+                    facadeHeight + thickness + 0.01,
+                    0.002,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`glass-border-material-${groupData.groupId}-left`}
+                  color="#666"
+                  transparent={true}
+                  opacity={0.3}
+                />
+              </mesh>
+              {/* Door handle ở RIGHT SIDE của door */}
+              {renderHandle(handleType, [
+                facadeWidth - 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+          </group>
+        );
+
+      case "rightDoorVerre":
+        // Porte Droite en Verre - door hinged on right side with glass material
+        return (
+          <group
+            position={[
+              groupData.x + facadeWidth / 2,
+              groupData.centerY,
+              facadeZ,
+            ]}
+          >
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[`${groupData.groupId}-rightDoorVerre`] =
+                    ref;
+              }}
+              position={[0, 0, 0]} // Hinge tại vị trí này
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-rightDoorVerre`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "right");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-rightDoorVerre`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "right");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-rightDoorVerre`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "right");
+              }}
+            >
+              {/* Door panel - pivot từ right edge */}
+              <mesh position={[-facadeWidth / 2, 0, 0]}>
+                <boxGeometry
+                  args={[facadeWidth, facadeHeight + thickness, thickness]}
+                />
+                <meshPhysicalMaterial
+                  key={`glass-door-material-${groupData.groupId}-right`}
+                  color="#000000"
+                  transparent={true}
+                  opacity={0.15}
+                  metalness={0.1}
+                  roughness={0.0}
+                  transmission={0.85}
+                  thickness={0.1}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+              {/* Glass border */}
+              <mesh position={[-facadeWidth / 2, 0, 0.001]}>
+                <boxGeometry
+                  args={[
+                    facadeWidth + 0.01,
+                    facadeHeight + thickness + 0.01,
+                    0.002,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`glass-border-material-${groupData.groupId}-right`}
+                  color="#666"
+                  transparent={true}
+                  opacity={0.3}
+                />
+              </mesh>
+              {/* Door handle ở LEFT SIDE của door */}
+              {renderHandle(handleType, [
+                -facadeWidth + 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+          </group>
+        );
+
+      case "drawerVerre":
+        // Tiroir en Verre - complete glass drawer with all sides
+        const drawerDepthVerre = depth * 0.6; // Độ sâu của ngăn kéo
+        const drawerHeightVerre = facadeHeight * 0.8; // Chiều cao bên trong ngăn kéo
+        const sideThicknessVerre = thickness * 0.5; // Độ dày thành bên
+
+        return (
+          <group
+            position={[groupData.x, groupData.centerY, facadeZ]}
+            ref={(ref) => {
+              if (ref)
+                drawerGroupsRef.current[`${groupData.groupId}-drawerVerre`] =
+                  ref;
+            }}
+            onPointerOver={(e) => {
+              if (shouldDisableInteractions()) return;
+              e.stopPropagation();
+              const k = `${groupData.groupId}-drawerVerre`;
+              if (!openedDrawersRef.current[k]) triggerDrawer(k, true, facadeZ);
+            }}
+            onPointerOut={(e) => {
+              if (shouldDisableInteractions()) return;
+              e.stopPropagation();
+              const k = `${groupData.groupId}-drawerVerre`;
+              if (!openedDrawersRef.current[k])
+                triggerDrawer(k, false, facadeZ);
+            }}
+            onClick={(e) => {
+              if (shouldDisableInteractions()) return;
+              e.stopPropagation();
+              const k = `${groupData.groupId}-drawerVerre`;
+              const next = !openedDrawersRef.current[k];
+              openedDrawersRef.current[k] = next;
+              triggerDrawer(k, next, facadeZ);
+            }}
+          >
+            {/* Drawer front panel */}
+            <mesh position={[0, 0, 0]}>
+              <boxGeometry
+                args={[facadeWidth, facadeHeight + thickness, thickness]}
+              />
+              <meshPhysicalMaterial
+                key={`glass-drawer-material-${groupData.groupId}`}
+                color="#000000"
+                transparent={true}
+                opacity={0.15}
+                metalness={0.1}
+                roughness={0.0}
+                transmission={0.85}
+                thickness={0.1}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+            {/* Glass border for front */}
+            <mesh position={[0, 0, 0.001]}>
+              <boxGeometry
+                args={[
+                  facadeWidth + 0.01,
+                  facadeHeight + thickness + 0.01,
+                  0.002,
+                ]}
+              />
+              <meshStandardMaterial
+                key={`glass-drawer-border-material-${groupData.groupId}`}
+                color="#666"
+                transparent={true}
+                opacity={0.3}
+              />
+            </mesh>
+
+            {/* Left side panel */}
+            <mesh
+              position={[
+                -facadeWidth / 2 + sideThicknessVerre / 2,
+                0,
+                -drawerDepthVerre / 2,
+              ]}
+            >
+              <boxGeometry
+                args={[sideThicknessVerre, drawerHeightVerre, drawerDepthVerre]}
+              />
+              <meshPhysicalMaterial
+                key={`glass-drawer-side-material-${groupData.groupId}-left`}
+                color="#000000"
+                transparent={true}
+                opacity={0.15}
+                metalness={0.1}
+                roughness={0.0}
+                transmission={0.85}
+                thickness={0.1}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+
+            {/* Right side panel */}
+            <mesh
+              position={[
+                facadeWidth / 2 - sideThicknessVerre / 2,
+                0,
+                -drawerDepthVerre / 2,
+              ]}
+            >
+              <boxGeometry
+                args={[sideThicknessVerre, drawerHeightVerre, drawerDepthVerre]}
+              />
+              <meshPhysicalMaterial
+                key={`glass-drawer-side-material-${groupData.groupId}-right`}
+                color="#000000"
+                transparent={true}
+                opacity={0.15}
+                metalness={0.1}
+                roughness={0.0}
+                transmission={0.85}
+                thickness={0.1}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+
+            {/* Bottom panel */}
+            <mesh
+              position={[
+                0,
+                -drawerHeightVerre / 2 + sideThicknessVerre / 2,
+                -drawerDepthVerre / 2,
+              ]}
+            >
+              <boxGeometry
+                args={[
+                  facadeWidth - sideThicknessVerre * 2,
+                  sideThicknessVerre,
+                  drawerDepthVerre,
+                ]}
+              />
+              <meshPhysicalMaterial
+                key={`glass-drawer-bottom-material-${groupData.groupId}`}
+                color="#000000"
+                transparent={true}
+                opacity={0.15}
+                metalness={0.1}
+                roughness={0.0}
+                transmission={0.85}
+                thickness={0.1}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+
+            {/* Back panel */}
+            <mesh position={[0, 0, -drawerDepthVerre]}>
+              <boxGeometry
+                args={[
+                  facadeWidth - sideThicknessVerre * 2,
+                  drawerHeightVerre,
+                  sideThicknessVerre,
+                ]}
+              />
+              <meshPhysicalMaterial
+                key={`glass-drawer-back-material-${groupData.groupId}`}
+                color="#000000"
+                transparent={true}
+                opacity={0.15}
+                metalness={0.1}
+                roughness={0.0}
+                transmission={0.85}
+                thickness={0.1}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+
+            {/* Drawer handle in center */}
+            {renderHandle(handleType, [0, 0, thickness / 2 + 0.01])}
+          </group>
+        );
+
+      case "doubleSwingDoor":
+        // Porte Double - two doors hinged on opposite sides
+        const doorWidthSwing = facadeWidth / 2; // Mỗi cửa chiếm đúng một nửa chiều rộng
+
+        return (
+          <group position={[groupData.x, groupData.centerY, facadeZ]}>
+            {/* Left door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[
+                    `${groupData.groupId}-doubleSwingDoor-left`
+                  ] = ref;
+              }}
+              position={[-facadeWidth / 2, 0, 0]} // Hinge tại left edge của toàn bộ facade
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoor-left`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "left");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoor-left`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "left");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoor-left`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "left");
+              }}
+            >
+              {/* Left door panel */}
+              <mesh position={[doorWidthSwing / 2, 0, 0]}>
+                <boxGeometry
+                  args={[doorWidthSwing, facadeHeight + thickness, thickness]}
+                />
+                <meshStandardMaterial map={texture} color="white" />
+              </mesh>
+              {/* Left door handle ở RIGHT SIDE */}
+              {renderHandle(handleType, [
+                doorWidthSwing - 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
             </group>
 
-            {/* ✅ Right door - positioned at RIGHT side */}
-            <group position={[totalDoorWidth / 2 - doorWidth / 2, 0, 0]}>
-              <group
-                ref={(ref) => {
-                  if (ref)
-                    doorGroupsRef.current[`${pos.spacingId}-double-right`] =
-                      ref;
-                }}
-                position={[doorWidth / 2, 0, 0]} // ✅ Hinge at RIGHT edge of door
-              >
-                {/* ✅ Door panel positioned relative to hinge */}
-                <mesh position={[-doorWidth / 2, 0, 0]}>
-                  <boxGeometry args={[doorWidth, facadeHeight, thickness]} />
-                  <meshStandardMaterial map={texture} color="white" />
-                </mesh>
-                {/* ✅ Handle at LEFT side of right door (near center gap) */}
-                {renderHandle(handleType, [
-                  -doorWidth + 0.02,
-                  0,
-                  thickness / 2 + 0.01,
-                ])}
-              </group>
+            {/* Right door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[
+                    `${groupData.groupId}-doubleSwingDoor-right`
+                  ] = ref;
+              }}
+              position={[facadeWidth / 2, 0, 0]} // Hinge tại right edge của toàn bộ facade
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoor-right`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "right");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoor-right`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "right");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoor-right`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "right");
+              }}
+            >
+              {/* Right door panel */}
+              <mesh position={[-doorWidthSwing / 2, 0, 0]}>
+                <boxGeometry
+                  args={[doorWidthSwing, facadeHeight + thickness, thickness]}
+                />
+                <meshStandardMaterial map={texture} color="white" />
+              </mesh>
+              {/* Right door handle ở LEFT SIDE */}
+              {renderHandle(handleType, [
+                -doorWidthSwing + 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+          </group>
+        );
+
+      case "doubleSwingDoorVerre":
+        // Porte Double en Verre - two glass doors hinged on opposite sides
+        const doorWidthSwingVerre = facadeWidth / 2; // Mỗi cửa chiếm đúng một nửa chiều rộng
+
+        return (
+          <group position={[groupData.x, groupData.centerY, facadeZ]}>
+            {/* Left glass door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[
+                    `${groupData.groupId}-doubleSwingDoorVerre-left`
+                  ] = ref;
+              }}
+              position={[-facadeWidth / 2, 0, 0]} // Hinge tại left edge của toàn bộ facade
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoorVerre-left`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "left");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoorVerre-left`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "left");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoorVerre-left`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "left");
+              }}
+            >
+              {/* Left glass door panel */}
+              <mesh position={[doorWidthSwingVerre / 2, 0, 0]}>
+                <boxGeometry
+                  args={[
+                    doorWidthSwingVerre,
+                    facadeHeight + thickness,
+                    thickness,
+                  ]}
+                />
+                <meshPhysicalMaterial
+                  key={`glass-double-swing-door-material-${groupData.groupId}-left`}
+                  color="#000000"
+                  transparent={true}
+                  opacity={0.15}
+                  metalness={0.1}
+                  roughness={0.0}
+                  transmission={0.85}
+                  thickness={0.1}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+              {/* Glass border for left door */}
+              <mesh position={[doorWidthSwingVerre / 2, 0, 0.001]}>
+                <boxGeometry
+                  args={[
+                    doorWidthSwingVerre + 0.01,
+                    facadeHeight + thickness + 0.01,
+                    0.002,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`glass-double-swing-door-border-material-${groupData.groupId}-left`}
+                  color="#666"
+                  transparent={true}
+                  opacity={0.3}
+                />
+              </mesh>
+              {/* Left door handle ở RIGHT SIDE */}
+              {renderHandle(handleType, [
+                doorWidthSwingVerre - 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+
+            {/* Right glass door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[
+                    `${groupData.groupId}-doubleSwingDoorVerre-right`
+                  ] = ref;
+              }}
+              position={[facadeWidth / 2, 0, 0]} // Hinge tại right edge của toàn bộ facade
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoorVerre-right`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "right");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoorVerre-right`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "right");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleSwingDoorVerre-right`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "right");
+              }}
+            >
+              {/* Right glass door panel */}
+              <mesh position={[-doorWidthSwingVerre / 2, 0, 0]}>
+                <boxGeometry
+                  args={[
+                    doorWidthSwingVerre,
+                    facadeHeight + thickness,
+                    thickness,
+                  ]}
+                />
+                <meshPhysicalMaterial
+                  key={`glass-double-swing-door-material-${groupData.groupId}-right`}
+                  color="#000000"
+                  transparent={true}
+                  opacity={0.15}
+                  metalness={0.1}
+                  roughness={0.0}
+                  transmission={0.85}
+                  thickness={0.1}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+              {/* Glass border for right door */}
+              <mesh position={[-doorWidthSwingVerre / 2, 0, 0.001]}>
+                <boxGeometry
+                  args={[
+                    doorWidthSwingVerre + 0.01,
+                    facadeHeight + thickness + 0.01,
+                    0.002,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`glass-double-swing-door-border-material-${groupData.groupId}-right`}
+                  color="#666"
+                  transparent={true}
+                  opacity={0.3}
+                />
+              </mesh>
+              {/* Right door handle ở LEFT SIDE */}
+              {renderHandle(handleType, [
+                -doorWidthSwingVerre + 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+          </group>
+        );
+
+      case "doubleDoor":
+        // Porte Double - two doors hinged on opposite sides
+        const doorWidth = facadeWidth / 2 - 0.01; // Mỗi cửa chiếm một nửa chiều rộng, trừ đi khoảng cách nhỏ ở giữa
+
+        return (
+          <group position={[groupData.x, groupData.centerY, facadeZ]}>
+            {/* Left door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[
+                    `${groupData.groupId}-doubleDoor-left`
+                  ] = ref;
+              }}
+              position={[-doorWidth / 2, 0, 0]} // Hinge tại left edge
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoor-left`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "left");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoor-left`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "left");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoor-left`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "left");
+              }}
+            >
+              {/* Left door panel */}
+              <mesh position={[doorWidth / 2, 0, 0]}>
+                <boxGeometry
+                  args={[doorWidth, facadeHeight + thickness, thickness]}
+                />
+                <meshStandardMaterial map={texture} color="white" />
+              </mesh>
+              {/* Left door handle ở RIGHT SIDE */}
+              {renderHandle(handleType, [
+                doorWidth - 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+
+            {/* Right door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[
+                    `${groupData.groupId}-doubleDoor-right`
+                  ] = ref;
+              }}
+              position={[doorWidth / 2, 0, 0]} // Hinge tại right edge
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoor-right`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "right");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoor-right`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "right");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoor-right`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "right");
+              }}
+            >
+              {/* Right door panel */}
+              <mesh position={[-doorWidth / 2, 0, 0]}>
+                <boxGeometry
+                  args={[doorWidth, facadeHeight + thickness, thickness]}
+                />
+                <meshStandardMaterial map={texture} color="white" />
+              </mesh>
+              {/* Right door handle ở LEFT SIDE */}
+              {renderHandle(handleType, [
+                -doorWidth + 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+          </group>
+        );
+
+      case "doubleDoorVerre":
+        // Porte Double en Verre - two glass doors hinged on opposite sides
+        const doorWidthVerre = facadeWidth / 2 - 0.01; // Mỗi cửa chiếm một nửa chiều rộng, trừ đi khoảng cách nhỏ ở giữa
+
+        return (
+          <group position={[groupData.x, groupData.centerY, facadeZ]}>
+            {/* Left glass door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[
+                    `${groupData.groupId}-doubleDoorVerre-left`
+                  ] = ref;
+              }}
+              position={[-doorWidthVerre / 2, 0, 0]} // Hinge tại left edge
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoorVerre-left`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "left");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoorVerre-left`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "left");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoorVerre-left`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "left");
+              }}
+            >
+              {/* Left glass door panel */}
+              <mesh position={[doorWidthVerre / 2, 0, 0]}>
+                <boxGeometry
+                  args={[doorWidthVerre, facadeHeight + thickness, thickness]}
+                />
+                <meshPhysicalMaterial
+                  key={`glass-double-door-material-${groupData.groupId}-left`}
+                  color="#000000"
+                  transparent={true}
+                  opacity={0.15}
+                  metalness={0.1}
+                  roughness={0.0}
+                  transmission={0.85}
+                  thickness={0.1}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+              {/* Glass border for left door */}
+              <mesh position={[doorWidthVerre / 2, 0, 0.001]}>
+                <boxGeometry
+                  args={[
+                    doorWidthVerre + 0.01,
+                    facadeHeight + thickness + 0.01,
+                    0.002,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`glass-double-door-border-material-${groupData.groupId}-left`}
+                  color="#666"
+                  transparent={true}
+                  opacity={0.3}
+                />
+              </mesh>
+              {/* Left door handle ở RIGHT SIDE */}
+              {renderHandle(handleType, [
+                doorWidthVerre - 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+
+            {/* Right glass door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  doorGroupsRef.current[
+                    `${groupData.groupId}-doubleDoorVerre-right`
+                  ] = ref;
+              }}
+              position={[doorWidthVerre / 2, 0, 0]} // Hinge tại right edge
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoorVerre-right`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, true, "right");
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoorVerre-right`;
+                if (!openedDoorsRef.current[k])
+                  triggerDoorSwing(k, false, "right");
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-doubleDoorVerre-right`;
+                const next = !openedDoorsRef.current[k];
+                openedDoorsRef.current[k] = next;
+                triggerDoorSwing(k, next, "right");
+              }}
+            >
+              {/* Right glass door panel */}
+              <mesh position={[-doorWidthVerre / 2, 0, 0]}>
+                <boxGeometry
+                  args={[doorWidthVerre, facadeHeight + thickness, thickness]}
+                />
+                <meshPhysicalMaterial
+                  key={`glass-double-door-material-${groupData.groupId}-right`}
+                  color="#000000"
+                  transparent={true}
+                  opacity={0.15}
+                  metalness={0.1}
+                  roughness={0.0}
+                  transmission={0.85}
+                  thickness={0.1}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+              {/* Glass border for right door */}
+              <mesh position={[-doorWidthVerre / 2, 0, 0.001]}>
+                <boxGeometry
+                  args={[
+                    doorWidthVerre + 0.01,
+                    facadeHeight + thickness + 0.01,
+                    0.002,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`glass-double-door-border-material-${groupData.groupId}-right`}
+                  color="#666"
+                  transparent={true}
+                  opacity={0.3}
+                />
+              </mesh>
+              {/* Right door handle ở LEFT SIDE */}
+              {renderHandle(handleType, [
+                -doorWidthVerre + 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
             </group>
           </group>
         );
 
       case "slidingDoor":
-        // Porte coulissante - sliding door (slide to the right)
-        // Calculate section width for sliding door
-        const sectionName = getSectionNameFromSpacingId(pos.spacingId);
-        const sectionSpacingIds = getSpacingIdsInSection(sectionName);
-
-        // Check if any spacing in the section has sliding door configured
-        const hasSlidingDoorInSection = sectionSpacingIds.some(
-          (spacingId) => config.doorsDrawersConfig[spacingId] === "slidingDoor"
-        );
-
-        // If no sliding door configured in this section, don't render
-        if (!hasSlidingDoorInSection) {
-          return null;
-        }
-
-        // Filter spacing IDs based on wardrobe type and section
-        let filteredSpacingIds = sectionSpacingIds;
-        if (config.wardrobeType.id === "Angle") {
-          if (sectionName === "sectionA") {
-            // Section A: exclude last column
-            const lastColumnId =
-              sectionData.columns[sectionData.columns.length - 1]?.id;
-            filteredSpacingIds = sectionSpacingIds.filter(
-              (spacingId) => !spacingId.startsWith(lastColumnId)
-            );
-          } else if (sectionName === "sectionB") {
-            // Section B: exclude first column
-            const firstColumnId = sectionData.columns[0]?.id;
-            filteredSpacingIds = sectionSpacingIds.filter(
-              (spacingId) => !spacingId.startsWith(firstColumnId)
-            );
-          }
-        } else if (config.wardrobeType.id === "Forme U") {
-          if (sectionName === "sectionA") {
-            // Section A: exclude first and last columns
-            const firstColumnId = sectionData.columns[0]?.id;
-            const lastColumnId =
-              sectionData.columns[sectionData.columns.length - 1]?.id;
-            filteredSpacingIds = sectionSpacingIds.filter(
-              (spacingId) =>
-                !spacingId.startsWith(firstColumnId) &&
-                !spacingId.startsWith(lastColumnId)
-            );
-          } else if (sectionName === "sectionB") {
-            // Section B: exclude last column
-            const lastColumnId =
-              sectionData.columns[sectionData.columns.length - 1]?.id;
-            filteredSpacingIds = sectionSpacingIds.filter(
-              (spacingId) => !spacingId.startsWith(lastColumnId)
-            );
-          } else if (sectionName === "sectionC") {
-            // Section C: exclude first column
-            const firstColumnId = sectionData.columns[0]?.id;
-            filteredSpacingIds = sectionSpacingIds.filter(
-              (spacingId) => !spacingId.startsWith(firstColumnId)
-            );
-          }
-        }
-
-        const sectionWidth = filteredSpacingIds.reduce((total, spacingId) => {
-          const spacingPos = spacingPositions.find(
-            (p) => p.spacingId === spacingId
-          );
-          return total + (spacingPos ? spacingPos.width : 0);
-        }, 0);
-
-        // Calculate number of columns in filtered section
-        const uniqueColumnIds = [
-          ...new Set(
-            filteredSpacingIds.map((spacingId) => {
-              const parts = spacingId.split("-");
-              if (parts.length >= 3) {
-                return `${parts[0]}-${parts[1]}-${parts[2]}`; // sectionA-col-1
-              }
-              return spacingId.split("-")[0]; // fallback
-            })
-          ),
-        ];
-        const numberOfColumns = uniqueColumnIds.length;
-        const thicknessBetweenColumns = (numberOfColumns - 1) * thickness;
-
-        const slidingDoorWidth = sectionWidth + thicknessBetweenColumns; // Full section width including thickness between columns
-
-        // Only render sliding door for the first spacing in the section to avoid duplicates
-        const isFirstSpacingInSection = filteredSpacingIds[0] === pos.spacingId;
-        if (!isFirstSpacingInSection) {
-          return null;
-        }
-
-        // Calculate center position of the section
-        const sectionPositions = filteredSpacingIds.map((spacingId) => {
-          const spacingPos = spacingPositions.find(
-            (p) => p.spacingId === spacingId
-          );
-          return spacingPos ? spacingPos.x : 0;
-        });
-        const sectionCenterX =
-          sectionPositions.reduce((sum, x) => sum + x, 0) /
-          sectionPositions.length;
+        // Porte Coulissante - sliding door
+        const slidingDoorWidth = facadeWidth / 2; // Mỗi cửa chiếm một nửa chiều rộng
 
         return (
-          <group position={[sectionCenterX, pos.y, facadeZ + thickness / 2]}>
-            {/* Left sliding door panel (mảnh 1) */}
-            <group
-              ref={(ref) => {
-                if (ref)
-                  sliderGroupsRef.current[`${pos.spacingId}-slidingDoor-left`] =
-                    ref;
-              }}
-              position={[-slidingDoorWidth / 4, 0, 0]}
-              onPointerOver={(e) => {
-                if (shouldDisableInteractions()) return;
-                e.stopPropagation();
-                const k = `${pos.spacingId}-slidingDoor-left`;
-                if (!openedSlidersRef.current[k]) {
-                  triggerSlider(
-                    k,
-                    true,
-                    -slidingDoorWidth / 4,
-                    1,
-                    slidingDoorWidth / 2
-                  );
-                }
-              }}
-              onPointerOut={(e) => {
-                if (shouldDisableInteractions()) return;
-                e.stopPropagation();
-                const k = `${pos.spacingId}-slidingDoor-left`;
-                if (!openedSlidersRef.current[k]) {
-                  triggerSlider(
-                    k,
-                    false,
-                    -slidingDoorWidth / 4,
-                    1,
-                    slidingDoorWidth / 2
-                  );
-                }
-              }}
-              onClick={(e) => {
-                if (shouldDisableInteractions()) return;
-                e.stopPropagation();
-                const k = `${pos.spacingId}-slidingDoor-left`;
-                const next = !openedSlidersRef.current[k];
-                openedSlidersRef.current[k] = next;
-                triggerSlider(
-                  k,
-                  next,
-                  -slidingDoorWidth / 4,
-                  1,
-                  slidingDoorWidth / 2
-                );
-              }}
-            >
-              <mesh position={[0, 0, thickness / 2]}>
-                <boxGeometry
-                  args={[slidingDoorWidth / 2, facadeHeight, thickness]}
-                />
-                <meshStandardMaterial
-                  key={`sliding-door-material-${pos.spacingId}`}
-                  map={texture}
-                  color="white"
-                />
-              </mesh>
-              {/* Viền cho mảnh 1 */}
-              <mesh position={[0, 0, thickness / 2 + 0.001]}>
-                <boxGeometry
-                  args={[
-                    slidingDoorWidth / 2 + 0.01,
-                    facadeHeight + 0.01,
-                    0.002,
-                  ]}
-                />
-                <meshStandardMaterial
-                  key={`sliding-border-material-${pos.spacingId}`}
-                  color="#333"
-                />
-              </mesh>
-            </group>
-
-            {/* Right sliding door panel (mảnh 2) */}
+          <group position={[groupData.x, groupData.centerY, facadeZ]}>
+            {/* Left sliding door */}
             <group
               ref={(ref) => {
                 if (ref)
                   sliderGroupsRef.current[
-                    `${pos.spacingId}-slidingDoor-right`
+                    `${groupData.groupId}-slidingDoor-left`
                   ] = ref;
               }}
-              position={[slidingDoorWidth / 4, 0, 0]}
+              position={[-slidingDoorWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-slidingDoor-right`;
-                if (!openedSlidersRef.current[k]) {
+                const k = `${groupData.groupId}-slidingDoor-left`;
+                if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
                     true,
-                    slidingDoorWidth / 4,
-                    -1,
-                    slidingDoorWidth / 2
+                    -slidingDoorWidth / 2,
+                    1, // Di chuyển sang phải (về phía mảnh 2)
+                    slidingDoorWidth
                   );
-                }
               }}
               onPointerOut={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-slidingDoor-right`;
-                if (!openedSlidersRef.current[k]) {
+                const k = `${groupData.groupId}-slidingDoor-left`;
+                if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
                     false,
-                    slidingDoorWidth / 4,
-                    -1,
-                    slidingDoorWidth / 2
+                    -slidingDoorWidth / 2,
+                    1, // Di chuyển sang phải (về phía mảnh 2)
+                    slidingDoorWidth
                   );
-                }
               }}
               onClick={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-slidingDoor-right`;
+                const k = `${groupData.groupId}-slidingDoor-left`;
                 const next = !openedSlidersRef.current[k];
                 openedSlidersRef.current[k] = next;
                 triggerSlider(
                   k,
                   next,
-                  slidingDoorWidth / 4,
-                  -1,
-                  slidingDoorWidth / 2
+                  -slidingDoorWidth / 2,
+                  1, // Di chuyển sang phải (về phía mảnh 2)
+                  slidingDoorWidth
                 );
               }}
             >
-              <mesh position={[0, 0, -thickness / 2]}>
+              {/* Left sliding door panel */}
+              <mesh position={[0, 0, 0]}>
                 <boxGeometry
-                  args={[slidingDoorWidth / 2, facadeHeight, thickness]}
+                  args={[slidingDoorWidth, facadeHeight + thickness, thickness]}
                 />
-                <meshStandardMaterial
-                  key={`sliding-door-material-${pos.spacingId}-right`}
-                  map={texture}
-                  color="white"
-                />
+                <meshStandardMaterial map={texture} color="white" />
               </mesh>
-              {/* Viền cho mảnh 2 */}
-              <mesh position={[0, 0, -thickness / 2 - 0.001]}>
-                <boxGeometry
-                  args={[
-                    slidingDoorWidth / 2 + 0.01,
-                    facadeHeight + 0.01,
-                    0.002,
-                  ]}
-                />
-                <meshStandardMaterial
-                  key={`sliding-border-material-${pos.spacingId}-right`}
-                  color="#333"
-                />
-              </mesh>
+              {/* Left door handle */}
+              {renderHandle(handleType, [
+                slidingDoorWidth / 2 - 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
             </group>
 
-            {/* Track indicator */}
-            <mesh
-              position={[0, -facadeHeight / 2 - 0.02, thickness / 2 + 0.01]}
+            {/* Right sliding door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  sliderGroupsRef.current[
+                    `${groupData.groupId}-slidingDoor-right`
+                  ] = ref;
+              }}
+              position={[slidingDoorWidth / 2, 0, 0]} // Mảnh phải ở vị trí bình thường
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-slidingDoor-right`;
+                if (!openedSlidersRef.current[k])
+                  triggerSlider(
+                    k,
+                    true,
+                    slidingDoorWidth / 2,
+                    -1, // Di chuyển sang trái (về phía mảnh 1)
+                    slidingDoorWidth
+                  );
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-slidingDoor-right`;
+                if (!openedSlidersRef.current[k])
+                  triggerSlider(
+                    k,
+                    false,
+                    slidingDoorWidth / 2,
+                    -1, // Di chuyển sang trái (về phía mảnh 1)
+                    slidingDoorWidth
+                  );
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-slidingDoor-right`;
+                const next = !openedSlidersRef.current[k];
+                openedSlidersRef.current[k] = next;
+                triggerSlider(
+                  k,
+                  next,
+                  slidingDoorWidth / 2,
+                  -1, // Di chuyển sang trái (về phía mảnh 1)
+                  slidingDoorWidth
+                );
+              }}
             >
-              <boxGeometry args={[slidingDoorWidth - 0.1, 0.01, 0.01]} />
-              <meshStandardMaterial color="#333" />
-            </mesh>
+              {/* Right sliding door panel */}
+              <mesh position={[0, 0, 0]}>
+                <boxGeometry
+                  args={[slidingDoorWidth, facadeHeight + thickness, thickness]}
+                />
+                <meshStandardMaterial map={texture} color="white" />
+              </mesh>
+              {/* Right door handle */}
+              {renderHandle(handleType, [
+                -slidingDoorWidth / 2 + 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
           </group>
         );
 
       case "slidingMirrorDoor":
-        // Porte coulissante en miroir - sliding mirror door (slide to the left)
-        // Calculate section width for sliding mirror door
-        const mirrorSectionName = getSectionNameFromSpacingId(pos.spacingId);
-        const mirrorSectionSpacingIds =
-          getSpacingIdsInSection(mirrorSectionName);
-
-        // Check if any spacing in the section has sliding mirror door configured
-        const hasSlidingMirrorDoorInSection = mirrorSectionSpacingIds.some(
-          (spacingId) =>
-            config.doorsDrawersConfig[spacingId] === "slidingMirrorDoor"
-        );
-
-        // If no sliding mirror door configured in this section, don't render
-        if (!hasSlidingMirrorDoorInSection) {
-          return null;
-        }
-
-        // Filter spacing IDs based on wardrobe type and section
-        let filteredMirrorSpacingIds = mirrorSectionSpacingIds;
-        if (config.wardrobeType.id === "Angle") {
-          if (mirrorSectionName === "sectionA") {
-            // Section A: exclude last column
-            const lastColumnId =
-              sectionData.columns[sectionData.columns.length - 1]?.id;
-            filteredMirrorSpacingIds = mirrorSectionSpacingIds.filter(
-              (spacingId) => !spacingId.startsWith(lastColumnId)
-            );
-          } else if (mirrorSectionName === "sectionB") {
-            // Section B: exclude first column
-            const firstColumnId = sectionData.columns[0]?.id;
-            filteredMirrorSpacingIds = mirrorSectionSpacingIds.filter(
-              (spacingId) => !spacingId.startsWith(firstColumnId)
-            );
-          }
-        } else if (config.wardrobeType.id === "Forme U") {
-          if (mirrorSectionName === "sectionA") {
-            // Section A: exclude first and last columns
-            const firstColumnId = sectionData.columns[0]?.id;
-            const lastColumnId =
-              sectionData.columns[sectionData.columns.length - 1]?.id;
-            filteredMirrorSpacingIds = mirrorSectionSpacingIds.filter(
-              (spacingId) =>
-                !spacingId.startsWith(firstColumnId) &&
-                !spacingId.startsWith(lastColumnId)
-            );
-          } else if (mirrorSectionName === "sectionB") {
-            // Section B: exclude last column
-            const lastColumnId =
-              sectionData.columns[sectionData.columns.length - 1]?.id;
-            filteredMirrorSpacingIds = mirrorSectionSpacingIds.filter(
-              (spacingId) => !spacingId.startsWith(lastColumnId)
-            );
-          } else if (mirrorSectionName === "sectionC") {
-            // Section C: exclude first column
-            const firstColumnId = sectionData.columns[0]?.id;
-            filteredMirrorSpacingIds = mirrorSectionSpacingIds.filter(
-              (spacingId) => !spacingId.startsWith(firstColumnId)
-            );
-          }
-        }
-
-        const mirrorSectionWidth = filteredMirrorSpacingIds.reduce(
-          (total, spacingId) => {
-            const spacingPos = spacingPositions.find(
-              (p) => p.spacingId === spacingId
-            );
-            return total + (spacingPos ? spacingPos.width : 0);
-          },
-          0
-        );
-
-        // Calculate number of columns in filtered mirror section
-        const uniqueMirrorColumnIds = [
-          ...new Set(
-            filteredMirrorSpacingIds.map((spacingId) => {
-              const parts = spacingId.split("-");
-              if (parts.length >= 3) {
-                return `${parts[0]}-${parts[1]}-${parts[2]}`; // sectionA-col-1
-              }
-              return spacingId.split("-")[0]; // fallback
-            })
-          ),
-        ];
-        const numberOfMirrorColumns = uniqueMirrorColumnIds.length;
-        const thicknessBetweenMirrorColumns =
-          (numberOfMirrorColumns - 1) * thickness;
-
-        const mirrorDoorWidth =
-          mirrorSectionWidth + thicknessBetweenMirrorColumns; // Full section width including thickness between columns
-
-        // Only render sliding mirror door for the first spacing in the section to avoid duplicates
-        const isFirstMirrorSpacingInSection =
-          filteredMirrorSpacingIds[0] === pos.spacingId;
-        if (!isFirstMirrorSpacingInSection) {
-          return null;
-        }
-
-        // Calculate center position of the section
-        const mirrorSectionPositions = filteredMirrorSpacingIds.map(
-          (spacingId) => {
-            const spacingPos = spacingPositions.find(
-              (p) => p.spacingId === spacingId
-            );
-            return spacingPos ? spacingPos.x : 0;
-          }
-        );
-        const mirrorSectionCenterX =
-          mirrorSectionPositions.reduce((sum, x) => sum + x, 0) /
-          mirrorSectionPositions.length;
+        // Porte Coulissante Miroir - sliding mirror door
+        const slidingMirrorDoorWidth = facadeWidth / 2; // Mỗi cửa chiếm một nửa chiều rộng
 
         return (
-          <group
-            position={[mirrorSectionCenterX, pos.y, facadeZ + thickness / 2]}
-          >
-            {/* Left mirror door panel (mảnh 1) */}
+          <group position={[groupData.x, groupData.centerY, facadeZ]}>
+            {/* Left sliding mirror door */}
             <group
               ref={(ref) => {
                 if (ref)
                   sliderGroupsRef.current[
-                    `${pos.spacingId}-slidingMirrorDoor-left`
+                    `${groupData.groupId}-slidingMirrorDoor-left`
                   ] = ref;
               }}
-              position={[-mirrorDoorWidth / 4, 0, 0]}
+              position={[-slidingMirrorDoorWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-slidingMirrorDoor-left`;
-                if (!openedSlidersRef.current[k]) {
+                const k = `${groupData.groupId}-slidingMirrorDoor-left`;
+                if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
                     true,
-                    -mirrorDoorWidth / 4,
-                    1,
-                    mirrorDoorWidth / 2
+                    -slidingMirrorDoorWidth / 2,
+                    1, // Di chuyển sang phải (về phía mảnh 2)
+                    slidingMirrorDoorWidth
                   );
-                }
               }}
               onPointerOut={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-slidingMirrorDoor-left`;
-                if (!openedSlidersRef.current[k]) {
+                const k = `${groupData.groupId}-slidingMirrorDoor-left`;
+                if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
                     false,
-                    -mirrorDoorWidth / 4,
-                    1,
-                    mirrorDoorWidth / 2
+                    -slidingMirrorDoorWidth / 2,
+                    1, // Di chuyển sang phải (về phía mảnh 2)
+                    slidingMirrorDoorWidth
                   );
-                }
               }}
               onClick={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-slidingMirrorDoor-left`;
+                const k = `${groupData.groupId}-slidingMirrorDoor-left`;
                 const next = !openedSlidersRef.current[k];
                 openedSlidersRef.current[k] = next;
                 triggerSlider(
                   k,
                   next,
-                  -mirrorDoorWidth / 4,
-                  1,
-                  mirrorDoorWidth / 2
+                  -slidingMirrorDoorWidth / 2,
+                  1, // Di chuyển sang phải (về phía mảnh 2)
+                  slidingMirrorDoorWidth
                 );
               }}
             >
-              <mesh position={[0, 0, thickness / 2]}>
-                <boxGeometry
-                  args={[mirrorDoorWidth / 2, facadeHeight, thickness]}
-                />
-                <meshStandardMaterial
-                  key={`mirror-door-material-${pos.spacingId}`}
-                  color="#e0e0e0"
-                  metalness={0.8}
-                  roughness={0.1}
-                  envMapIntensity={1}
-                />
-              </mesh>
-              {/* Viền cho mảnh 1 mirror */}
-              <mesh position={[0, 0, thickness / 2 + 0.001]}>
+              {/* Left sliding mirror door panel */}
+              <mesh position={[0, 0, 0]}>
                 <boxGeometry
                   args={[
-                    mirrorDoorWidth / 2 + 0.01,
-                    facadeHeight + 0.01,
-                    0.002,
+                    slidingMirrorDoorWidth,
+                    facadeHeight + thickness,
+                    thickness,
                   ]}
                 />
                 <meshStandardMaterial
-                  key={`mirror-border-material-${pos.spacingId}`}
-                  color="#333"
+                  key={`mirror-door-material-${groupData.groupId}-left`}
+                  color="#C0C0C0"
+                  metalness={0.9}
+                  roughness={0.1}
+                  envMapIntensity={1.0}
                 />
               </mesh>
+              {/* Left door handle */}
+              {renderHandle(handleType, [
+                slidingMirrorDoorWidth / 2 - 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
             </group>
 
-            {/* Right mirror door panel (mảnh 2) */}
+            {/* Right sliding mirror door */}
             <group
               ref={(ref) => {
                 if (ref)
                   sliderGroupsRef.current[
-                    `${pos.spacingId}-slidingMirrorDoor-right`
+                    `${groupData.groupId}-slidingMirrorDoor-right`
                   ] = ref;
               }}
-              position={[mirrorDoorWidth / 4, 0, 0]}
+              position={[slidingMirrorDoorWidth / 2, 0, 0]}
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-slidingMirrorDoor-right`;
-                if (!openedSlidersRef.current[k]) {
+                const k = `${groupData.groupId}-slidingMirrorDoor-right`;
+                if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
                     true,
-                    mirrorDoorWidth / 4,
-                    -1,
-                    mirrorDoorWidth / 2
+                    slidingMirrorDoorWidth / 2,
+                    -1, // Di chuyển sang trái (về phía mảnh 1)
+                    slidingMirrorDoorWidth
                   );
-                }
               }}
               onPointerOut={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-slidingMirrorDoor-right`;
-                if (!openedSlidersRef.current[k]) {
+                const k = `${groupData.groupId}-slidingMirrorDoor-right`;
+                if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
                     false,
-                    mirrorDoorWidth / 4,
-                    -1,
-                    mirrorDoorWidth / 2
+                    slidingMirrorDoorWidth / 2,
+                    -1, // Di chuyển sang trái (về phía mảnh 1)
+                    slidingMirrorDoorWidth
                   );
-                }
               }}
               onClick={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
-                const k = `${pos.spacingId}-slidingMirrorDoor-right`;
+                const k = `${groupData.groupId}-slidingMirrorDoor-right`;
                 const next = !openedSlidersRef.current[k];
                 openedSlidersRef.current[k] = next;
                 triggerSlider(
                   k,
                   next,
-                  mirrorDoorWidth / 4,
-                  -1,
-                  mirrorDoorWidth / 2
+                  slidingMirrorDoorWidth / 2,
+                  -1, // Di chuyển sang trái (về phía mảnh 1)
+                  slidingMirrorDoorWidth
                 );
               }}
             >
-              <mesh position={[0, 0, -thickness / 2]}>
-                <boxGeometry
-                  args={[mirrorDoorWidth / 2, facadeHeight, thickness]}
-                />
-                <meshStandardMaterial
-                  key={`mirror-door-material-${pos.spacingId}-right`}
-                  color="#e0e0e0"
-                  metalness={0.8}
-                  roughness={0.1}
-                  envMapIntensity={1}
-                />
-              </mesh>
-              {/* Viền cho mảnh 2 mirror */}
-              <mesh position={[0, 0, -thickness / 2 - 0.001]}>
+              {/* Right sliding mirror door panel */}
+              <mesh position={[0, 0, 0]}>
                 <boxGeometry
                   args={[
-                    mirrorDoorWidth / 2 + 0.01,
-                    facadeHeight + 0.01,
-                    0.002,
+                    slidingMirrorDoorWidth,
+                    facadeHeight + thickness,
+                    thickness,
                   ]}
                 />
                 <meshStandardMaterial
-                  key={`mirror-border-material-${pos.spacingId}-right`}
-                  color="#333"
+                  key={`mirror-door-material-${groupData.groupId}-right`}
+                  color="#C0C0C0"
+                  metalness={0.9}
+                  roughness={0.1}
+                  envMapIntensity={1.0}
                 />
               </mesh>
+              {/* Right door handle */}
+              {renderHandle(handleType, [
+                -slidingMirrorDoorWidth / 2 + 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
             </group>
-
-            {/* Track indicator */}
-            <mesh
-              position={[0, -facadeHeight / 2 - 0.02, thickness / 2 + 0.01]}
-            >
-              <boxGeometry args={[mirrorDoorWidth - 0.1, 0.01, 0.01]} />
-              <meshStandardMaterial color="#333" />
-            </mesh>
           </group>
         );
 
+      case "slidingGlassDoor":
+        // Porte Coulissante Verre - sliding glass door
+        const slidingGlassDoorWidth = facadeWidth / 2; // Mỗi cửa chiếm một nửa chiều rộng
+
+        return (
+          <group position={[groupData.x, groupData.centerY, facadeZ]}>
+            {/* Left sliding glass door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  sliderGroupsRef.current[
+                    `${groupData.groupId}-slidingGlassDoor-left`
+                  ] = ref;
+              }}
+              position={[-slidingGlassDoorWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-slidingGlassDoor-left`;
+                if (!openedSlidersRef.current[k])
+                  triggerSlider(
+                    k,
+                    true,
+                    -slidingGlassDoorWidth / 2,
+                    1, // Di chuyển sang phải (về phía mảnh 2)
+                    slidingGlassDoorWidth
+                  );
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-slidingGlassDoor-left`;
+                if (!openedSlidersRef.current[k])
+                  triggerSlider(
+                    k,
+                    false,
+                    -slidingGlassDoorWidth / 2,
+                    1, // Di chuyển sang phải (về phía mảnh 2)
+                    slidingGlassDoorWidth
+                  );
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-slidingGlassDoor-left`;
+                const next = !openedSlidersRef.current[k];
+                openedSlidersRef.current[k] = next;
+                triggerSlider(
+                  k,
+                  next,
+                  -slidingGlassDoorWidth / 2,
+                  1, // Di chuyển sang phải (về phía mảnh 2)
+                  slidingGlassDoorWidth
+                );
+              }}
+            >
+              {/* Left sliding glass door panel */}
+              <mesh position={[0, 0, 0]}>
+                <boxGeometry
+                  args={[
+                    slidingGlassDoorWidth,
+                    facadeHeight + thickness,
+                    thickness,
+                  ]}
+                />
+                <meshPhysicalMaterial
+                  key={`glass-sliding-door-material-${groupData.groupId}-left`}
+                  color="#000000"
+                  transparent={true}
+                  opacity={0.15}
+                  metalness={0.1}
+                  roughness={0.0}
+                  transmission={0.85}
+                  thickness={0.1}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+              {/* Glass border for left door */}
+              <mesh position={[0, 0, 0.001]}>
+                <boxGeometry
+                  args={[
+                    slidingGlassDoorWidth + 0.01,
+                    facadeHeight + thickness + 0.01,
+                    0.002,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`glass-sliding-door-border-material-${groupData.groupId}-left`}
+                  color="#666"
+                  transparent={true}
+                  opacity={0.3}
+                />
+              </mesh>
+              {/* Left door handle */}
+              {renderHandle(handleType, [
+                slidingGlassDoorWidth / 2 - 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+
+            {/* Right sliding glass door */}
+            <group
+              ref={(ref) => {
+                if (ref)
+                  sliderGroupsRef.current[
+                    `${groupData.groupId}-slidingGlassDoor-right`
+                  ] = ref;
+              }}
+              position={[slidingGlassDoorWidth / 2, 0, 0]}
+              onPointerOver={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-slidingGlassDoor-right`;
+                if (!openedSlidersRef.current[k])
+                  triggerSlider(
+                    k,
+                    true,
+                    slidingGlassDoorWidth / 2,
+                    -1, // Di chuyển sang trái (về phía mảnh 1)
+                    slidingGlassDoorWidth
+                  );
+              }}
+              onPointerOut={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-slidingGlassDoor-right`;
+                if (!openedSlidersRef.current[k])
+                  triggerSlider(
+                    k,
+                    false,
+                    slidingGlassDoorWidth / 2,
+                    -1, // Di chuyển sang trái (về phía mảnh 1)
+                    slidingGlassDoorWidth
+                  );
+              }}
+              onClick={(e) => {
+                if (shouldDisableInteractions()) return;
+                e.stopPropagation();
+                const k = `${groupData.groupId}-slidingGlassDoor-right`;
+                const next = !openedSlidersRef.current[k];
+                openedSlidersRef.current[k] = next;
+                triggerSlider(
+                  k,
+                  next,
+                  slidingGlassDoorWidth / 2,
+                  -1, // Di chuyển sang trái (về phía mảnh 1)
+                  slidingGlassDoorWidth
+                );
+              }}
+            >
+              {/* Right sliding glass door panel */}
+              <mesh position={[0, 0, 0]}>
+                <boxGeometry
+                  args={[
+                    slidingGlassDoorWidth,
+                    facadeHeight + thickness,
+                    thickness,
+                  ]}
+                />
+                <meshPhysicalMaterial
+                  key={`glass-sliding-door-material-${groupData.groupId}-right`}
+                  color="#000000"
+                  transparent={true}
+                  opacity={0.15}
+                  metalness={0.1}
+                  roughness={0.0}
+                  transmission={0.85}
+                  thickness={0.1}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+              {/* Glass border for right door */}
+              <mesh position={[0, 0, 0.001]}>
+                <boxGeometry
+                  args={[
+                    slidingGlassDoorWidth + 0.01,
+                    facadeHeight + thickness + 0.01,
+                    0.002,
+                  ]}
+                />
+                <meshStandardMaterial
+                  key={`glass-sliding-door-border-material-${groupData.groupId}-right`}
+                  color="#666"
+                  transparent={true}
+                  opacity={0.3}
+                />
+              </mesh>
+              {/* Right door handle */}
+              {renderHandle(handleType, [
+                -slidingGlassDoorWidth / 2 + 0.05,
+                0,
+                thickness / 2 + 0.01,
+              ])}
+            </group>
+          </group>
+        );
+
+      // Add other cases as needed...
       default:
         return null;
     }
   };
 
+  // Get grouped spacings
+  const groupedSelectedSpacings = getGroupedSelectedSpacings();
+  const groupedConfiguredSpacings = getGroupedConfiguredSpacings();
+
+  // Helper function to render sliding doors for entire section
+  const renderSlidingDoorsForSection = () => {
+    const slidingDoorTypes = [
+      "slidingDoor",
+      "slidingMirrorDoor",
+      "slidingGlassDoor",
+    ];
+
+    // Helper function to check if column should be suppressed for sliding doors
+    const shouldSuppressColumnForSliding = (
+      section: string,
+      columnIndex: number,
+      totalColumns: number
+    ): boolean => {
+      const typeId = config.wardrobeType.id;
+      if (typeId === "Angle") {
+        // Angle: ẩn A cột cuối và B cột 1 (index 0)
+        if (section === "sectionA" && columnIndex === totalColumns - 1)
+          return true;
+        if (section === "sectionB" && columnIndex === 0) return true;
+        return false;
+      }
+      if (typeId === "Forme U") {
+        // Forme U: ẩn B cột cuối, A cột 1 và cột cuối, C cột 1
+        if (section === "sectionA") {
+          if (columnIndex === 0 || columnIndex === totalColumns - 1)
+            return true;
+        } else if (section === "sectionB") {
+          if (columnIndex === totalColumns - 1) return true;
+        } else if (section === "sectionC") {
+          if (columnIndex === 0) return true;
+        }
+        return false;
+      }
+      return false;
+    };
+
+    // Check if any spacing in this section has sliding door config
+    const sectionSpacingsWithSlidingDoor = spacingPositions.filter((pos) => {
+      const doorType = config.doorsDrawersConfig[pos.spacingId];
+      return slidingDoorTypes.includes(doorType);
+    });
+
+    if (sectionSpacingsWithSlidingDoor.length === 0) {
+      return null;
+    }
+
+    // Get the sliding door type from the first spacing that has it
+    const firstSlidingSpacing = sectionSpacingsWithSlidingDoor[0];
+    const slidingDoorType =
+      config.doorsDrawersConfig[firstSlidingSpacing.spacingId];
+
+    // Get section name
+    const sectionName = getSectionNameFromSpacingId(
+      firstSlidingSpacing.spacingId
+    );
+
+    // Debug log
+    console.log(
+      `Sliding door debug: firstSlidingSpacing=${firstSlidingSpacing.spacingId}, sectionName=${sectionName}, wardrobeType=${config.wardrobeType.id}`
+    );
+
+    // Filter out spacings from suppressed columns
+    const validSpacingPositions = spacingPositions.filter((pos) => {
+      const parts = pos.spacingId.split("-");
+      if (parts.length < 4) return false;
+
+      let columnId: string;
+      let columnIndex: number;
+
+      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+        columnIndex = parseInt(parts[2]); // parts[2] là số thứ tự column (1, 2, 3...)
+      } else {
+        columnId = parts[0];
+        columnIndex = parseInt(parts[1]);
+      }
+
+      // Find the column in sectionData to get total columns
+      const column = sectionData.columns.find((col) => col.id === columnId);
+      if (!column) return false;
+
+      const totalColumns = sectionData.columns.length;
+
+      // Convert columnIndex to 0-based index for comparison
+      const columnIndexZeroBased = columnIndex - 1; // Convert from 1-based to 0-based
+
+      // Debug log for Angle type
+      if (config.wardrobeType.id === "Angle") {
+        console.log(
+          `Sliding door check: section=${sectionName}, columnIndex=${columnIndex} (0-based: ${columnIndexZeroBased}), totalColumns=${totalColumns}, spacingId=${pos.spacingId}`
+        );
+      }
+
+      return !shouldSuppressColumnForSliding(
+        sectionName,
+        columnIndexZeroBased, // Use 0-based index
+        totalColumns
+      );
+    });
+
+    if (validSpacingPositions.length === 0) {
+      return null; // No valid spacings for sliding door
+    }
+
+    // Calculate section width: sum of all valid spacing widths + thickness between them
+    const sectionWidth = validSpacingPositions.reduce((total, pos, index) => {
+      if (index === 0) {
+        return pos.width;
+      } else {
+        return total + thickness + pos.width;
+      }
+    }, 0);
+
+    // Calculate section height: height of the column (not sum of spacings)
+    const sectionHeight = height - baseBarHeight - 2 * thickness;
+
+    // Calculate section center position from valid spacings only
+    const sectionCenterX =
+      validSpacingPositions.reduce((sum, pos) => sum + pos.x, 0) /
+      validSpacingPositions.length;
+    const sectionCenterY =
+      validSpacingPositions.reduce((sum, pos) => sum + pos.y, 0) /
+      validSpacingPositions.length;
+
+    // Create group data for the entire section
+    const sectionGroupData = {
+      groupId: `section-${sectionName}-sliding`,
+      spacingIds: validSpacingPositions.map((pos) => pos.spacingId),
+      x: sectionCenterX,
+      centerY: sectionCenterY,
+      width: sectionWidth,
+      totalHeight: sectionHeight,
+    };
+
+    return renderGroupedFacade(
+      slidingDoorType,
+      sectionGroupData,
+      sectionWidth,
+      sectionHeight
+    );
+  };
+
   return (
     <group position={position}>
+      {/* Render sliding doors for entire section */}
+      {renderSlidingDoorsForSection()}
+
+      {/* Render grouped facades for selected spacings */}
+      {groupedSelectedSpacings.map((groupData) => {
+        if (!groupData) return null;
+
+        // Get the door/drawer type from the first spacing in the group
+        const firstSpacingId = groupData.spacingIds[0];
+        const doorDrawerType = config.doorsDrawersConfig[firstSpacingId];
+
+        if (!doorDrawerType) {
+          return null; // No facade for this group
+        }
+
+        // Skip if this is a sliding door (already rendered above)
+        const slidingDoorTypes = [
+          "slidingDoor",
+          "slidingMirrorDoor",
+          "slidingGlassDoor",
+        ];
+        if (slidingDoorTypes.includes(doorDrawerType)) {
+          return null;
+        }
+
+        return (
+          <React.Fragment key={`grouped-selected-facade-${groupData.groupId}`}>
+            {renderGroupedFacade(
+              doorDrawerType,
+              groupData,
+              groupData.width,
+              groupData.totalHeight
+            )}
+          </React.Fragment>
+        );
+      })}
+
+      {/* Render grouped facades for configured spacings (not selected) */}
+      {groupedConfiguredSpacings.map((groupData) => {
+        if (!groupData) return null;
+
+        // Check if any spacing in this group is already rendered as selected
+        const isAlreadyRendered = groupedSelectedSpacings.some(
+          (selectedGroup) =>
+            selectedGroup &&
+            selectedGroup.spacingIds.some((id) =>
+              groupData.spacingIds.includes(id)
+            )
+        );
+
+        if (isAlreadyRendered) {
+          return null; // Skip if already rendered as selected group
+        }
+
+        // Get the door/drawer type from the first spacing in the group
+        const firstSpacingId = groupData.spacingIds[0];
+        const doorDrawerType = config.doorsDrawersConfig[firstSpacingId];
+
+        if (!doorDrawerType) {
+          return null; // No facade for this group
+        }
+
+        // Skip if this is a sliding door (already rendered above)
+        const slidingDoorTypes = [
+          "slidingDoor",
+          "slidingMirrorDoor",
+          "slidingGlassDoor",
+        ];
+        if (slidingDoorTypes.includes(doorDrawerType)) {
+          return null;
+        }
+
+        return (
+          <React.Fragment
+            key={`grouped-configured-facade-${groupData.groupId}`}
+          >
+            {renderGroupedFacade(
+              doorDrawerType,
+              groupData,
+              groupData.width,
+              groupData.totalHeight
+            )}
+          </React.Fragment>
+        );
+      })}
+
+      {/* Render individual facades for spacings that have config but are not in any group */}
       {spacingPositions.map((pos) => {
         const doorDrawerType = config.doorsDrawersConfig[pos.spacingId];
 
         if (!doorDrawerType) {
-          return null; // No facade for this spacing
+          return null; // No config
+        }
+
+        // Skip if this is a sliding door (already rendered above)
+        const slidingDoorTypes = [
+          "slidingDoor",
+          "slidingMirrorDoor",
+          "slidingGlassDoor",
+        ];
+        if (slidingDoorTypes.includes(doorDrawerType)) {
+          return null;
+        }
+
+        // Check if this spacing is already rendered in any group
+        const isInSelectedGroup = groupedSelectedSpacings.some(
+          (groupData) =>
+            groupData && groupData.spacingIds.includes(pos.spacingId)
+        );
+        const isInConfiguredGroup = groupedConfiguredSpacings.some(
+          (groupData) =>
+            groupData && groupData.spacingIds.includes(pos.spacingId)
+        );
+
+        if (isInSelectedGroup || isInConfiguredGroup) {
+          return null; // Already rendered in a group
         }
 
         return (
-          <React.Fragment key={`facade-${pos.spacingId}`}>
-            {renderFacade(doorDrawerType, pos, pos.width, pos.height)}
+          <React.Fragment key={`individual-facade-${pos.spacingId}`}>
+            {/* Render facade for individual spacing with config */}
+            {renderGroupedFacade(
+              doorDrawerType,
+              {
+                groupId: pos.spacingId,
+                spacingIds: [pos.spacingId],
+                x: pos.x,
+                centerY: pos.y,
+                width: pos.width,
+                totalHeight: pos.height,
+              },
+              pos.width,
+              pos.height
+            )}
           </React.Fragment>
         );
       })}

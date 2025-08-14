@@ -176,12 +176,81 @@ const DoorsDrawersSection: React.FC = () => {
     return null;
   };
 
+  // Get the height from floor to the shelf below the selected spacing
+  const getShelfBelowHeight = (spacingId: string): number | null => {
+    if (!spacingId) return null;
+
+    // Parse spacingId format: "sectionA-col-1-spacing-3"
+    const parts = spacingId.split("-");
+    if (parts.length < 4) return null;
+
+    // Extract column ID and spacing index
+    let columnId: string;
+    let spacingIndex: number;
+
+    if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+      // Format: "sectionA-col-1-spacing-3"
+      columnId = `${parts[0]}-${parts[1]}-${parts[2]}`; // "sectionA-col-1"
+      spacingIndex = parseInt(parts[4]); // 3
+    } else {
+      // Fallback to old format: "columnId-spacing-index"
+      columnId = parts[0];
+      spacingIndex = parseInt(parts[2]);
+    }
+
+    // Find the column in sections
+    for (const [, section] of Object.entries(config.wardrobeType.sections)) {
+      if (section && section.columns) {
+        const column = section.columns.find((col: any) => col.id === columnId);
+        if (column) {
+          const spacings = column.shelves?.spacings || [];
+
+          // If no spacings, return full column height
+          if (spacings.length === 0) {
+            return config.height - config.baseBarHeight - 2 * config.thickness;
+          }
+
+          // If this is the last spacing, there's no shelf below
+          if (spacingIndex >= spacings.length - 1) {
+            return null;
+          }
+
+          // Calculate height from floor to the shelf below this spacing
+          let heightFromFloor = config.baseBarHeight + config.thickness; // Start from base bar + thickness
+
+          // Add heights of all spacings up to the shelf below
+          for (let i = 0; i <= spacingIndex + 1; i++) {
+            if (i < spacings.length) {
+              heightFromFloor += spacings[i].spacing;
+            }
+          }
+
+          return heightFromFloor;
+        }
+      }
+    }
+
+    return null;
+  };
+
   // Check if drawer button should be disabled
   const isDrawerDisabled = (): boolean => {
     if (!config.selectedSpacingId) return false;
 
+    // Check if multiple spacings are selected
+    const selectedSpacings = config.selectedSpacingIds || [];
+    if (selectedSpacings.length > 1) {
+      return true; // Disable drawer when multiple spacings are selected
+    }
+
     const spacingHeight = getSpacingHeight(config.selectedSpacingId);
     if (spacingHeight === null) return false;
+
+    // Check if shelf below is too high (> 100cm)
+    const shelfBelowHeight = getShelfBelowHeight(config.selectedSpacingId);
+    if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
+      return true; // Disable drawer when shelf below is too high
+    }
 
     // Disable if spacing height is not between 10-60cm (mở rộng range)
     return spacingHeight < 10 || spacingHeight > 60;
@@ -1323,8 +1392,44 @@ const DoorsDrawersSection: React.FC = () => {
                 </p>
                 {hoveredButton.type === "drawer" && (
                   <p>
-                    ❌ 10-60 cm de hauteur (courant{" "}
-                    {getSpacingHeight(config.selectedSpacingId || "")} cm)
+                    {(() => {
+                      const selectedSpacings = config.selectedSpacingIds || [];
+                      if (selectedSpacings.length > 1) {
+                        return "❌ La façade sélectionnée ne peut pas être installée sur plusieurs casiers";
+                      }
+
+                      const shelfBelowHeight = getShelfBelowHeight(
+                        config.selectedSpacingId || ""
+                      );
+                      if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
+                        return `❌ L'étagère en dessous est trop haute (${shelfBelowHeight} cm depuis le sol > 100 cm)`;
+                      }
+
+                      return `❌ 10-60 cm de hauteur (courant ${getSpacingHeight(
+                        config.selectedSpacingId || ""
+                      )} cm)`;
+                    })()}
+                  </p>
+                )}
+                {hoveredButton.type === "drawerVerre" && (
+                  <p>
+                    {(() => {
+                      const selectedSpacings = config.selectedSpacingIds || [];
+                      if (selectedSpacings.length > 1) {
+                        return "❌ La façade sélectionnée ne peut pas être installée sur plusieurs casiers";
+                      }
+
+                      const shelfBelowHeight = getShelfBelowHeight(
+                        config.selectedSpacingId || ""
+                      );
+                      if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
+                        return `❌ L'étagère en dessous est trop haute (${shelfBelowHeight} cm depuis le sol > 100 cm)`;
+                      }
+
+                      return `❌ 10-60 cm de hauteur (courant ${getSpacingHeight(
+                        config.selectedSpacingId || ""
+                      )} cm)`;
+                    })()}
                   </p>
                 )}
                 {hoveredButton.type === "doubleSwingDoor" && (

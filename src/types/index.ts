@@ -77,6 +77,12 @@ declare global {
 
     ledColor: string;
     showMeasurements: boolean;
+    shelfTextureConfig: {
+      [spacingId: string]: Texture;
+    };
+    facadeTextureConfig: {
+      [spacingId: string]: Texture;
+    };
   }
 
   interface Texture {

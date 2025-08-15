@@ -49,8 +49,9 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     doorsDrawersConfig: {},
     handleType: "none",
     handleConfig: {},
-
-    activeView: "",
+    shelfTextureConfig: {},
+    facadeTextureConfig: {},
+    activeView: "entier",
   });
 
   // Hàm cập nhật cấu hình

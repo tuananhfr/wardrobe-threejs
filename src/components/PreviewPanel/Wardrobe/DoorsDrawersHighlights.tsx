@@ -36,6 +36,11 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
   // Check if doors drawers mode is active
   const isDoorsDrawersMode = config.accordionOpen === "collapseDoorsDrawers";
 
+  // Don't render if not in doors drawers mode
+  if (!isDoorsDrawersMode) {
+    return null;
+  }
+
   // Reset when doors drawers mode is disabled
   useEffect(() => {
     if (!isDoorsDrawersMode) {
@@ -487,11 +492,6 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
     setHoveredSpacing(null);
     document.body.style.cursor = "auto";
   };
-
-  // Don't render if not in doors drawers mode
-  if (!isDoorsDrawersMode) {
-    return null;
-  }
 
   return (
     <group

@@ -163,8 +163,16 @@ const ConfigPanel: React.FC = () => {
               onChange={handleMainOptionChange}
             />
             {config.activeView === "led" && <LEDColorSelector />}
-            {config.activeView === "entier" && <TextureSelector />}
-            {config.activeView === "test" && <div>Test content</div>}
+            {config.activeView === "entier" && (
+              <TextureSelector type="entier" />
+            )}
+            {config.activeView === "test" && <TextureSelector type="test" />}
+            {config.activeView === "tablette" && (
+              <TextureSelector type="tablette" />
+            )}
+            {config.activeView === "facades" && (
+              <TextureSelector type="facades" />
+            )}
           </div>
         </div>
       </div>

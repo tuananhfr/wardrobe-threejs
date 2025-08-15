@@ -1,7 +1,9 @@
 // src/components/PreviewPanel/Wardrobe/DoorsDrawersRenderer.tsx
 import React, { useRef } from "react";
 import * as THREE from "three";
+import { Text } from "@react-three/drei";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
+import { useConfig } from "@/components/context/WardrobeContext";
 import { useFrame } from "@react-three/fiber";
 
 interface DoorsDrawersRendererProps {
@@ -22,6 +24,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
   texture,
 }) => {
   const { config } = useWardrobeConfig();
+  const { updateConfig } = useConfig();
   const width = sectionData.width;
   const depth = sectionData.depth;
 
@@ -68,6 +71,65 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
   // Helper function to check if interactions should be disabled
   const shouldDisableInteractions = () => {
     return config.accordionOpen === "collapseDoorsDrawers";
+  };
+
+  // Helper function to check if we're in facades selection mode
+  const isSelectingFacades = () => {
+    return config.activeView === "facades";
+  };
+
+  // Helper function to get facade highlight state
+  const getFacadeHighlightState = (spacingId: string) => {
+    // Chỉ highlight khi ở chế độ facades
+    if (!isSelectingFacades())
+      return {
+        isHighlighted: false,
+        isSelected: false,
+        isLightHighlight: false,
+      };
+
+    const isHovered = config.hoveredSpacingId === spacingId;
+    const isSelected = config.selectedSpacingIds.includes(spacingId);
+
+    // Không cần highlight màu sắc khi ở chế độ facades
+    const isLightHighlight = false;
+
+    // Chỉ highlight đậm khi có facade được chọn hoặc hover
+    const isStrongHighlight = isHovered || isSelected;
+
+    return {
+      isHighlighted: isStrongHighlight,
+      isSelected,
+      isLightHighlight,
+    };
+  };
+
+  // Helper function to handle facade pointer events
+  const handleFacadePointerOver = (spacingId: string) => {
+    if (!isSelectingFacades()) return;
+    updateConfig("hoveredSpacingId", spacingId);
+  };
+
+  const handleFacadePointerOut = () => {
+    if (!isSelectingFacades()) return;
+    updateConfig("hoveredSpacingId", null);
+  };
+
+  const handleFacadeClick = (spacingId: string) => {
+    if (!isSelectingFacades()) return;
+
+    const currentSelectedIds = [...config.selectedSpacingIds];
+    const index = currentSelectedIds.indexOf(spacingId);
+
+    if (index > -1) {
+      // Remove from selection
+      currentSelectedIds.splice(index, 1);
+    } else {
+      // Add to selection
+      currentSelectedIds.push(spacingId);
+    }
+
+    updateConfig("selectedSpacingIds", currentSelectedIds);
   };
 
   // Helper function to get section name from spacingId
@@ -753,6 +815,11 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     switch (type) {
       case "leftDoor":
         // Porte Gauche - door hinged on left side
+        const leftDoorHighlightState = getFacadeHighlightState(firstSpacingId);
+        const leftDoorIsHovered = config.hoveredSpacingId === firstSpacingId;
+        const leftDoorIsSelected =
+          config.selectedSpacingIds.includes(firstSpacingId);
+
         return (
           <group
             position={[
@@ -791,12 +858,79 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               }}
             >
               {/* Door panel - pivot từ left edge */}
-              <mesh position={[facadeWidth / 2, 0, 0]}>
+              <mesh
+                position={[facadeWidth / 2, 0, 0]}
+                userData={{
+                  type: "facade",
+                  spacingId: firstSpacingId,
+                  columnId: groupData.columnId,
+                  sectionName: getSectionNameFromSpacingId(firstSpacingId),
+                }}
+                onPointerOver={() => handleFacadePointerOver(firstSpacingId)}
+                onPointerOut={handleFacadePointerOut}
+                onClick={() => handleFacadeClick(firstSpacingId)}
+              >
                 <boxGeometry
                   args={[facadeWidth, facadeHeight + thickness, thickness]}
                 />
-                <meshStandardMaterial map={texture} color="white" />
+                <meshStandardMaterial
+                  map={getFacadeTexture(firstSpacingId)}
+                  color="white"
+                />
               </mesh>
+
+              {/* Highlight overlay */}
+              {leftDoorHighlightState.isHighlighted && (
+                <mesh
+                  position={[facadeWidth / 2, 0, 0.01]} // Slightly in front
+                >
+                  <boxGeometry
+                    args={[facadeWidth, facadeHeight + thickness, thickness]}
+                  />
+                  <meshBasicMaterial
+                    color="#f8f9fa"
+                    transparent
+                    opacity={leftDoorIsSelected ? 0.6 : 0.4}
+                    depthWrite={false}
+                    depthTest={false}
+                  />
+                </mesh>
+              )}
+
+              {/* Icon */}
+              {(leftDoorIsHovered ||
+                leftDoorIsSelected ||
+                isSelectingFacades()) && (
+                <group
+                  position={[
+                    facadeWidth / 2,
+                    0,
+                    thickness / 2 + 0.02, // In front of facade
+                  ]}
+                >
+                  {/* Icon background */}
+                  <mesh>
+                    <circleGeometry args={[0.05, 32]} />
+                    <meshBasicMaterial
+                      color="white"
+                      transparent
+                      opacity={0.9}
+                    />
+                  </mesh>
+
+                  {/* Icon text */}
+                  <Text
+                    position={[0, 0, 0.01]}
+                    color={leftDoorIsSelected ? "green" : "#4169E1"}
+                    fontSize={0.1}
+                    anchorX="center"
+                    anchorY="middle"
+                  >
+                    {leftDoorIsSelected ? "✓" : "+"}
+                  </Text>
+                </group>
+              )}
+
               {/* Door handle ở RIGHT SIDE của door */}
               {renderHandle(handleType, [
                 facadeWidth - 0.05,
@@ -808,6 +942,11 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         );
 
       case "rightDoor":
+        const rightDoorHighlightState = getFacadeHighlightState(firstSpacingId);
+        const rightDoorIsHovered = config.hoveredSpacingId === firstSpacingId;
+        const rightDoorIsSelected =
+          config.selectedSpacingIds.includes(firstSpacingId);
+
         return (
           <group
             position={[
@@ -846,12 +985,79 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               }}
             >
               {/* Door panel - pivot từ right edge */}
-              <mesh position={[-facadeWidth / 2, 0, 0]}>
+              <mesh
+                position={[-facadeWidth / 2, 0, 0]}
+                userData={{
+                  type: "facade",
+                  spacingId: firstSpacingId,
+                  columnId: groupData.columnId,
+                  sectionName: getSectionNameFromSpacingId(firstSpacingId),
+                }}
+                onPointerOver={() => handleFacadePointerOver(firstSpacingId)}
+                onPointerOut={handleFacadePointerOut}
+                onClick={() => handleFacadeClick(firstSpacingId)}
+              >
                 <boxGeometry
                   args={[facadeWidth, facadeHeight + thickness, thickness]}
                 />
-                <meshStandardMaterial map={texture} color="white" />
+                <meshStandardMaterial
+                  map={getFacadeTexture(firstSpacingId)}
+                  color="white"
+                />
               </mesh>
+
+              {/* Highlight overlay */}
+              {rightDoorHighlightState.isHighlighted && (
+                <mesh
+                  position={[-facadeWidth / 2, 0, 0.01]} // Slightly in front
+                >
+                  <boxGeometry
+                    args={[facadeWidth, facadeHeight + thickness, thickness]}
+                  />
+                  <meshBasicMaterial
+                    color="#f8f9fa"
+                    transparent
+                    opacity={rightDoorIsSelected ? 0.6 : 0.4}
+                    depthWrite={false}
+                    depthTest={false}
+                  />
+                </mesh>
+              )}
+
+              {/* Icon */}
+              {(rightDoorIsHovered ||
+                rightDoorIsSelected ||
+                isSelectingFacades()) && (
+                <group
+                  position={[
+                    -facadeWidth / 2,
+                    0,
+                    thickness / 2 + 0.02, // In front of facade
+                  ]}
+                >
+                  {/* Icon background */}
+                  <mesh>
+                    <circleGeometry args={[0.05, 32]} />
+                    <meshBasicMaterial
+                      color="white"
+                      transparent
+                      opacity={0.9}
+                    />
+                  </mesh>
+
+                  {/* Icon text */}
+                  <Text
+                    position={[0, 0, 0.01]}
+                    color={rightDoorIsSelected ? "green" : "#4169E1"}
+                    fontSize={0.1}
+                    anchorX="center"
+                    anchorY="middle"
+                  >
+                    {rightDoorIsSelected ? "✓" : "+"}
+                  </Text>
+                </group>
+              )}
+
               {/* Door handle ở LEFT SIDE của door */}
               {renderHandle(handleType, [
                 -facadeWidth + 0.05,
@@ -864,9 +1070,13 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
 
       case "drawer":
         // Tiroir - complete drawer with all sides
-        const drawerDepth = depth * 0.6; // Độ sâu của ngăn kéo
-        const drawerHeight = facadeHeight * 0.8; // Chiều cao bên trong ngăn kéo
-        const sideThickness = thickness * 0.5; // Độ dày thành bên
+        // const drawerDepth = depth * 0.6; // Độ sâu của ngăn kéo
+        // const drawerHeight = facadeHeight * 0.8; // Chiều cao bên trong ngăn kéo
+        // const sideThickness = thickness * 0.5; // Độ dày thành bên
+        const drawerHighlightState = getFacadeHighlightState(firstSpacingId);
+        const drawerIsHovered = config.hoveredSpacingId === firstSpacingId;
+        const drawerIsSelected =
+          config.selectedSpacingIds.includes(firstSpacingId);
 
         return (
           <group
@@ -898,66 +1108,72 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
             }}
           >
             {/* Drawer front panel */}
-            <mesh position={[0, 0, 0]}>
+            <mesh
+              position={[0, 0, 0]}
+              userData={{
+                type: "facade",
+                spacingId: firstSpacingId,
+                columnId: groupData.columnId,
+                sectionName: getSectionNameFromSpacingId(firstSpacingId),
+              }}
+              onPointerOver={() => handleFacadePointerOver(firstSpacingId)}
+              onPointerOut={handleFacadePointerOut}
+              onClick={() => handleFacadeClick(firstSpacingId)}
+            >
               <boxGeometry
                 args={[facadeWidth, facadeHeight + thickness, thickness]}
               />
-              <meshStandardMaterial map={texture} color="white" />
-            </mesh>
-
-            {/* Left side panel */}
-            <mesh
-              position={[
-                -facadeWidth / 2 + sideThickness / 2,
-                0,
-                -drawerDepth / 2,
-              ]}
-            >
-              <boxGeometry args={[sideThickness, drawerHeight, drawerDepth]} />
-              <meshStandardMaterial map={texture} color="white" />
-            </mesh>
-
-            {/* Right side panel */}
-            <mesh
-              position={[
-                facadeWidth / 2 - sideThickness / 2,
-                0,
-                -drawerDepth / 2,
-              ]}
-            >
-              <boxGeometry args={[sideThickness, drawerHeight, drawerDepth]} />
-              <meshStandardMaterial map={texture} color="white" />
-            </mesh>
-
-            {/* Bottom panel */}
-            <mesh
-              position={[
-                0,
-                -drawerHeight / 2 + sideThickness / 2,
-                -drawerDepth / 2,
-              ]}
-            >
-              <boxGeometry
-                args={[
-                  facadeWidth - sideThickness * 2,
-                  sideThickness,
-                  drawerDepth,
-                ]}
+              <meshStandardMaterial
+                map={getFacadeTexture(firstSpacingId)}
+                color="white"
               />
-              <meshStandardMaterial map={texture} color="white" />
             </mesh>
 
-            {/* Back panel */}
-            <mesh position={[0, 0, -drawerDepth]}>
-              <boxGeometry
-                args={[
-                  facadeWidth - sideThickness * 2,
-                  drawerHeight,
-                  sideThickness,
+            {/* Highlight overlay */}
+            {drawerHighlightState.isHighlighted && (
+              <mesh
+                position={[0, 0, 0.01]} // Slightly in front
+              >
+                <boxGeometry
+                  args={[facadeWidth, facadeHeight + thickness, thickness]}
+                />
+                <meshBasicMaterial
+                  color="#f8f9fa"
+                  transparent
+                  opacity={drawerIsSelected ? 0.6 : 0.4}
+                  depthWrite={false}
+                  depthTest={false}
+                />
+              </mesh>
+            )}
+
+            {/* Icon */}
+            {(drawerIsHovered || drawerIsSelected || isSelectingFacades()) && (
+              <group
+                position={[
+                  0,
+                  0,
+                  thickness / 2 + 0.02, // In front of facade
                 ]}
-              />
-              <meshStandardMaterial map={texture} color="white" />
-            </mesh>
+              >
+                {/* Icon background */}
+                <mesh>
+                  <circleGeometry args={[0.05, 32]} />
+                  <meshBasicMaterial color="white" transparent opacity={0.9} />
+                </mesh>
+
+                {/* Icon text */}
+                <Text
+                  position={[0, 0, 0.01]}
+                  color={drawerIsSelected ? "green" : "#4169E1"}
+                  fontSize={0.1}
+                  anchorX="center"
+                  anchorY="middle"
+                >
+                  {drawerIsSelected ? "✓" : "+"}
+                </Text>
+              </group>
+            )}
 
             {/* Drawer handle in center */}
             {renderHandle(handleType, [0, 0, thickness / 2 + 0.01])}
@@ -1306,6 +1522,11 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       case "doubleSwingDoor":
         // Porte Double - two doors hinged on opposite sides
         const doorWidthSwing = facadeWidth / 2; // Mỗi cửa chiếm đúng một nửa chiều rộng
+        const doubleSwingHighlightState =
+          getFacadeHighlightState(firstSpacingId);
+        const doubleSwingIsHovered = config.hoveredSpacingId === firstSpacingId;
+        const doubleSwingIsSelected =
+          config.selectedSpacingIds.includes(firstSpacingId);
 
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
@@ -1342,12 +1563,79 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               }}
             >
               {/* Left door panel */}
-              <mesh position={[doorWidthSwing / 2, 0, 0]}>
+              <mesh
+                position={[doorWidthSwing / 2, 0, 0]}
+                userData={{
+                  type: "facade",
+                  spacingId: firstSpacingId,
+                  columnId: groupData.columnId,
+                  sectionName: getSectionNameFromSpacingId(firstSpacingId),
+                }}
+                onPointerOver={() => handleFacadePointerOver(firstSpacingId)}
+                onPointerOut={handleFacadePointerOut}
+                onClick={() => handleFacadeClick(firstSpacingId)}
+              >
                 <boxGeometry
                   args={[doorWidthSwing, facadeHeight + thickness, thickness]}
                 />
-                <meshStandardMaterial map={texture} color="white" />
+                <meshStandardMaterial
+                  map={getFacadeTexture(firstSpacingId)}
+                  color="white"
+                />
               </mesh>
+
+              {/* Highlight overlay */}
+              {doubleSwingHighlightState.isHighlighted && (
+                <mesh
+                  position={[doorWidthSwing / 2, 0, 0.01]} // Slightly in front
+                >
+                  <boxGeometry
+                    args={[doorWidthSwing, facadeHeight + thickness, thickness]}
+                  />
+                  <meshBasicMaterial
+                    color="#f8f9fa"
+                    transparent
+                    opacity={doubleSwingIsSelected ? 0.6 : 0.4}
+                    depthWrite={false}
+                    depthTest={false}
+                  />
+                </mesh>
+              )}
+
+              {/* Icon */}
+              {(doubleSwingIsHovered ||
+                doubleSwingIsSelected ||
+                isSelectingFacades()) && (
+                <group
+                  position={[
+                    doorWidthSwing / 2,
+                    0,
+                    thickness / 2 + 0.02, // In front of facade
+                  ]}
+                >
+                  {/* Icon background */}
+                  <mesh>
+                    <circleGeometry args={[0.05, 32]} />
+                    <meshBasicMaterial
+                      color="white"
+                      transparent
+                      opacity={0.9}
+                    />
+                  </mesh>
+
+                  {/* Icon text */}
+                  <Text
+                    position={[0, 0, 0.01]}
+                    color={doubleSwingIsSelected ? "green" : "#4169E1"}
+                    fontSize={0.1}
+                    anchorX="center"
+                    anchorY="middle"
+                  >
+                    {doubleSwingIsSelected ? "✓" : "+"}
+                  </Text>
+                </group>
+              )}
+
               {/* Left door handle ở RIGHT SIDE */}
               {renderHandle(handleType, [
                 doorWidthSwing - 0.05,
@@ -1389,12 +1677,79 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               }}
             >
               {/* Right door panel */}
-              <mesh position={[-doorWidthSwing / 2, 0, 0]}>
+              <mesh
+                position={[-doorWidthSwing / 2, 0, 0]}
+                userData={{
+                  type: "facade",
+                  spacingId: firstSpacingId,
+                  columnId: groupData.columnId,
+                  sectionName: getSectionNameFromSpacingId(firstSpacingId),
+                }}
+                onPointerOver={() => handleFacadePointerOver(firstSpacingId)}
+                onPointerOut={handleFacadePointerOut}
+                onClick={() => handleFacadeClick(firstSpacingId)}
+              >
                 <boxGeometry
                   args={[doorWidthSwing, facadeHeight + thickness, thickness]}
                 />
-                <meshStandardMaterial map={texture} color="white" />
+                <meshStandardMaterial
+                  map={getFacadeTexture(firstSpacingId)}
+                  color="white"
+                />
               </mesh>
+
+              {/* Highlight overlay */}
+              {doubleSwingHighlightState.isHighlighted && (
+                <mesh
+                  position={[-doorWidthSwing / 2, 0, 0.01]} // Slightly in front
+                >
+                  <boxGeometry
+                    args={[doorWidthSwing, facadeHeight + thickness, thickness]}
+                  />
+                  <meshBasicMaterial
+                    color="#f8f9fa"
+                    transparent
+                    opacity={doubleSwingIsSelected ? 0.6 : 0.4}
+                    depthWrite={false}
+                    depthTest={false}
+                  />
+                </mesh>
+              )}
+
+              {/* Icon */}
+              {(doubleSwingIsHovered ||
+                doubleSwingIsSelected ||
+                isSelectingFacades()) && (
+                <group
+                  position={[
+                    -doorWidthSwing / 2,
+                    0,
+                    thickness / 2 + 0.02, // In front of facade
+                  ]}
+                >
+                  {/* Icon background */}
+                  <mesh>
+                    <circleGeometry args={[0.05, 32]} />
+                    <meshBasicMaterial
+                      color="white"
+                      transparent
+                      opacity={0.9}
+                    />
+                  </mesh>
+
+                  {/* Icon text */}
+                  <Text
+                    position={[0, 0, 0.01]}
+                    color={doubleSwingIsSelected ? "green" : "#4169E1"}
+                    fontSize={0.1}
+                    anchorX="center"
+                    anchorY="middle"
+                  >
+                    {doubleSwingIsSelected ? "✓" : "+"}
+                  </Text>
+                </group>
+              )}
+
               {/* Right door handle ở LEFT SIDE */}
               {renderHandle(handleType, [
                 -doorWidthSwing + 0.05,
@@ -1610,7 +1965,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 <boxGeometry
                   args={[doorWidth, facadeHeight + thickness, thickness]}
                 />
-                <meshStandardMaterial map={texture} color="white" />
+                <meshStandardMaterial
+                  map={getFacadeTexture(firstSpacingId)}
+                  color="white"
+                />
               </mesh>
               {/* Left door handle ở RIGHT SIDE */}
               {renderHandle(handleType, [
@@ -1657,7 +2015,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 <boxGeometry
                   args={[doorWidth, facadeHeight + thickness, thickness]}
                 />
-                <meshStandardMaterial map={texture} color="white" />
+                <meshStandardMaterial
+                  map={getFacadeTexture(firstSpacingId)}
+                  color="white"
+                />
               </mesh>
               {/* Right door handle ở LEFT SIDE */}
               {renderHandle(handleType, [
@@ -1826,6 +2187,11 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       case "slidingDoor":
         // Porte Coulissante - sliding door
         const slidingDoorWidth = facadeWidth / 2; // Mỗi cửa chiếm một nửa chiều rộng
+        const slidingDoorHighlightState =
+          getFacadeHighlightState(firstSpacingId);
+        const slidingDoorIsHovered = config.hoveredSpacingId === firstSpacingId;
+        const slidingDoorIsSelected =
+          config.selectedSpacingIds.includes(firstSpacingId);
 
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
@@ -1880,12 +2246,83 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               }}
             >
               {/* Left sliding door panel */}
-              <mesh position={[0, 0, 0]}>
+              <mesh
+                position={[0, 0, 0]}
+                userData={{
+                  type: "facade",
+                  spacingId: firstSpacingId,
+                  columnId: groupData.columnId,
+                  sectionName: getSectionNameFromSpacingId(firstSpacingId),
+                }}
+                onPointerOver={() => handleFacadePointerOver(firstSpacingId)}
+                onPointerOut={handleFacadePointerOut}
+                onClick={() => handleFacadeClick(firstSpacingId)}
+              >
                 <boxGeometry
                   args={[slidingDoorWidth, facadeHeight + thickness, thickness]}
                 />
-                <meshStandardMaterial map={texture} color="white" />
+                <meshStandardMaterial
+                  map={getFacadeTexture(firstSpacingId)}
+                  color="white"
+                />
               </mesh>
+
+              {/* Highlight overlay */}
+              {slidingDoorHighlightState.isHighlighted && (
+                <mesh
+                  position={[0, 0, 0.01]} // Slightly in front
+                >
+                  <boxGeometry
+                    args={[
+                      slidingDoorWidth,
+                      facadeHeight + thickness,
+                      thickness,
+                    ]}
+                  />
+                  <meshBasicMaterial
+                    color="#f8f9fa"
+                    transparent
+                    opacity={slidingDoorIsSelected ? 0.6 : 0.4}
+                    depthWrite={false}
+                    depthTest={false}
+                  />
+                </mesh>
+              )}
+
+              {/* Icon */}
+              {(slidingDoorIsHovered ||
+                slidingDoorIsSelected ||
+                isSelectingFacades()) && (
+                <group
+                  position={[
+                    0,
+                    0,
+                    thickness / 2 + 0.02, // In front of facade
+                  ]}
+                >
+                  {/* Icon background */}
+                  <mesh>
+                    <circleGeometry args={[0.05, 32]} />
+                    <meshBasicMaterial
+                      color="white"
+                      transparent
+                      opacity={0.9}
+                    />
+                  </mesh>
+
+                  {/* Icon text */}
+                  <Text
+                    position={[0, 0, 0.01]}
+                    color={slidingDoorIsSelected ? "green" : "#4169E1"}
+                    fontSize={0.1}
+                    anchorX="center"
+                    anchorY="middle"
+                  >
+                    {slidingDoorIsSelected ? "✓" : "+"}
+                  </Text>
+                </group>
+              )}
+
               {/* Left door handle */}
               {renderHandle(handleType, [
                 slidingDoorWidth / 2 - 0.05,
@@ -1945,12 +2382,83 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               }}
             >
               {/* Right sliding door panel */}
-              <mesh position={[0, 0, 0]}>
+              <mesh
+                position={[0, 0, 0]}
+                userData={{
+                  type: "facade",
+                  spacingId: firstSpacingId,
+                  columnId: groupData.columnId,
+                  sectionName: getSectionNameFromSpacingId(firstSpacingId),
+                }}
+                onPointerOver={() => handleFacadePointerOver(firstSpacingId)}
+                onPointerOut={handleFacadePointerOut}
+                onClick={() => handleFacadeClick(firstSpacingId)}
+              >
                 <boxGeometry
                   args={[slidingDoorWidth, facadeHeight + thickness, thickness]}
                 />
-                <meshStandardMaterial map={texture} color="white" />
+                <meshStandardMaterial
+                  map={getFacadeTexture(firstSpacingId)}
+                  color="white"
+                />
               </mesh>
+
+              {/* Highlight overlay */}
+              {slidingDoorHighlightState.isHighlighted && (
+                <mesh
+                  position={[0, 0, 0.01]} // Slightly in front
+                >
+                  <boxGeometry
+                    args={[
+                      slidingDoorWidth,
+                      facadeHeight + thickness,
+                      thickness,
+                    ]}
+                  />
+                  <meshBasicMaterial
+                    color="#f8f9fa"
+                    transparent
+                    opacity={slidingDoorIsSelected ? 0.6 : 0.4}
+                    depthWrite={false}
+                    depthTest={false}
+                  />
+                </mesh>
+              )}
+
+              {/* Icon */}
+              {(slidingDoorIsHovered ||
+                slidingDoorIsSelected ||
+                isSelectingFacades()) && (
+                <group
+                  position={[
+                    0,
+                    0,
+                    thickness / 2 + 0.02, // In front of facade
+                  ]}
+                >
+                  {/* Icon background */}
+                  <mesh>
+                    <circleGeometry args={[0.05, 32]} />
+                    <meshBasicMaterial
+                      color="white"
+                      transparent
+                      opacity={0.9}
+                    />
+                  </mesh>
+
+                  {/* Icon text */}
+                  <Text
+                    position={[0, 0, 0.01]}
+                    color={slidingDoorIsSelected ? "green" : "#4169E1"}
+                    fontSize={0.1}
+                    anchorX="center"
+                    anchorY="middle"
+                  >
+                    {slidingDoorIsSelected ? "✓" : "+"}
+                  </Text>
+                </group>
+              )}
+
               {/* Right door handle */}
               {renderHandle(handleType, [
                 -slidingDoorWidth / 2 + 0.05,
@@ -2468,6 +2976,19 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       sectionWidth,
       sectionHeight
     );
+  };
+
+  // Helper function to get facade texture
+  const getFacadeTexture = (spacingId: string): THREE.Texture => {
+    // Kiểm tra xem facade có texture riêng không
+    const customTexture = config.facadeTextureConfig[spacingId];
+    if (customTexture) {
+      // Load custom texture
+      const textureLoader = new THREE.TextureLoader();
+      return textureLoader.load(customTexture.src);
+    }
+    // Sử dụng texture mặc định
+    return texture;
   };
 
   return (

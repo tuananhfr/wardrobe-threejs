@@ -10,11 +10,13 @@ const MainSelector: React.FC<MainSelectorProps> = ({
   activeOption,
   onChange,
 }) => {
-  const { updateConfig } = useConfig();
+  const { updateConfig, batchUpdate, config } = useConfig();
 
   const options = [
     { id: "entier", name: "Entière" },
     { id: "test", name: "Test" },
+    { id: "tablette", name: "Tablettes" },
+    { id: "facades", name: "Facades" },
     { id: "led", name: "LED" },
   ];
 
@@ -22,9 +24,32 @@ const MainSelector: React.FC<MainSelectorProps> = ({
     if (optionId === "led") {
       // Khi chọn "LED", hiển thị LED color selector
       updateConfig("activeView", "led");
+    } else if (optionId === "tablette") {
+      // Khi chọn "Tablettes", reset selectedSpacingIds và hoveredSpacingId
+      batchUpdate({
+        activeView: "tablette",
+        selectedSpacingIds: [],
+        hoveredSpacingId: null,
+      });
+    } else if (optionId === "facades") {
+      // Khi chọn "Facades", reset selectedSpacingIds và hoveredSpacingId
+      batchUpdate({
+        activeView: "facades",
+        selectedSpacingIds: [],
+        hoveredSpacingId: null,
+      });
     } else {
-      // Các option khác hoạt động bình thường
-      onChange(optionId);
+      // Khi chuyển sang chế độ khác từ tablette hoặc facades, reset các state liên quan
+      if (config.activeView === "tablette" || config.activeView === "facades") {
+        batchUpdate({
+          activeView: optionId,
+          selectedSpacingIds: [],
+          hoveredSpacingId: null,
+        });
+      } else {
+        // Các option khác hoạt động bình thường
+        onChange(optionId);
+      }
     }
   };
 

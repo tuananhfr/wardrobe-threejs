@@ -36,21 +36,49 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   const isSelectingShelves = config.activeView === "tablette";
 
   // Hàm lấy texture cho kệ cụ thể
-  const getShelfTexture = (spacingId: string): THREE.Texture => {
+  const getShelfTexture = (
+    spacingId: string,
+    columnIndex: number,
+    spacingIndex: number
+  ): THREE.Texture => {
+    // Kiểm tra xem có phải kệ angle không
+    const angleGroup = getAngleShelfGroup(columnIndex, spacingIndex);
+
+    if (angleGroup) {
+      // Nếu là kệ angle, tìm texture theo angle group ID
+      const shelfTexture = config.shelfTextureConfig[angleGroup];
+      if (shelfTexture) {
+        const textureLoader = new THREE.TextureLoader();
+        return textureLoader.load(shelfTexture.src);
+      }
+    }
+
+    // Kiểm tra texture riêng cho spacingId
     const shelfTexture = config.shelfTextureConfig[spacingId];
     if (shelfTexture) {
       // Tạo texture mới từ src
       const textureLoader = new THREE.TextureLoader();
       return textureLoader.load(shelfTexture.src);
     }
+
     // Dùng texture mặc định (entier) chỉ khi kệ không có texture riêng
     return texture;
   };
 
   // Hàm xử lý hover kệ
-  const handleShelfPointerOver = (spacingId: string) => {
+  const handleShelfPointerOver = (
+    spacingId: string,
+    columnIndex: number,
+    spacingIndex: number
+  ) => {
     if (isSelectingShelves) {
-      updateConfig("hoveredSpacingId", spacingId);
+      const angleGroup = getAngleShelfGroup(columnIndex, spacingIndex);
+
+      if (angleGroup) {
+        updateConfig("hoveredSpacingId", angleGroup); // "angle-ab" thay vì spacingId
+      } else {
+        updateConfig("hoveredSpacingId", spacingId);
+      }
     }
   };
 
@@ -62,17 +90,22 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   };
 
   // Hàm xử lý click kệ
-  const handleShelfClick = (spacingId: string) => {
+  const handleShelfClick = (
+    spacingId: string,
+    columnIndex: number,
+    spacingIndex: number
+  ) => {
     if (isSelectingShelves) {
+      const angleGroup = getAngleShelfGroup(columnIndex, spacingIndex);
+      const targetId = angleGroup || spacingId; // Dùng angle group nếu có
+
       const currentSelectedIds = [...config.selectedSpacingIds];
-      const index = currentSelectedIds.indexOf(spacingId);
+      const index = currentSelectedIds.indexOf(targetId);
 
       if (index > -1) {
-        // Nếu đã chọn thì bỏ chọn
         currentSelectedIds.splice(index, 1);
       } else {
-        // Nếu chưa chọn thì thêm vào
-        currentSelectedIds.push(spacingId);
+        currentSelectedIds.push(targetId);
       }
 
       updateConfig("selectedSpacingIds", currentSelectedIds);
@@ -80,29 +113,23 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   };
 
   // Hàm xác định trạng thái highlight của kệ
-  const getShelfHighlightState = (spacingId: string) => {
-    // Chỉ highlight khi ở chế độ tablette
-    if (!isSelectingShelves)
-      return {
-        isHighlighted: false,
-        isSelected: false,
-        isLightHighlight: false,
-      };
+  const getShelfHighlightState = (
+    spacingId: string,
+    columnIndex: number,
+    spacingIndex: number
+  ) => {
+    if (!isSelectingShelves) return { isHighlighted: false, isSelected: false };
 
-    const isHovered = config.hoveredSpacingId === spacingId;
-    const isSelected = config.selectedSpacingIds.includes(spacingId);
+    const angleGroup = getAngleShelfGroup(columnIndex, spacingIndex);
+    const isHovered = angleGroup
+      ? config.hoveredSpacingId === angleGroup
+      : config.hoveredSpacingId === spacingId;
 
-    // Không cần highlight màu sắc khi ở chế độ tablette
-    const isLightHighlight = false;
+    const isSelected = angleGroup
+      ? config.selectedSpacingIds.includes(angleGroup)
+      : config.selectedSpacingIds.includes(spacingId);
 
-    // Chỉ highlight đậm khi có kệ được chọn hoặc hover
-    const isStrongHighlight = isHovered || isSelected;
-
-    return {
-      isHighlighted: isStrongHighlight,
-      isSelected,
-      isLightHighlight,
-    };
+    return { isHighlighted: isHovered || isSelected, isSelected };
   };
 
   /**
@@ -151,10 +178,16 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
       <group key={`${sectionName}-${column.id}-shelves`}>
         {shelfPositions.map((position, index) => {
           const spacingId = column.shelves!.spacings![index].id;
-          const shelfTexture = getShelfTexture(spacingId);
-          const { isSelected, isLightHighlight } =
-            getShelfHighlightState(spacingId);
-          const isHovered = config.hoveredSpacingId === spacingId;
+          const shelfTexture = getShelfTexture(spacingId, columnIndex, index);
+          const { isSelected } = getShelfHighlightState(
+            spacingId,
+            columnIndex,
+            index
+          );
+          const angleGroup = getAngleShelfGroup(columnIndex, index);
+          const isHovered = angleGroup
+            ? config.hoveredSpacingId === angleGroup
+            : config.hoveredSpacingId === spacingId;
 
           // Xác định màu sắc và opacity cho highlight
           let highlightColor = "#f8f9fa"; // Default light gray
@@ -168,10 +201,6 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
           } else if (isHovered) {
             highlightColor = "#f8f9fa"; // Light gray khi hover
             opacity = 0.4;
-            shouldShowHighlight = true;
-          } else if (isLightHighlight) {
-            highlightColor = "#f8f9fa"; // Light gray khi light highlight
-            opacity = 0.2;
             shouldShowHighlight = true;
           }
 
@@ -192,9 +221,11 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
                   columnId: column.id,
                   sectionName,
                 }}
-                onPointerOver={() => handleShelfPointerOver(spacingId)}
+                onPointerOver={() =>
+                  handleShelfPointerOver(spacingId, columnIndex, index)
+                }
                 onPointerOut={handleShelfPointerOut}
-                onClick={() => handleShelfClick(spacingId)}
+                onClick={() => handleShelfClick(spacingId, columnIndex, index)}
               >
                 <boxGeometry args={[shelfWidth, shelfThickness, shelfDepth]} />
                 <meshStandardMaterial
@@ -226,37 +257,39 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
                 </mesh>
               )}
 
-              {/* Icon */}
-              {(isHovered || isSelected || isSelectingShelves) && (
-                <group
-                  position={[
-                    finalColumnXPosition,
-                    convertToWorldY(position),
-                    shelfDepth / 2 + 0.02, // In front of shelf
-                  ]}
-                >
-                  {/* Icon background */}
-                  <mesh>
-                    <circleGeometry args={[0.05, 32]} />
-                    <meshBasicMaterial
-                      color="white"
-                      transparent
-                      opacity={0.9}
-                    />
-                  </mesh>
-
-                  {/* Icon text */}
-                  <Text
-                    position={[0, 0, 0.01]}
-                    color={isSelected ? "green" : "#4169E1"}
-                    fontSize={0.1}
-                    anchorX="center"
-                    anchorY="middle"
+              {/* Icon - hiển thị tất cả dấu + như bình thường, nhưng angle shelf chỉ hiển thị ở b-col-1 */}
+              {(isHovered || isSelected || isSelectingShelves) &&
+                (!isAngleShelf(columnIndex) ||
+                  shouldShowAngleShelfIcon(columnIndex)) && (
+                  <group
+                    position={[
+                      finalColumnXPosition,
+                      convertToWorldY(position),
+                      shelfDepth / 2 + 0.02, // In front of shelf
+                    ]}
                   >
-                    {isSelected ? "✓" : "+"}
-                  </Text>
-                </group>
-              )}
+                    {/* Icon background */}
+                    <mesh>
+                      <circleGeometry args={[0.05, 32]} />
+                      <meshBasicMaterial
+                        color="white"
+                        transparent
+                        opacity={0.9}
+                      />
+                    </mesh>
+
+                    {/* Icon text */}
+                    <Text
+                      position={[0, 0, 0.01]}
+                      color={isSelected ? "green" : "#4169E1"}
+                      fontSize={0.1}
+                      anchorX="center"
+                      anchorY="middle"
+                    >
+                      {isSelected ? "✓" : "+"}
+                    </Text>
+                  </group>
+                )}
             </group>
           );
         })}
@@ -301,6 +334,88 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
     // Convert shelf position (in cm) to world coordinates
     // shelfPosition is already calculated from baseBarHeight + thickness + spacings
     return shelfPosition / 100 - height / 2;
+  };
+
+  // Hàm kiểm tra xem có phải angle shelf không
+  const isAngleShelf = (columnIndex: number) => {
+    const { id } = config.wardrobeType;
+    const isFirst = columnIndex === 0;
+    const isLast = columnIndex === sectionData.columns.length - 1;
+
+    if (id === "Angle" && sectionName === "sectionB" && isFirst) {
+      return true;
+    }
+    if (id === "Angle" && sectionName === "sectionA" && isLast) {
+      return true;
+    }
+    if (id === "Forme U" && sectionName === "sectionB" && isLast) {
+      return true;
+    }
+    if (id === "Forme U" && sectionName === "sectionC" && isFirst) {
+      return true;
+    }
+    if (id === "Forme U" && sectionName === "sectionA" && isFirst) {
+      return true;
+    }
+    if (id === "Forme U" && sectionName === "sectionA" && isLast) {
+      return true;
+    }
+    return false;
+  };
+
+  // Xác định kệ angle groups
+  const getAngleShelfGroup = (columnIndex: number, spacingIndex: number) => {
+    const { id } = config.wardrobeType;
+
+    if (id === "Angle") {
+      const isALast =
+        sectionName === "sectionA" &&
+        columnIndex === sectionData.columns.length - 1;
+      const isBFirst = sectionName === "sectionB" && columnIndex === 0;
+
+      if (isALast || isBFirst) {
+        // Tạo unique ID cho từng spacing level
+        return `angle-ab-${spacingIndex}`;
+      }
+    } else if (id === "Forme U") {
+      const isBLast =
+        sectionName === "sectionB" &&
+        columnIndex === sectionData.columns.length - 1;
+      const isAFirst = sectionName === "sectionA" && columnIndex === 0;
+      const isCFirst = sectionName === "sectionC" && columnIndex === 0;
+      const isALast =
+        sectionName === "sectionA" &&
+        columnIndex === sectionData.columns.length - 1;
+
+      if (isBLast || isAFirst) {
+        return `angle-ab-${spacingIndex}`;
+      }
+      if (isCFirst || isALast) {
+        return `angle-ac-${spacingIndex}`;
+      }
+    }
+
+    return null;
+  };
+  // Hàm kiểm tra xem có hiển thị icon cho angle shelf không (chỉ ở b-col-1)
+  const shouldShowAngleShelfIcon = (columnIndex: number) => {
+    const { id } = config.wardrobeType;
+
+    if (id === "Angle") {
+      // Cho Angle type: hiển thị icon ở sectionB (cột đầu) cho angle-ab
+      const isBFirstColumn = sectionName === "sectionB" && columnIndex === 0;
+      return isBFirstColumn;
+    } else if (id === "Forme U") {
+      // Cho Forme U type:
+      // - angle-ab: hiển thị icon ở sectionB (cột cuối)
+      // - angle-ac: hiển thị icon ở sectionC (cột đầu)
+      const isBLastColumn =
+        sectionName === "sectionB" &&
+        columnIndex === sectionData.columns.length - 1;
+      const isCFirstColumn = sectionName === "sectionC" && columnIndex === 0;
+      return isBLastColumn || isCFirstColumn;
+    }
+    return false;
   };
 
   return (

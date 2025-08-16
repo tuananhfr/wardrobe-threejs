@@ -74,8 +74,18 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
     Object.entries(config.shelfTextureConfig).forEach(
       ([spacingId, texture]) => {
         if (texture.src === textureSrc) {
-          count += 1;
-          details.push(`étagère ${spacingId}`);
+          // Kiểm tra xem có phải angle group không
+          if (spacingId.startsWith("angle-")) {
+            // Đếm số kệ thực tế trong angle group
+            const relatedSpacingIds = getAllSpacingIdsInAngleGroup(spacingId);
+            count += relatedSpacingIds.length;
+            details.push(
+              `étagère angle ${spacingId} (${relatedSpacingIds.length} kệ)`
+            );
+          } else {
+            count += 1;
+            details.push(`étagère ${spacingId}`);
+          }
         }
       }
     );
@@ -94,9 +104,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
     if (config.texture.src === textureSrc) {
       // Tính số kệ không có texture riêng (dùng texture mặc định)
       const totalShelves = getAllShelvesCount();
-      const shelvesWithCustomTexture = Object.keys(
-        config.shelfTextureConfig
-      ).length;
+      const shelvesWithCustomTexture = getShelvesWithCustomTextureCount();
       const shelvesUsingDefaultTexture =
         totalShelves - shelvesWithCustomTexture;
 
@@ -120,6 +128,23 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
     }
 
     return { count, details };
+  };
+
+  // Hàm đếm số kệ có texture riêng (bao gồm cả kệ angle)
+  const getShelvesWithCustomTextureCount = (): number => {
+    let count = 0;
+
+    Object.entries(config.shelfTextureConfig).forEach(([spacingId]) => {
+      if (spacingId.startsWith("angle-")) {
+        // Đếm số kệ thực tế trong angle group
+        const relatedSpacingIds = getAllSpacingIdsInAngleGroup(spacingId);
+        count += relatedSpacingIds.length;
+      } else {
+        count += 1;
+      }
+    });
+
+    return count;
   };
 
   // Hàm đếm tổng số kệ trong tủ
@@ -185,11 +210,37 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
   const updateSelectedShelves = (textureName: string, textureSrc: string) => {
     const newShelfTextureConfig = { ...config.shelfTextureConfig };
 
+    // Tạo map để theo dõi các angle groups đã được xử lý
+    const processedAngleGroups = new Set<string>();
+
     config.selectedSpacingIds.forEach((spacingId) => {
-      newShelfTextureConfig[spacingId] = {
-        name: textureName,
-        src: textureSrc,
-      };
+      // Kiểm tra xem spacingId này có phải là angle group không
+      if (spacingId.startsWith("angle-")) {
+        // Nếu đã xử lý angle group này rồi thì bỏ qua
+        if (processedAngleGroups.has(spacingId)) {
+          return;
+        }
+
+        // Đánh dấu đã xử lý
+        processedAngleGroups.add(spacingId);
+
+        // Lấy tất cả spacingId thuộc cùng angle group
+        const relatedSpacingIds = getAllSpacingIdsInAngleGroup(spacingId);
+
+        // Áp dụng texture cho tất cả spacingId trong group
+        relatedSpacingIds.forEach((relatedSpacingId) => {
+          newShelfTextureConfig[relatedSpacingId] = {
+            name: textureName,
+            src: textureSrc,
+          };
+        });
+      } else {
+        // Kệ thường - áp dụng texture bình thường
+        newShelfTextureConfig[spacingId] = {
+          name: textureName,
+          src: textureSrc,
+        };
+      }
     });
 
     // Cập nhật texture config
@@ -203,6 +254,79 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
 
     // Reset hoveredTexture để ẩn tooltip
     setHoveredTexture(null);
+  };
+
+  // Hàm lấy tất cả spacingId thuộc cùng một angle group
+  const getAllSpacingIdsInAngleGroup = (angleGroupId: string): string[] => {
+    const spacingIds: string[] = [];
+    const { id: wardrobeTypeId } = config.wardrobeType;
+
+    // Parse angle group ID để lấy thông tin
+    const match = angleGroupId.match(/angle-(\w+)-(\d+)/);
+    if (!match) return [angleGroupId];
+
+    const [, angleType, spacingIndex] = match;
+    const spacingIndexNum = parseInt(spacingIndex);
+
+    if (wardrobeTypeId === "Angle" && angleType === "ab") {
+      // Cho Angle type: angle-ab bao gồm sectionA (cột cuối) và sectionB (cột đầu)
+      const sectionA = config.wardrobeType.sections.sectionA;
+      const sectionB = config.wardrobeType.sections.sectionB;
+
+      if (sectionA && sectionA.columns.length > 0) {
+        const lastColumnA = sectionA.columns[sectionA.columns.length - 1];
+        if (lastColumnA.shelves?.spacings?.[spacingIndexNum]) {
+          spacingIds.push(lastColumnA.shelves.spacings[spacingIndexNum].id);
+        }
+      }
+
+      if (sectionB && sectionB.columns.length > 0) {
+        const firstColumnB = sectionB.columns[0];
+        if (firstColumnB.shelves?.spacings?.[spacingIndexNum]) {
+          spacingIds.push(firstColumnB.shelves.spacings[spacingIndexNum].id);
+        }
+      }
+    } else if (wardrobeTypeId === "Forme U") {
+      if (angleType === "ab") {
+        // Cho Forme U type: angle-ab bao gồm sectionA (cột đầu) và sectionB (cột cuối)
+        const sectionA = config.wardrobeType.sections.sectionA;
+        const sectionB = config.wardrobeType.sections.sectionB;
+
+        if (sectionA && sectionA.columns.length > 0) {
+          const firstColumnA = sectionA.columns[0];
+          if (firstColumnA.shelves?.spacings?.[spacingIndexNum]) {
+            spacingIds.push(firstColumnA.shelves.spacings[spacingIndexNum].id);
+          }
+        }
+
+        if (sectionB && sectionB.columns.length > 0) {
+          const lastColumnB = sectionB.columns[sectionB.columns.length - 1];
+          if (lastColumnB.shelves?.spacings?.[spacingIndexNum]) {
+            spacingIds.push(lastColumnB.shelves.spacings[spacingIndexNum].id);
+          }
+        }
+      } else if (angleType === "ac") {
+        // Cho Forme U type: angle-ac bao gồm sectionA (cột cuối) và sectionC (cột đầu)
+        const sectionA = config.wardrobeType.sections.sectionA;
+        const sectionC = config.wardrobeType.sections.sectionC;
+
+        if (sectionA && sectionA.columns.length > 0) {
+          const lastColumnA = sectionA.columns[sectionA.columns.length - 1];
+          if (lastColumnA.shelves?.spacings?.[spacingIndexNum]) {
+            spacingIds.push(lastColumnA.shelves.spacings[spacingIndexNum].id);
+          }
+        }
+
+        if (sectionC && sectionC.columns.length > 0) {
+          const firstColumnC = sectionC.columns[0];
+          if (firstColumnC.shelves?.spacings?.[spacingIndexNum]) {
+            spacingIds.push(firstColumnC.shelves.spacings[spacingIndexNum].id);
+          }
+        }
+      }
+    }
+
+    return spacingIds.length > 0 ? spacingIds : [angleGroupId];
   };
 
   // Hàm cập nhật texture cho các facade đã chọn

@@ -70,60 +70,99 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
     let count = 0;
     const details: string[] = [];
 
-    // Đếm kệ sử dụng texture này
-    Object.entries(config.shelfTextureConfig).forEach(
-      ([spacingId, texture]) => {
-        if (texture.src === textureSrc) {
-          // Kiểm tra xem có phải angle group không
-          if (spacingId.startsWith("angle-")) {
-            // Đếm số kệ thực tế trong angle group
-            const relatedSpacingIds = getAllSpacingIdsInAngleGroup(spacingId);
-            count += relatedSpacingIds.length;
-            details.push(
-              `étagère angle ${spacingId} (${relatedSpacingIds.length} kệ)`
-            );
-          } else {
+    // Nếu đang ở chế độ tablette, chỉ đếm những shelf đang được chọn
+    if (type === "tablette") {
+      config.selectedSpacingIds.forEach((spacingId) => {
+        if (spacingId.startsWith("angle-")) {
+          const relatedSpacingIds = getAllSpacingIdsInAngleGroup(spacingId);
+          const isAngleUsingTexture = relatedSpacingIds.some((relatedId) => {
+            const customTexture = config.shelfTextureConfig[relatedId];
+            const textureToCheck = customTexture || config.texture;
+            return textureToCheck.src === textureSrc;
+          });
+
+          if (isAngleUsingTexture) {
+            count += 1;
+            details.push(`étagère angle ${spacingId}`);
+          }
+        } else {
+          const customTexture = config.shelfTextureConfig[spacingId];
+          const textureToCheck = customTexture || config.texture;
+
+          if (textureToCheck.src === textureSrc) {
             count += 1;
             details.push(`étagère ${spacingId}`);
           }
         }
-      }
-    );
+      });
+    } else if (type === "facades") {
+      // Nếu đang ở chế độ facades, chỉ đếm những facade đang được chọn
+      config.selectedSpacingIds.forEach((spacingId) => {
+        const customTexture = config.facadeTextureConfig[spacingId];
+        const textureToCheck = customTexture || config.texture;
 
-    // Đếm facade sử dụng texture này
-    Object.entries(config.facadeTextureConfig).forEach(
-      ([spacingId, texture]) => {
-        if (texture.src === textureSrc) {
+        if (textureToCheck.src === textureSrc) {
           count += 1;
           details.push(`façade ${spacingId}`);
         }
-      }
-    );
+      });
+    } else {
+      // Logic cũ cho các chế độ khác (entier, facades)
+      // Đếm kệ sử dụng texture này
+      Object.entries(config.shelfTextureConfig).forEach(
+        ([spacingId, texture]) => {
+          if (texture.src === textureSrc) {
+            // Kiểm tra xem có phải angle group không
+            if (spacingId.startsWith("angle-")) {
+              // Đếm số kệ thực tế trong angle group
+              const relatedSpacingIds = getAllSpacingIdsInAngleGroup(spacingId);
+              count += relatedSpacingIds.length;
+              details.push(
+                `étagère angle ${spacingId} (${relatedSpacingIds.length} kệ)`
+              );
+            } else {
+              count += 1;
+              details.push(`étagère ${spacingId}`);
+            }
+          }
+        }
+      );
 
-    // Đếm kệ sử dụng texture mặc định (entier)
-    if (config.texture.src === textureSrc) {
-      // Tính số kệ không có texture riêng (dùng texture mặc định)
-      const totalShelves = getAllShelvesCount();
-      const shelvesWithCustomTexture = getShelvesWithCustomTextureCount();
-      const shelvesUsingDefaultTexture =
-        totalShelves - shelvesWithCustomTexture;
+      // Đếm facade sử dụng texture này
+      Object.entries(config.facadeTextureConfig).forEach(
+        ([spacingId, texture]) => {
+          if (texture.src === textureSrc) {
+            count += 1;
+            details.push(`façade ${spacingId}`);
+          }
+        }
+      );
 
-      if (shelvesUsingDefaultTexture > 0) {
-        count += shelvesUsingDefaultTexture;
-        details.push(`${shelvesUsingDefaultTexture} étagères (défaut)`);
-      }
+      // Đếm kệ sử dụng texture mặc định (entier)
+      if (config.texture.src === textureSrc) {
+        // Tính số kệ không có texture riêng (dùng texture mặc định)
+        const totalShelves = getAllShelvesCount();
+        const shelvesWithCustomTexture = getShelvesWithCustomTextureCount();
+        const shelvesUsingDefaultTexture =
+          totalShelves - shelvesWithCustomTexture;
 
-      // Tính số facade không có texture riêng (dùng texture mặc định)
-      const totalFacades = getAllFacadesCount();
-      const facadesWithCustomTexture = Object.keys(
-        config.facadeTextureConfig
-      ).length;
-      const facadesUsingDefaultTexture =
-        totalFacades - facadesWithCustomTexture;
+        if (shelvesUsingDefaultTexture > 0) {
+          count += shelvesUsingDefaultTexture;
+          details.push(`${shelvesUsingDefaultTexture} étagères (défaut)`);
+        }
 
-      if (facadesUsingDefaultTexture > 0) {
-        count += facadesUsingDefaultTexture;
-        details.push(`${facadesUsingDefaultTexture} façades (défaut)`);
+        // Tính số facade không có texture riêng (dùng texture mặc định)
+        const totalFacades = getAllFacadesCount();
+        const facadesWithCustomTexture = Object.keys(
+          config.facadeTextureConfig
+        ).length;
+        const facadesUsingDefaultTexture =
+          totalFacades - facadesWithCustomTexture;
+
+        if (facadesUsingDefaultTexture > 0) {
+          count += facadesUsingDefaultTexture;
+          details.push(`${facadesUsingDefaultTexture} façades (défaut)`);
+        }
       }
     }
 
@@ -380,6 +419,35 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
     return true;
   };
 
+  // Thêm function này (mới hoàn toàn)
+  const isTextureActive = (textureSrc: string): boolean => {
+    if (type === "tablette") {
+      return config.selectedSpacingIds.some((spacingId) => {
+        if (spacingId.startsWith("angle-")) {
+          const relatedSpacingIds = getAllSpacingIdsInAngleGroup(spacingId);
+          return relatedSpacingIds.some((relatedId) => {
+            const customTexture = config.shelfTextureConfig[relatedId];
+            const textureToCheck = customTexture || config.texture;
+            return textureToCheck.src === textureSrc;
+          });
+        } else {
+          // Kệ thường
+          const customTexture = config.shelfTextureConfig[spacingId];
+          const textureToCheck = customTexture || config.texture;
+          return textureToCheck.src === textureSrc;
+        }
+      });
+    } else if (type === "facades") {
+      return config.selectedSpacingIds.some((spacingId) => {
+        const customTexture = config.facadeTextureConfig[spacingId];
+        const textureToCheck = customTexture || config.texture;
+        return textureToCheck.src === textureSrc;
+      });
+    } else {
+      return getAllUsedTextures.has(textureSrc);
+    }
+  };
+
   // Hàm xử lý click texture
   const handleTextureClick = (textureName: string, textureSrc: string) => {
     if (type === "tablette") {
@@ -435,7 +503,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
         <div className="d-flex flex-wrap">
           {config.textures.length > 0 &&
             config.textures.map((texture, index) => {
-              const isActive = getAllUsedTextures.has(texture.src);
+              const isActive = isTextureActive(texture.src);
 
               // Lấy thông tin về components sử dụng texture
               const entierInfo: EntierInfo =
@@ -498,7 +566,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
                           ? "✓"
                           : entierInfo.count > 9
                           ? "9+"
-                          : entierInfo.count || "✓"}
+                          : entierInfo.count || (type === "entier" ? "✓" : "")}
                       </div>
                     )}
                   </button>

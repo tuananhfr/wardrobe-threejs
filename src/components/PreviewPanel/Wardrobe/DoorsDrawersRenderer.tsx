@@ -354,7 +354,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       const processedSpacings = new Set<string>();
 
       // STEP 1: Process existing grouped doors first
-      Object.entries(groupedDoorsConfig).forEach(([groupId, groupData]) => {
+      Object.entries(groupedDoorsConfig).forEach(([, groupData]) => {
         // Check if this group belongs to current column
         const groupSpacingsInColumn = groupData.spacingIds.filter((id) =>
           sortedSpacings.includes(id)
@@ -613,14 +613,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     }
   };
 
-  // Helper function: Ungroup a specific group (for UI button)
-  const ungroupDoors = (groupId: string) => {
-    const groupedDoorsConfig = config.groupedDoorsConfig || {};
-    const updatedConfig = { ...groupedDoorsConfig };
-
-    delete updatedConfig[groupId];
-    updateConfig("groupedDoorsConfig", updatedConfig);
-  };
   // Helper function to group consecutive selected spacings by column
   const getGroupedSelectedSpacings = () => {
     const selectedSpacings = config.selectedSpacingIds || [];

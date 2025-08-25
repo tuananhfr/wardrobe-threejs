@@ -766,7 +766,7 @@ export const useWardrobeConfig = () => {
    */
   const getGroupMembersForSpacing = (spacingId: string): string[] => {
     // Tìm group chứa spacingId
-    for (const [groupId, group] of Object.entries(config.groupedDoorsConfig)) {
+    for (const [, group] of Object.entries(config.groupedDoorsConfig)) {
       if (group.spacingIds.includes(spacingId)) {
         return group.spacingIds;
       }

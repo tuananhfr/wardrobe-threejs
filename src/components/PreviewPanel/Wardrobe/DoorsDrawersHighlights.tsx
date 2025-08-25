@@ -244,12 +244,6 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
 
   const spacingPositions = getSpacingPositions();
 
-  // Tìm nhóm cấu hình (các spacing liên tiếp cùng loại trong cùng cột) chứa spacingId
-  // DEPRECATED: Sử dụng getGroupMembersForSpacing từ useWardrobeConfig thay thế
-  const getConfiguredGroupForSpacing = (spacingId: string): string[] => {
-    return getGroupMembersForSpacing(spacingId);
-  };
-
   // Auto-update config when shelves change
   useEffect(() => {
     // Helper function to get spacing height
@@ -517,7 +511,6 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
         const selectedSpacings = config.selectedSpacingIds || [];
         const isSelected = selectedSpacings.includes(pos.spacingId);
         const isHovered = hoveredSpacing === pos.spacingId;
-        const isNeighbor = isNeighborOfSelected(pos.spacingId);
 
         // Check if this spacing is part of a group that's selected or hovered
         const groupMembers = getGroupMembersForSpacing(pos.spacingId);

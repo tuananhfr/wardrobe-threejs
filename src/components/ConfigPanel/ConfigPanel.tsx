@@ -1,7 +1,7 @@
 // src/components/ConfigPanel/ConfigPanel.tsx
 import React from "react";
 
-import { useWardrobeConfig } from "../../hooks/useWardrobeConfig";
+import { useConfig } from "../../components/context/WardrobeContext";
 import WardrobeTypeSelector from "./section/WardrobeTypeSelector";
 import DimensionSection from "./section/DimensionSection";
 import DimensionControl from "./section/DimensionControl";
@@ -14,11 +14,7 @@ import InternalEquipmentSection from "./section/InternalEquipmentSection";
 import DoorsDrawersSection from "./section/DoorsDrawersSection";
 
 const ConfigPanel: React.FC = () => {
-  const { config, updateConfig } = useWardrobeConfig();
-
-  const handleMainOptionChange = (option: string) => {
-    updateConfig("activeView", option);
-  };
+  const { config, updateConfig, batchUpdate } = useConfig();
 
   // Generic accordion handler
   const createAccordionHandler = (accordionId: string) => {
@@ -27,6 +23,34 @@ const ConfigPanel: React.FC = () => {
     const handleToggle = () => {
       const newState = isOpen ? "" : accordionId;
       updateConfig("accordionOpen", newState);
+
+      // Reset all states when switching to any accordion (including textures)
+      if (!isOpen) {
+        // When opening any accordion, reset all selection states
+        batchUpdate({
+          selectedSpacingIds: [],
+          selectedSpacingId: null,
+          hoveredSpacingId: null,
+          selectedColumnId: null,
+          hoveredColumnId: null,
+          selectedDoorsDrawersType: null,
+          selectedInternalEquipmentType: null,
+        });
+      }
+
+      // Reset activeView when switching to textures accordion to ensure no button is selected by default
+      if (!isOpen && accordionId === "collapseTextures") {
+        batchUpdate({
+          activeView: "entier",
+        });
+      }
+
+      // Reset activeView when switching away from textures accordion
+      if (isOpen && accordionId === "collapseTextures") {
+        batchUpdate({
+          activeView: "entier",
+        });
+      }
     };
 
     return { isOpen, handleToggle };
@@ -158,14 +182,8 @@ const ConfigPanel: React.FC = () => {
           data-bs-parent="#configAccordion"
         >
           <div className="accordion-body">
-            <MainSelector
-              activeOption={config.activeView}
-              onChange={handleMainOptionChange}
-            />
+            <MainSelector activeOption={config.activeView} />
             {config.activeView === "led" && <LEDColorSelector />}
-            {config.activeView === "entier" && (
-              <TextureSelector type="entier" />
-            )}
             {config.activeView === "test" && <TextureSelector type="test" />}
             {config.activeView === "tablette" && (
               <TextureSelector type="tablette" />

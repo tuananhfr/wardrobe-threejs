@@ -33,7 +33,9 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   const isActive = showSections === sectionName;
 
   // Kiểm tra có đang ở chế độ chọn kệ không
-  const isSelectingShelves = config.activeView === "tablette";
+  const isTexturesMode = config.accordionOpen === "collapseTextures";
+  const isTablettesMode = config.activeView === "tablette";
+  const isSelectingShelves = isTexturesMode && isTablettesMode;
 
   // Hàm lấy texture cho kệ cụ thể
   const getShelfTexture = (

@@ -38,17 +38,25 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
   const width = sectionData.width;
   const depth = sectionData.depth;
 
-  // Check if doors drawers mode is active
+  // Check if we're in the right mode for highlighting
+  const isTexturesMode = config.accordionOpen === "collapseTextures";
+  const isTablettesOrFacadesMode =
+    config.activeView === "tablette" || config.activeView === "facades";
   const isDoorsDrawersMode = config.accordionOpen === "collapseDoorsDrawers";
 
-  // Don't render if not in doors drawers mode
-  if (!isDoorsDrawersMode) {
+  // Only render highlights for doors/drawers when in doors/drawers mode
+  // OR when in textures mode with tablettes/facades selected
+  const shouldShowHighlights =
+    isDoorsDrawersMode || (isTexturesMode && isTablettesOrFacadesMode);
+
+  // Don't render if not in the right mode
+  if (!shouldShowHighlights) {
     return null;
   }
 
   // Reset when doors drawers mode is disabled
   useEffect(() => {
-    if (!isDoorsDrawersMode) {
+    if (!shouldShowHighlights) {
       setHoveredSpacing(null);
       document.body.style.cursor = "auto";
       // Reset all selected spacings when closing accordion
@@ -56,7 +64,7 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
       updateConfig("selectedSpacingId", null);
       updateConfig("selectedDoorsDrawersType", null);
     }
-  }, [isDoorsDrawersMode, updateConfig]);
+  }, [shouldShowHighlights, updateConfig]);
 
   // Helper function to get column X position
   const getColumnXPosition = (colIndex: number) => {

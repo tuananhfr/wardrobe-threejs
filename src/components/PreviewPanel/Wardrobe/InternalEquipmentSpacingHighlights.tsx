@@ -35,18 +35,31 @@ const InternalEquipmentSpacingHighlights: React.FC<
   const width = sectionData.width;
   const depth = sectionData.depth;
 
-  // Check if internal equipment mode is active
+  // Check if we're in the right mode for highlighting
   const isInternalEquipmentMode =
     config.accordionOpen === "collapseInternalEquipment";
+  const isTexturesMode = config.accordionOpen === "collapseTextures";
+  const isTablettesMode = config.activeView === "tablette";
   // const selectedColumnId = config.selectedColumnId; // not used here
+
+  // Only show highlights when in internal equipment mode OR when in textures mode with tablettes selected
+  const shouldShowHighlights =
+    isInternalEquipmentMode || (isTexturesMode && isTablettesMode);
+
+  // Don't render if not in the right mode
+  if (!shouldShowHighlights) {
+    return null;
+  }
 
   // Reset when internal equipment mode is disabled
   useEffect(() => {
-    if (!isInternalEquipmentMode) {
+    if (!shouldShowHighlights) {
       setHoveredSpacing(null);
       document.body.style.cursor = "auto";
+      // Reset selected spacings when closing accordion
+      updateConfig("selectedSpacingIds", []);
     }
-  }, [isInternalEquipmentMode]);
+  }, [shouldShowHighlights, updateConfig]);
 
   // Helper function to get column X position
   const getColumnXPosition = (colIndex: number) => {
@@ -362,8 +375,8 @@ const InternalEquipmentSpacingHighlights: React.FC<
     document.body.style.cursor = "auto";
   };
 
-  // Don't render if not in internal equipment mode
-  if (!isInternalEquipmentMode) {
+  // Don't render if not in the right mode
+  if (!shouldShowHighlights) {
     return null;
   }
 

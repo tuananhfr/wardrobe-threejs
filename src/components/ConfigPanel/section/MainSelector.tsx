@@ -3,13 +3,9 @@ import { useConfig } from "@/components/context/WardrobeContext";
 
 interface MainSelectorProps {
   activeOption: string;
-  onChange: (option: string) => void;
 }
 
-const MainSelector: React.FC<MainSelectorProps> = ({
-  activeOption,
-  onChange,
-}) => {
+const MainSelector: React.FC<MainSelectorProps> = ({ activeOption }) => {
   const { updateConfig, batchUpdate, config } = useConfig();
 
   const options = [
@@ -29,6 +25,7 @@ const MainSelector: React.FC<MainSelectorProps> = ({
       batchUpdate({
         activeView: "tablette",
         selectedSpacingIds: [],
+        selectedSpacingId: null,
         hoveredSpacingId: null,
       });
     } else if (optionId === "facades") {
@@ -36,6 +33,7 @@ const MainSelector: React.FC<MainSelectorProps> = ({
       batchUpdate({
         activeView: "facades",
         selectedSpacingIds: [],
+        selectedSpacingId: null,
         hoveredSpacingId: null,
       });
     } else {
@@ -44,11 +42,12 @@ const MainSelector: React.FC<MainSelectorProps> = ({
         batchUpdate({
           activeView: optionId,
           selectedSpacingIds: [],
+          selectedSpacingId: null,
           hoveredSpacingId: null,
         });
       } else {
         // Các option khác hoạt động bình thường
-        onChange(optionId);
+        updateConfig("activeView", optionId);
       }
     }
   };
@@ -59,7 +58,7 @@ const MainSelector: React.FC<MainSelectorProps> = ({
         <button
           key={option.id}
           className={`btn ${
-            activeOption === option.id
+            activeOption === option.id && activeOption !== "entier"
               ? "btn-secondary"
               : "btn-outline-secondary"
           } rounded-pill me-2 mb-2`}

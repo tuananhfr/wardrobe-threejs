@@ -33,21 +33,34 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
   const width = sectionData.width;
   const depth = sectionData.depth;
 
-  // Check if étagère mode is active - AFTER hooks
+  // Check if we're in the right mode for highlighting
   const isEtagereMode = config.accordionOpen === "collapseEtageres";
+  const isTexturesMode = config.accordionOpen === "collapseTextures";
+  const isTablettesMode = config.activeView === "tablette";
   const selectedColumnId = config.selectedColumnId;
+
+  // Only show highlights when in étagère mode OR when in textures mode with tablettes selected
+  const shouldShowHighlights =
+    isEtagereMode || (isTexturesMode && isTablettesMode);
 
   // Check if Angle AB or Angle AC is selected
   const isAngleABSelected = selectedColumnId === "angle-ab";
   const isAngleACSelected = selectedColumnId === "angle-ac";
 
+  // Don't render if not in the right mode
+  if (!shouldShowHighlights) {
+    return null;
+  }
+
   // Reset when étagère mode is disabled
   useEffect(() => {
-    if (!isEtagereMode) {
+    if (!shouldShowHighlights) {
       setHoveredColumn(null);
       document.body.style.cursor = "auto";
+      // Reset selected column when closing accordion
+      updateConfig("selectedColumnId", null);
     }
-  }, [isEtagereMode]);
+  }, [shouldShowHighlights, updateConfig]);
 
   // Helper function to get column X position
   const getColumnXPosition = (colIndex: number) => {

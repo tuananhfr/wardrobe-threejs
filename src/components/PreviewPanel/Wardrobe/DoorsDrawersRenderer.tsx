@@ -75,7 +75,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
 
   // Helper function to check if we're in facades selection mode
   const isSelectingFacades = () => {
-    return config.activeView === "facades";
+    const isTexturesMode = config.accordionOpen === "collapseTextures";
+    const isFacadesMode = config.activeView === "facades";
+    return isTexturesMode && isFacadesMode;
   };
 
   // Helper function to get facade highlight state

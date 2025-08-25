@@ -15,7 +15,12 @@ interface ColumnShelves {
 }
 
 export const useWardrobeShelves = () => {
-  const { config, handleUpdateSection, updateConfig } = useWardrobeConfig();
+  const {
+    config,
+    handleUpdateSection,
+    updateConfig,
+    cleanupConfigForRemovedSpacings,
+  } = useWardrobeConfig();
 
   const MIN_SHELF_SPACING = 10; // cm
 
@@ -143,6 +148,16 @@ export const useWardrobeShelves = () => {
       return;
     }
 
+    const currentColumn = section.columns.find((col) => col.id === columnId);
+    if (!currentColumn) {
+      return;
+    }
+
+    const currentSpacingIds =
+      currentColumn.shelves?.spacings?.map((s) => s.id) || [];
+    const isDecreasing =
+      newCount < (currentColumn.shelves?.spacings?.length || 0);
+
     if (newCount === 0) {
       // Remove all shelves
       const updatedColumns = section.columns.map((col) => {
@@ -155,6 +170,9 @@ export const useWardrobeShelves = () => {
         return col;
       });
 
+      // Xóa config cho tất cả spacing bị loại bỏ
+      cleanupConfigForRemovedSpacings(currentSpacingIds);
+
       handleUpdateSection(sectionKey, { columns: updatedColumns });
       return;
     }
@@ -163,10 +181,25 @@ export const useWardrobeShelves = () => {
     const totalHeight = config.height;
     const optimalSpacings = calculateOptimalSpacings(newCount, totalHeight);
 
-    const spacings: shelfSpacing[] = optimalSpacings.map((spacing, index) => ({
-      id: `${columnId}-spacing-${index + 1}`,
-      spacing,
-    }));
+    // Khi giảm số lượng shelves: giữ nguyên ID của spacing hiện có nếu có thể
+    const spacings: shelfSpacing[] = optimalSpacings.map((spacing, index) => {
+      const existingSpacing = currentColumn.shelves?.spacings?.[index];
+      return {
+        id: existingSpacing?.id || `${columnId}-spacing-${index + 1}`,
+        spacing,
+      };
+    });
+
+    // Xác định các spacing bị loại bỏ
+    const newSpacingIds = spacings.map((s) => s.id);
+    const removedSpacingIds = currentSpacingIds.filter(
+      (id) => !newSpacingIds.includes(id)
+    );
+
+    // Xóa config cho các spacing bị loại bỏ
+    if (isDecreasing && removedSpacingIds.length > 0) {
+      cleanupConfigForRemovedSpacings(removedSpacingIds);
+    }
 
     const updatedColumns = section.columns.map((col) => {
       if (col.id === columnId) {
@@ -228,6 +261,7 @@ export const useWardrobeShelves = () => {
   ) => {
     // Process all updates in a single transaction
     const updatedSections = { ...config.wardrobeType.sections };
+    const allRemovedSpacingIds: string[] = [];
 
     columnUpdates.forEach(({ sectionKey, columnId, newCount }) => {
       const section = updatedSections[sectionKey];
@@ -235,6 +269,17 @@ export const useWardrobeShelves = () => {
         console.error(`Section ${sectionKey} not found`);
         return;
       }
+
+      const currentColumn = section.columns.find((col) => col.id === columnId);
+      if (!currentColumn) {
+        console.error(`Column ${columnId} not found in section ${sectionKey}`);
+        return;
+      }
+
+      const currentSpacingIds =
+        currentColumn.shelves?.spacings?.map((s) => s.id) || [];
+      const isDecreasing =
+        newCount < (currentColumn.shelves?.spacings?.length || 0);
 
       if (newCount === 0) {
         // Remove all shelves
@@ -250,17 +295,34 @@ export const useWardrobeShelves = () => {
             return col;
           }),
         };
+
+        // Thêm tất cả spacing IDs vào danh sách bị loại bỏ
+        allRemovedSpacingIds.push(...currentSpacingIds);
       } else {
         // Generate optimal spacings for new count
         const totalHeight = config.height;
         const optimalSpacings = calculateOptimalSpacings(newCount, totalHeight);
 
+        // Khi giảm số lượng shelves: giữ nguyên ID của spacing hiện có nếu có thể
         const spacings: shelfSpacing[] = optimalSpacings.map(
-          (spacing, index) => ({
-            id: `${columnId}-spacing-${index + 1}`,
-            spacing,
-          })
+          (spacing, index) => {
+            const existingSpacing = currentColumn.shelves?.spacings?.[index];
+            return {
+              id: existingSpacing?.id || `${columnId}-spacing-${index + 1}`,
+              spacing,
+            };
+          }
         );
+
+        // Xác định các spacing bị loại bỏ
+        const newSpacingIds = spacings.map((s) => s.id);
+        const removedSpacingIds = currentSpacingIds.filter(
+          (id) => !newSpacingIds.includes(id)
+        );
+
+        if (isDecreasing && removedSpacingIds.length > 0) {
+          allRemovedSpacingIds.push(...removedSpacingIds);
+        }
 
         updatedSections[sectionKey] = {
           ...section,
@@ -280,6 +342,11 @@ export const useWardrobeShelves = () => {
         };
       }
     });
+
+    // Xóa config cho tất cả spacing bị loại bỏ
+    if (allRemovedSpacingIds.length > 0) {
+      cleanupConfigForRemovedSpacings(allRemovedSpacingIds);
+    }
 
     // Single update to config - all sections at once
     updateConfig("wardrobeType", {

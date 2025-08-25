@@ -550,6 +550,120 @@ export const useWardrobeConfig = () => {
       return newColumns;
     }
   };
+  // ===== HELPER FUNCTIONS =====
+
+  /**
+   * Xóa tất cả config liên quan đến các cột bị loại bỏ
+   */
+  const cleanupConfigForRemovedColumns = (removedColumnIds: string[]) => {
+    if (removedColumnIds.length === 0) return;
+
+    // Xóa doors/drawers config cho các spacing của cột bị loại bỏ
+    const updatedDoorsDrawersConfig = { ...config.doorsDrawersConfig };
+    const updatedHandleConfig = { ...config.handleConfig };
+    const updatedInternalEquipmentConfig = {
+      ...config.internalEquipmentConfig,
+    };
+    const updatedShelfTextureConfig = { ...config.shelfTextureConfig };
+    const updatedFacadeTextureConfig = { ...config.facadeTextureConfig };
+
+    removedColumnIds.forEach((columnId) => {
+      // Xóa tất cả spacing config liên quan đến cột này
+      Object.keys(updatedDoorsDrawersConfig).forEach((spacingId) => {
+        if (spacingId.startsWith(columnId)) {
+          delete updatedDoorsDrawersConfig[spacingId];
+        }
+      });
+
+      Object.keys(updatedHandleConfig).forEach((spacingId) => {
+        if (spacingId.startsWith(columnId)) {
+          delete updatedHandleConfig[spacingId];
+        }
+      });
+
+      Object.keys(updatedInternalEquipmentConfig).forEach((spacingId) => {
+        if (spacingId.startsWith(columnId)) {
+          delete updatedInternalEquipmentConfig[spacingId];
+        }
+      });
+
+      Object.keys(updatedShelfTextureConfig).forEach((spacingId) => {
+        if (spacingId.startsWith(columnId)) {
+          delete updatedShelfTextureConfig[spacingId];
+        }
+      });
+
+      Object.keys(updatedFacadeTextureConfig).forEach((spacingId) => {
+        if (spacingId.startsWith(columnId)) {
+          delete updatedFacadeTextureConfig[spacingId];
+        }
+      });
+    });
+
+    // Xóa grouped doors config cho các spacing bị loại bỏ
+    const updatedGroupedDoorsConfig = { ...config.groupedDoorsConfig };
+    Object.keys(updatedGroupedDoorsConfig).forEach((groupId) => {
+      const group = updatedGroupedDoorsConfig[groupId];
+      const hasRemovedSpacing = group.spacingIds.some((spacingId) =>
+        removedColumnIds.some((columnId) => spacingId.startsWith(columnId))
+      );
+      if (hasRemovedSpacing) {
+        delete updatedGroupedDoorsConfig[groupId];
+      }
+    });
+
+    // Cập nhật tất cả config
+    updateConfig("doorsDrawersConfig", updatedDoorsDrawersConfig);
+    updateConfig("handleConfig", updatedHandleConfig);
+    updateConfig("internalEquipmentConfig", updatedInternalEquipmentConfig);
+    updateConfig("shelfTextureConfig", updatedShelfTextureConfig);
+    updateConfig("facadeTextureConfig", updatedFacadeTextureConfig);
+    updateConfig("groupedDoorsConfig", updatedGroupedDoorsConfig);
+  };
+
+  /**
+   * Xóa tất cả config liên quan đến các spacing bị loại bỏ
+   */
+  const cleanupConfigForRemovedSpacings = (removedSpacingIds: string[]) => {
+    if (removedSpacingIds.length === 0) return;
+
+    const updatedDoorsDrawersConfig = { ...config.doorsDrawersConfig };
+    const updatedHandleConfig = { ...config.handleConfig };
+    const updatedInternalEquipmentConfig = {
+      ...config.internalEquipmentConfig,
+    };
+    const updatedShelfTextureConfig = { ...config.shelfTextureConfig };
+    const updatedFacadeTextureConfig = { ...config.facadeTextureConfig };
+
+    removedSpacingIds.forEach((spacingId) => {
+      delete updatedDoorsDrawersConfig[spacingId];
+      delete updatedHandleConfig[spacingId];
+      delete updatedInternalEquipmentConfig[spacingId];
+      delete updatedShelfTextureConfig[spacingId];
+      delete updatedFacadeTextureConfig[spacingId];
+    });
+
+    // Xóa grouped doors config cho các spacing bị loại bỏ
+    const updatedGroupedDoorsConfig = { ...config.groupedDoorsConfig };
+    Object.keys(updatedGroupedDoorsConfig).forEach((groupId) => {
+      const group = updatedGroupedDoorsConfig[groupId];
+      const hasRemovedSpacing = group.spacingIds.some((spacingId) =>
+        removedSpacingIds.includes(spacingId)
+      );
+      if (hasRemovedSpacing) {
+        delete updatedGroupedDoorsConfig[groupId];
+      }
+    });
+
+    // Cập nhật tất cả config
+    updateConfig("doorsDrawersConfig", updatedDoorsDrawersConfig);
+    updateConfig("handleConfig", updatedHandleConfig);
+    updateConfig("internalEquipmentConfig", updatedInternalEquipmentConfig);
+    updateConfig("shelfTextureConfig", updatedShelfTextureConfig);
+    updateConfig("facadeTextureConfig", updatedFacadeTextureConfig);
+    updateConfig("groupedDoorsConfig", updatedGroupedDoorsConfig);
+  };
+
   // ===== CORE UPDATE FUNCTION =====
 
   const handleUpdateSection = (
@@ -566,7 +680,9 @@ export const useWardrobeConfig = () => {
     // AUTO-UPDATE: Nếu width thay đổi, tự động recalculate constraints và columns
     if (newData.width !== undefined && newData.width !== currentSection.width) {
       const newWidth = newData.width;
+      const oldWidth = currentSection.width;
       const thickness = config.thickness;
+      const isIncreasing = newWidth > oldWidth;
 
       // Recalculate dynamic constraints với L-shape support
       const dynamicMinColumns = calculateMinColumns(
@@ -606,13 +722,60 @@ export const useWardrobeConfig = () => {
         currentSection.columns
       );
 
-      // Update section data với new constraints và columns
-      updatedSectionData = {
-        ...updatedSectionData,
-        minColumns: dynamicMinColumns,
-        maxColumns: dynamicMaxColumns,
-        columns: newColumns,
-      };
+      // Khi tăng kích thước: giữ nguyên tất cả thiết lập hiện có
+      // Khi giảm kích thước: chỉ xóa thiết lập trên các cột bị loại bỏ
+      if (isIncreasing) {
+        // Khi tăng: giữ nguyên tất cả thiết lập, chỉ thêm cột mới nếu cần
+        const preservedColumns = newColumns.map((newCol, index) => {
+          const existingCol = currentSection.columns[index];
+          if (existingCol) {
+            // Giữ nguyên shelves hiện có
+            return {
+              ...newCol,
+              shelves: existingCol.shelves,
+            };
+          }
+          // Cột mới: chỉ có width, không có thiết lập
+          return newCol;
+        });
+
+        updatedSectionData = {
+          ...updatedSectionData,
+          minColumns: dynamicMinColumns,
+          maxColumns: dynamicMaxColumns,
+          columns: preservedColumns,
+        };
+      } else {
+        // Khi giảm: chỉ xóa thiết lập trên các cột bị loại bỏ
+        const preservedColumns = newColumns.map((newCol) => {
+          const existingCol = currentSection.columns.find(
+            (col) => col.id === newCol.id
+          );
+          if (existingCol) {
+            // Giữ nguyên shelves cho cột còn lại
+            return {
+              ...newCol,
+              shelves: existingCol.shelves,
+            };
+          }
+          // Cột mới (hiếm khi xảy ra khi giảm): chỉ có width
+          return newCol;
+        });
+
+        // Xóa các thiết lập doors, drawers, rails, internalEquipment cho các cột bị loại bỏ
+        const removedColumnIds = currentSection.columns
+          .filter((col) => !newColumns.some((newCol) => newCol.id === col.id))
+          .map((col) => col.id);
+
+        cleanupConfigForRemovedColumns(removedColumnIds);
+
+        updatedSectionData = {
+          ...updatedSectionData,
+          minColumns: dynamicMinColumns,
+          maxColumns: dynamicMaxColumns,
+          columns: preservedColumns,
+        };
+      }
     }
 
     // Update config
@@ -680,9 +843,12 @@ export const useWardrobeConfig = () => {
 
     // Validate current columns count
     let targetColumnCount = section.columns.length;
-    if (targetColumnCount < dynamicMinColumns) {
+    const isIncreasing = targetColumnCount < dynamicMinColumns;
+    const isDecreasing = targetColumnCount > dynamicMaxColumns;
+
+    if (isIncreasing) {
       targetColumnCount = dynamicMinColumns;
-    } else if (targetColumnCount > dynamicMaxColumns) {
+    } else if (isDecreasing) {
       targetColumnCount = dynamicMaxColumns;
     }
 
@@ -698,11 +864,66 @@ export const useWardrobeConfig = () => {
           )
         : section.columns;
 
-    handleUpdateSection(sectionKey, {
-      minColumns: dynamicMinColumns,
-      maxColumns: dynamicMaxColumns,
-      columns: newColumns,
-    });
+    // Nếu số lượng columns thay đổi, xử lý theo logic mới
+    if (targetColumnCount !== section.columns.length) {
+      if (isIncreasing) {
+        // Khi tăng: giữ nguyên tất cả thiết lập, chỉ thêm cột mới nếu cần
+        const preservedColumns = newColumns.map((newCol, index) => {
+          const existingCol = section.columns[index];
+          if (existingCol) {
+            // Giữ nguyên shelves hiện có
+            return {
+              ...newCol,
+              shelves: existingCol.shelves,
+            };
+          }
+          // Cột mới: chỉ có width, không có thiết lập
+          return newCol;
+        });
+
+        handleUpdateSection(sectionKey, {
+          minColumns: dynamicMinColumns,
+          maxColumns: dynamicMaxColumns,
+          columns: preservedColumns,
+        });
+      } else if (isDecreasing) {
+        // Khi giảm: chỉ xóa thiết lập trên các cột bị loại bỏ
+        const preservedColumns = newColumns.map((newCol) => {
+          const existingCol = section.columns.find(
+            (col) => col.id === newCol.id
+          );
+          if (existingCol) {
+            // Giữ nguyên shelves cho cột còn lại
+            return {
+              ...newCol,
+              shelves: existingCol.shelves,
+            };
+          }
+          // Cột mới (hiếm khi xảy ra khi giảm): chỉ có width
+          return newCol;
+        });
+
+        // Xóa các thiết lập doors, drawers, rails, internalEquipment cho các cột bị loại bỏ
+        const removedColumnIds = section.columns
+          .filter((col) => !newColumns.some((newCol) => newCol.id === col.id))
+          .map((col) => col.id);
+
+        cleanupConfigForRemovedColumns(removedColumnIds);
+
+        handleUpdateSection(sectionKey, {
+          minColumns: dynamicMinColumns,
+          maxColumns: dynamicMaxColumns,
+          columns: preservedColumns,
+        });
+      }
+    } else {
+      // Không thay đổi số lượng columns, chỉ cập nhật constraints
+      handleUpdateSection(sectionKey, {
+        minColumns: dynamicMinColumns,
+        maxColumns: dynamicMaxColumns,
+        columns: newColumns,
+      });
+    }
   };
 
   /**
@@ -934,6 +1155,9 @@ export const useWardrobeConfig = () => {
         JSON.stringify(config.wardrobeType.sections)
       );
 
+      // Theo dõi các spacing bị loại bỏ để xóa config
+      const removedSpacingIds: string[] = [];
+
       (Object.keys(updatedSections) as SectionKey[]).forEach((sectionKey) => {
         const section = updatedSections[sectionKey];
         if (!section) return;
@@ -942,6 +1166,7 @@ export const useWardrobeConfig = () => {
             return col;
           }
 
+          const originalSpacingIds = col.shelves.spacings.map((s) => s.id);
           const numericSpacings = col.shelves.spacings.map((s) => s.spacing);
           // Adjust only last spacing (last shelf → plafond)
           numericSpacings[numericSpacings.length - 1] += delta;
@@ -959,6 +1184,8 @@ export const useWardrobeConfig = () => {
 
           // If only one spacing remains and still < 10, drop all shelves
           if (numericSpacings.length === 1 && numericSpacings[0] < 10) {
+            // Thêm tất cả spacing IDs vào danh sách bị loại bỏ
+            removedSpacingIds.push(...originalSpacingIds);
             return { ...col, shelves: undefined };
           }
 
@@ -968,6 +1195,13 @@ export const useWardrobeConfig = () => {
               spacing,
             })
           );
+
+          // Kiểm tra spacing nào bị loại bỏ
+          const newSpacingIds = rebuiltSpacings.map((s) => s.id);
+          const removedFromThisColumn = originalSpacingIds.filter(
+            (id) => !newSpacingIds.includes(id)
+          );
+          removedSpacingIds.push(...removedFromThisColumn);
 
           return {
             ...col,
@@ -979,6 +1213,9 @@ export const useWardrobeConfig = () => {
           };
         });
       });
+
+      // Xóa config cho các spacing bị loại bỏ
+      cleanupConfigForRemovedSpacings(removedSpacingIds);
 
       updateConfig("wardrobeType", {
         ...config.wardrobeType,
@@ -1003,12 +1240,18 @@ export const useWardrobeConfig = () => {
           if (newSpacings.length === 0) {
             return { ...col, shelves: undefined };
           }
+
+          // Khi tăng chiều cao: giữ nguyên ID của spacing hiện có nếu có thể
           const rebuiltSpacings: shelfSpacing[] = newSpacings.map(
-            (spacing, index) => ({
-              id: `${col.id}-spacing-${index + 1}`,
-              spacing,
-            })
+            (spacing, index) => {
+              const existingSpacing = col.shelves?.spacings?.[index];
+              return {
+                id: existingSpacing?.id || `${col.id}-spacing-${index + 1}`,
+                spacing,
+              };
+            }
           );
+
           return {
             ...col,
             shelves: {
@@ -1048,6 +1291,10 @@ export const useWardrobeConfig = () => {
     calculateMaxColumns,
     generateOptimalColumns,
     getLShapeConstraints,
+
+    // Helper functions
+    cleanupConfigForRemovedColumns,
+    cleanupConfigForRemovedSpacings,
 
     // Grouped doors helpers
     areSpacingsConsecutiveInSameColumn,

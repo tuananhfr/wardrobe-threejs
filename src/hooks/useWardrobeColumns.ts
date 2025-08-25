@@ -5,9 +5,11 @@ import { useWardrobeConfig } from "./useWardrobeConfig";
 export const useWardrobeColumns = () => {
   const {
     config,
+
     handleUpdateSection,
 
     generateOptimalColumns,
+    cleanupConfigForRemovedColumns,
   } = useWardrobeConfig();
 
   // ===== BASIC HELPERS =====
@@ -171,6 +173,10 @@ export const useWardrobeColumns = () => {
       return;
     }
 
+    const currentCount = currentSection.columns.length;
+    const isIncreasing = newCount > currentCount;
+    const isDecreasing = newCount < currentCount;
+
     // Generate columns với L-shape optimal distribution
     const newColumns = generateOptimalColumns(
       newCount,
@@ -180,7 +186,52 @@ export const useWardrobeColumns = () => {
       currentSection.columns
     );
 
-    handleUpdateSection(sectionKey, { columns: newColumns });
+    // Xử lý theo logic mới
+    if (isIncreasing) {
+      // Khi tăng: giữ nguyên tất cả thiết lập, chỉ thêm cột mới nếu cần
+      const preservedColumns = newColumns.map((newCol, index) => {
+        const existingCol = currentSection.columns[index];
+        if (existingCol) {
+          // Giữ nguyên shelves hiện có
+          return {
+            ...newCol,
+            shelves: existingCol.shelves,
+          };
+        }
+        // Cột mới: chỉ có width, không có thiết lập
+        return newCol;
+      });
+
+      handleUpdateSection(sectionKey, { columns: preservedColumns });
+    } else if (isDecreasing) {
+      // Khi giảm: chỉ xóa thiết lập trên các cột bị loại bỏ
+      const preservedColumns = newColumns.map((newCol) => {
+        const existingCol = currentSection.columns.find(
+          (col) => col.id === newCol.id
+        );
+        if (existingCol) {
+          // Giữ nguyên shelves cho cột còn lại
+          return {
+            ...newCol,
+            shelves: existingCol.shelves,
+          };
+        }
+        // Cột mới (hiếm khi xảy ra khi giảm): chỉ có width
+        return newCol;
+      });
+
+      // Xóa các thiết lập doors, drawers, rails, internalEquipment cho các cột bị loại bỏ
+      const removedColumnIds = currentSection.columns
+        .filter((col) => !newColumns.some((newCol) => newCol.id === col.id))
+        .map((col) => col.id);
+
+      cleanupConfigForRemovedColumns(removedColumnIds);
+
+      handleUpdateSection(sectionKey, { columns: preservedColumns });
+    } else {
+      // Không thay đổi số lượng columns, chỉ redistribute
+      handleUpdateSection(sectionKey, { columns: newColumns });
+    }
   };
 
   // ===== REDISTRIBUTE EVENLY =====

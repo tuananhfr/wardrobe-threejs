@@ -21,7 +21,12 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
   baseBarHeight,
   thickness,
 }) => {
-  const { config, updateConfig } = useWardrobeConfig();
+  const {
+    config,
+    updateConfig,
+    getGroupMembersForSpacing,
+    updateDoorsDrawersConfig,
+  } = useWardrobeConfig();
   // Use global state for hover
   const hoveredSpacing = config.hoveredSpacingId || null;
 
@@ -239,11 +244,14 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
 
   const spacingPositions = getSpacingPositions();
 
+  // Tìm nhóm cấu hình (các spacing liên tiếp cùng loại trong cùng cột) chứa spacingId
+  // DEPRECATED: Sử dụng getGroupMembersForSpacing từ useWardrobeConfig thay thế
+  const getConfiguredGroupForSpacing = (spacingId: string): string[] => {
+    return getGroupMembersForSpacing(spacingId);
+  };
+
   // Auto-update config when shelves change
   useEffect(() => {
-    const updatedConfig = { ...config.doorsDrawersConfig };
-    let hasChanges = false;
-
     // Helper function to get spacing height
     const getSpacingHeight = (spacingId: string): number | null => {
       if (!spacingId) return null;
@@ -302,38 +310,40 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
             column.shelves?.spacings && column.shelves.spacings.length > 0;
 
           // If column has shelves and has column door/drawer config, move it to first spacing
-          if (hasShelves && updatedConfig[columnSpacingId]) {
+          if (hasShelves && config.doorsDrawersConfig[columnSpacingId]) {
             const firstSpacingId = `${column.id}-spacing-0`;
-            if (!updatedConfig[firstSpacingId]) {
-              updatedConfig[firstSpacingId] = updatedConfig[columnSpacingId];
-              delete updatedConfig[columnSpacingId];
-              hasChanges = true;
+            if (!config.doorsDrawersConfig[firstSpacingId]) {
+              const doorType = config.doorsDrawersConfig[columnSpacingId];
+              updateDoorsDrawersConfig(firstSpacingId, doorType);
+              updateDoorsDrawersConfig(columnSpacingId, null);
             }
           }
           // If column has no shelves and has spacing door/drawer config, move it to column
-          else if (!hasShelves && !updatedConfig[columnSpacingId]) {
+          else if (!hasShelves && !config.doorsDrawersConfig[columnSpacingId]) {
             // Check if any spacing of this column has door/drawer config
-            const columnSpacingIds = Object.keys(updatedConfig).filter(
+            const columnSpacingIds = Object.keys(
+              config.doorsDrawersConfig
+            ).filter(
               (id) => id.startsWith(column.id) && id !== columnSpacingId
             );
 
             const hasSpacingDoorDrawer = columnSpacingIds.some(
-              (id) => updatedConfig[id]
+              (id) => config.doorsDrawersConfig[id]
             );
             if (hasSpacingDoorDrawer) {
               // Get the first door/drawer config found
               const firstConfig = columnSpacingIds.find(
-                (id) => updatedConfig[id]
+                (id) => config.doorsDrawersConfig[id]
               );
               if (firstConfig) {
-                updatedConfig[columnSpacingId] = updatedConfig[firstConfig];
+                const doorType = config.doorsDrawersConfig[firstConfig];
+                updateDoorsDrawersConfig(columnSpacingId, doorType);
                 // Remove all spacing door/drawer configs for this column
                 columnSpacingIds.forEach((id) => {
-                  if (updatedConfig[id]) {
-                    delete updatedConfig[id];
+                  if (config.doorsDrawersConfig[id]) {
+                    updateDoorsDrawersConfig(id, null);
                   }
                 });
-                hasChanges = true;
               }
             }
           }
@@ -342,87 +352,36 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
     });
 
     // NEW LOGIC: Remove drawer from spacings that are too small (< 10cm or > 60cm)
-    Object.keys(updatedConfig).forEach((spacingId) => {
-      if (updatedConfig[spacingId] === "drawer") {
+    Object.keys(config.doorsDrawersConfig).forEach((spacingId) => {
+      if (config.doorsDrawersConfig[spacingId] === "drawer") {
         const spacingHeight = getSpacingHeight(spacingId);
         if (
           spacingHeight !== null &&
           (spacingHeight < 10 || spacingHeight > 60)
         ) {
-          // Remove drawer from spacing that's too small or too large
-          delete updatedConfig[spacingId];
-          hasChanges = true;
+          // Remove drawer from spacing that's too small or too large using grouped doors logic
+          updateDoorsDrawersConfig(spacingId, null);
         }
       }
     });
-
-    if (hasChanges) {
-      updateConfig("doorsDrawersConfig", updatedConfig);
-    }
   }, [config.wardrobeType, config.doorsDrawersConfig, updateConfig]);
 
-  // Handle spacing click with new logic
+  // Handle spacing click with grouped doors logic
   const handleSpacingClick = (spacingId: string) => {
     const selectedSpacings = config.selectedSpacingIds || [];
     const isCurrentlySelected = selectedSpacings.includes(spacingId);
     const hasExistingConfig = config.doorsDrawersConfig[spacingId];
 
     if (isCurrentlySelected) {
-      // Deselect all if clicking on already selected spacing
+      // Nếu spacing đã được chọn, click lại để bỏ chọn
       updateConfig("selectedSpacingIds", []);
       updateConfig("selectedSpacingId", null);
       updateConfig("selectedDoorsDrawersType", null);
     } else {
-      // Check if clicking on neighbor of selected spacings
-      const isNeighbor = isNeighborOfSelected(spacingId);
-
-      // If clicking on spacing that already has config and there are already selected spacings, reset all selections
-      if (hasExistingConfig && selectedSpacings.length > 0) {
-        updateConfig("selectedSpacingIds", []);
-        updateConfig("selectedSpacingId", null);
-        updateConfig("selectedDoorsDrawersType", null);
-        return;
-      }
-
-      // If first select and clicking on spacing that already has config, select all configured spacings in the same column
-      if (hasExistingConfig && selectedSpacings.length === 0) {
-        // Get all spacings in the same column that have config
-        const parts = spacingId.split("-");
-        let columnId: string;
-
-        if (
-          parts.length === 5 &&
-          parts[1] === "col" &&
-          parts[3] === "spacing"
-        ) {
-          columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
-        } else {
-          columnId = parts[0];
-        }
-
-        const configuredSpacingsInColumn = spacingPositions
-          .filter((pos) => {
-            const posParts = pos.spacingId.split("-");
-            let posColumnId: string;
-
-            if (
-              posParts.length === 5 &&
-              posParts[1] === "col" &&
-              posParts[3] === "spacing"
-            ) {
-              posColumnId = `${posParts[0]}-${posParts[1]}-${posParts[2]}`;
-            } else {
-              posColumnId = posParts[0];
-            }
-
-            return (
-              posColumnId === columnId &&
-              config.doorsDrawersConfig[pos.spacingId]
-            );
-          })
-          .map((pos) => pos.spacingId);
-
-        updateConfig("selectedSpacingIds", configuredSpacingsInColumn);
+      // Nếu click vào spacing đã có config, chọn cả group
+      if (hasExistingConfig) {
+        const groupMembers = getGroupMembersForSpacing(spacingId);
+        updateConfig("selectedSpacingIds", groupMembers);
         updateConfig("selectedSpacingId", spacingId);
         updateConfig(
           "selectedDoorsDrawersType",
@@ -430,6 +389,9 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
         );
         return;
       }
+
+      // Check if clicking on neighbor of selected spacings
+      const isNeighbor = isNeighborOfSelected(spacingId);
 
       if (isNeighbor) {
         // Add to selected spacings
@@ -505,16 +467,23 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
         const isSelected = selectedSpacings.includes(pos.spacingId);
         const isHovered = hoveredSpacing === pos.spacingId;
 
+        // Check if this spacing is part of a group that's selected or hovered
+        const groupMembers = getGroupMembersForSpacing(pos.spacingId);
+        const isGroupSelected = groupMembers.some((id) =>
+          selectedSpacings.includes(id)
+        );
+        const isGroupHovered = groupMembers.some((id) => hoveredSpacing === id);
+
         // Determine highlight state and color
         let shouldShowHighlight = false;
         let highlightColor = "#e6f7f9"; // Blue like EtagereColumnHighlights
         let opacity = 0;
 
-        if (isSelected) {
+        if (isSelected || isGroupSelected) {
           shouldShowHighlight = true;
           highlightColor = "#e6f7f9"; // Blue for selected
           opacity = 0.6;
-        } else if (isHovered) {
+        } else if (isHovered || isGroupHovered) {
           shouldShowHighlight = true;
           highlightColor = "#f8f9fa"; // Light gray for hover
           opacity = 0.4;
@@ -550,24 +519,29 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
         const isHovered = hoveredSpacing === pos.spacingId;
         const isNeighbor = isNeighborOfSelected(pos.spacingId);
 
+        // Check if this spacing is part of a group that's selected or hovered
+        const groupMembers = getGroupMembersForSpacing(pos.spacingId);
+        const isGroupSelected = groupMembers.some((id) =>
+          selectedSpacings.includes(id)
+        );
+        const isGroupHovered = groupMembers.some((id) => hoveredSpacing === id);
+
         // Show icon when:
         // 1. Hovered (normal behavior)
         // 2. Selected (normal behavior)
-        // 3. Neighbor of selected spacing (new behavior)
-        const shouldShowIcon = isHovered || isSelected || isNeighbor;
+        // 3. Part of a group that's selected or hovered
+        const shouldShowIcon =
+          isHovered || isSelected || isGroupHovered || isGroupSelected;
         if (!shouldShowIcon) return null;
 
         // Determine icon properties
         let iconColor = "#4169E1"; // Default blue
         let iconText = "+"; // Default plus
 
-        if (isSelected) {
+        if (isSelected || isGroupSelected) {
           iconColor = "green";
           iconText = "✓";
-        } else if (isNeighbor) {
-          iconColor = "#4169E1";
-          iconText = "+";
-        } else if (isHovered) {
+        } else if (isHovered || isGroupHovered) {
           iconColor = "#4169E1";
           iconText = "+";
         }

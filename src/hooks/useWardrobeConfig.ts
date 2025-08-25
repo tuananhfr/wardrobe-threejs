@@ -714,6 +714,176 @@ export const useWardrobeConfig = () => {
     });
   };
 
+  // ===== GROUPED DOORS LOGIC =====
+
+  /**
+   * Kiểm tra xem các spacing có liên tiếp trong cùng cột không
+   */
+  const areSpacingsConsecutiveInSameColumn = (
+    spacingIds: string[]
+  ): boolean => {
+    if (spacingIds.length <= 1) return true;
+
+    // Parse spacingIds để lấy columnId và spacingIndex
+    const spacingInfos = spacingIds.map((spacingId) => {
+      const parts = spacingId.split("-");
+      let columnId: string;
+      let spacingIndex: number;
+
+      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+        spacingIndex = parseInt(parts[4]);
+      } else {
+        columnId = parts[0];
+        spacingIndex = parseInt(parts[2]);
+      }
+
+      return { columnId, spacingIndex, spacingId };
+    });
+
+    // Kiểm tra tất cả có cùng columnId không
+    const firstColumnId = spacingInfos[0].columnId;
+    if (!spacingInfos.every((info) => info.columnId === firstColumnId)) {
+      return false;
+    }
+
+    // Sắp xếp theo spacingIndex và kiểm tra liên tiếp
+    const sortedInfos = spacingInfos.sort(
+      (a, b) => a.spacingIndex - b.spacingIndex
+    );
+
+    for (let i = 1; i < sortedInfos.length; i++) {
+      if (sortedInfos[i].spacingIndex !== sortedInfos[i - 1].spacingIndex + 1) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
+  /**
+   * Lấy tất cả spacing IDs trong cùng group với spacingId
+   */
+  const getGroupMembersForSpacing = (spacingId: string): string[] => {
+    // Tìm group chứa spacingId
+    for (const [groupId, group] of Object.entries(config.groupedDoorsConfig)) {
+      if (group.spacingIds.includes(spacingId)) {
+        return group.spacingIds;
+      }
+    }
+
+    // Nếu không tìm thấy group, trả về chính spacingId đó
+    return [spacingId];
+  };
+
+  /**
+   * Tạo hoặc cập nhật group cho các spacing
+   */
+  const createOrUpdateGroup = (
+    spacingIds: string[],
+    doorType: string
+  ): string => {
+    // Kiểm tra tính hợp lệ
+    if (!areSpacingsConsecutiveInSameColumn(spacingIds)) {
+      console.warn("Spacings must be consecutive in same column for grouping");
+      return "";
+    }
+
+    // Xóa các group cũ chứa các spacing này
+    const updatedGroupedConfig = { ...config.groupedDoorsConfig };
+    Object.keys(updatedGroupedConfig).forEach((groupId) => {
+      const group = updatedGroupedConfig[groupId];
+      const hasOverlap = group.spacingIds.some((id) => spacingIds.includes(id));
+      if (hasOverlap) {
+        delete updatedGroupedConfig[groupId];
+      }
+    });
+
+    // Tạo group mới
+    const newGroupId = `group_${Date.now()}`;
+    updatedGroupedConfig[newGroupId] = {
+      spacingIds: [...spacingIds],
+      doorType,
+      createdAt: Date.now(),
+    };
+
+    updateConfig("groupedDoorsConfig", updatedGroupedConfig);
+    return newGroupId;
+  };
+
+  /**
+   * Cập nhật doors/drawers config cho spacing và group của nó
+   */
+  const updateDoorsDrawersConfig = (
+    spacingId: string,
+    doorType: string | null
+  ): void => {
+    const groupMembers = getGroupMembersForSpacing(spacingId);
+    const updatedConfig = { ...config.doorsDrawersConfig };
+
+    // Kiểm tra xem doorType có phải là drawer hoặc sliding door không
+    const isDrawer = doorType === "drawer" || doorType === "drawerVerre";
+    const isSlidingDoor =
+      doorType === "slidingDoor" ||
+      doorType === "slidingMirrorDoor" ||
+      doorType === "slidingGlassDoor";
+
+    if (doorType === null) {
+      // Xóa config cho tất cả group members (vide sync)
+      groupMembers.forEach((id) => {
+        delete updatedConfig[id];
+      });
+
+      // Xóa group nếu có
+      const updatedGroupedConfig = { ...config.groupedDoorsConfig };
+      Object.keys(updatedGroupedConfig).forEach((groupId) => {
+        const group = updatedGroupedConfig[groupId];
+        if (group.spacingIds.includes(spacingId)) {
+          delete updatedGroupedConfig[groupId];
+        }
+      });
+      updateConfig("groupedDoorsConfig", updatedGroupedConfig);
+    } else {
+      // Áp dụng doorType cho tất cả group members (door type sync)
+      groupMembers.forEach((id) => {
+        updatedConfig[id] = doorType as any;
+      });
+
+      // Cập nhật group nếu có nhiều hơn 1 member và không phải drawer/sliding door
+      if (groupMembers.length > 1 && !isDrawer && !isSlidingDoor) {
+        createOrUpdateGroup(groupMembers, doorType);
+      }
+    }
+
+    updateConfig("doorsDrawersConfig", updatedConfig);
+  };
+
+  /**
+   * Xóa group chứa spacingId
+   */
+  const removeGroupForSpacing = (spacingId: string): void => {
+    const updatedGroupedConfig = { ...config.groupedDoorsConfig };
+    Object.keys(updatedGroupedConfig).forEach((groupId) => {
+      const group = updatedGroupedConfig[groupId];
+      if (group.spacingIds.includes(spacingId)) {
+        delete updatedGroupedConfig[groupId];
+      }
+    });
+    updateConfig("groupedDoorsConfig", updatedGroupedConfig);
+  };
+
+  /**
+   * Lấy door type của group chứa spacingId
+   */
+  const getGroupDoorType = (spacingId: string): string | null => {
+    for (const [, group] of Object.entries(config.groupedDoorsConfig)) {
+      if (group.spacingIds.includes(spacingId)) {
+        return group.doorType;
+      }
+    }
+    return null;
+  };
+
   /**
    * Update height (hauteur) and reset spacings like changing shelf count.
    * Keep current shelf count per column, recompute optimal spacings for new height.
@@ -878,5 +1048,13 @@ export const useWardrobeConfig = () => {
     calculateMaxColumns,
     generateOptimalColumns,
     getLShapeConstraints,
+
+    // Grouped doors helpers
+    areSpacingsConsecutiveInSameColumn,
+    getGroupMembersForSpacing,
+    createOrUpdateGroup,
+    updateDoorsDrawersConfig,
+    removeGroupForSpacing,
+    getGroupDoorType,
   };
 };

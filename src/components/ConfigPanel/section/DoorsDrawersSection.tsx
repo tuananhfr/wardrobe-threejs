@@ -10,7 +10,13 @@ import leftDoor from "@/assets/images/left.svg";
 import rightDoor from "@/assets/images/right.svg";
 
 const DoorsDrawersSection: React.FC = () => {
-  const { config, updateConfig } = useWardrobeConfig();
+  const { 
+    config, 
+    updateConfig, 
+    updateDoorsDrawersConfig,
+    createOrUpdateGroup,
+    areSpacingsConsecutiveInSameColumn 
+  } = useWardrobeConfig();
 
   // State for tooltip
   const [hoveredButton, setHoveredButton] = useState<{
@@ -370,12 +376,8 @@ const DoorsDrawersSection: React.FC = () => {
       }
 
       if (shouldRemove) {
-        // Remove from config
-        const updatedConfig = { ...config.doorsDrawersConfig };
-        delete updatedConfig[config.selectedSpacingId];
-
-        // Update config
-        updateConfig("doorsDrawersConfig", updatedConfig);
+        // Remove from config using grouped doors logic
+        updateDoorsDrawersConfig(config.selectedSpacingId, null);
 
         // Update selected doors drawers type to null (force reselect)
         updateConfig("selectedDoorsDrawersType", null as any);
@@ -385,9 +387,6 @@ const DoorsDrawersSection: React.FC = () => {
 
   // GLOBAL LOGIC: Remove all incompatible doors/drawers when dimensions change
   useEffect(() => {
-    const updatedConfig = { ...config.doorsDrawersConfig };
-    let hasChanges = false;
-
     // Check all configured spacings
     Object.keys(config.doorsDrawersConfig).forEach((spacingId) => {
       const doorsDrawersType = config.doorsDrawersConfig[spacingId];
@@ -429,22 +428,17 @@ const DoorsDrawersSection: React.FC = () => {
       }
 
       if (shouldRemove) {
-        delete updatedConfig[spacingId];
-        hasChanges = true;
+        // Use grouped doors logic to remove
+        updateDoorsDrawersConfig(spacingId, null);
       }
     });
 
-    // Update config if any changes were made
-    if (hasChanges) {
-      updateConfig("doorsDrawersConfig", updatedConfig);
-
-      // Clear selected type if it was removed
-      if (
-        config.selectedSpacingId &&
-        !updatedConfig[config.selectedSpacingId]
-      ) {
-        updateConfig("selectedDoorsDrawersType", null as any);
-      }
+    // Clear selected type if it was removed
+    if (
+      config.selectedSpacingId &&
+      !config.doorsDrawersConfig[config.selectedSpacingId]
+    ) {
+      updateConfig("selectedDoorsDrawersType", null as any);
     }
   }, [
     config.wardrobeType,
@@ -545,22 +539,20 @@ const DoorsDrawersSection: React.FC = () => {
       console.log("Selecting vide for spacing:", config.selectedSpacingId);
       updateConfig("selectedDoorsDrawersType", null);
 
-      // Apply vide to all spacings in section (like sliding door logic)
-      if (config.selectedSpacingId) {
-        const sectionName = getSectionNameFromSpacingId(
-          config.selectedSpacingId
-        );
-        const sectionSpacingIds = getSpacingIdsInSection(sectionName);
+      // Chỉ áp dụng vide cho các spacing đang được chọn (hoặc spacing hiện tại)
+      const selectedSpacings = config.selectedSpacingIds || [];
+      const targetSpacings =
+        selectedSpacings.length > 0
+          ? selectedSpacings
+          : config.selectedSpacingId
+          ? [config.selectedSpacingId]
+          : [];
 
-        const updatedConfig = { ...config.doorsDrawersConfig };
-
-        // Clear all door types in the section
-        sectionSpacingIds.forEach((spacingId) => {
-          delete updatedConfig[spacingId];
+      if (targetSpacings.length > 0) {
+        // Sử dụng grouped doors logic để xóa config
+        targetSpacings.forEach((spacingId) => {
+          updateDoorsDrawersConfig(spacingId, null);
         });
-
-        console.log("Removing all configs for section:", updatedConfig);
-        updateConfig("doorsDrawersConfig", updatedConfig);
       }
       return;
     }
@@ -577,8 +569,6 @@ const DoorsDrawersSection: React.FC = () => {
       : [];
 
     if (targetSpacings.length > 0) {
-      const updatedConfig = { ...config.doorsDrawersConfig };
-
       // If selecting sliding door, apply to all spacings in section
       if (
         type === "slidingDoor" ||
@@ -598,41 +588,48 @@ const DoorsDrawersSection: React.FC = () => {
 
           // Clear all other door types in the section
           sectionSpacingIds.forEach((spacingId) => {
-            delete updatedConfig[spacingId];
+            updateDoorsDrawersConfig(spacingId, null);
           });
 
           // Apply sliding door to all spacings in section
           sectionSpacingIds.forEach((spacingId) => {
-            updatedConfig[spacingId] = type as any;
+            updateDoorsDrawersConfig(spacingId, type);
           });
         });
-
-        updateConfig("doorsDrawersConfig", updatedConfig);
       } else {
-        // If selecting other door types, apply to all selected spacings
-        targetSpacings.forEach((spacingId) => {
-          if (spacingId) {
-            // Remove sliding doors from the section first
-            const sectionName = getSectionNameFromSpacingId(spacingId);
-            const sectionSpacingIds = getSpacingIdsInSection(sectionName);
+        // If selecting other door types, check if we should create a group
+        if (hasMultipleSelected && areSpacingsConsecutiveInSameColumn(targetSpacings)) {
+          // Create group for multiple selected spacings
+          createOrUpdateGroup(targetSpacings, type);
+          
+          // Apply door type to all spacings in group
+          targetSpacings.forEach((spacingId) => {
+            updateDoorsDrawersConfig(spacingId, type);
+          });
+        } else {
+          // Single selection or non-consecutive spacings
+          targetSpacings.forEach((spacingId) => {
+            if (spacingId) {
+              // Remove sliding doors from the section first
+              const sectionName = getSectionNameFromSpacingId(spacingId);
+              const sectionSpacingIds = getSpacingIdsInSection(sectionName);
 
-            sectionSpacingIds.forEach((sectionSpacingId) => {
-              const currentType = updatedConfig[sectionSpacingId];
-              if (
-                currentType === "slidingDoor" ||
-                currentType === "slidingMirrorDoor" ||
-                currentType === "slidingGlassDoor"
-              ) {
-                delete updatedConfig[sectionSpacingId];
-              }
-            });
+              sectionSpacingIds.forEach((sectionSpacingId) => {
+                const currentType = config.doorsDrawersConfig[sectionSpacingId];
+                if (
+                  currentType === "slidingDoor" ||
+                  currentType === "slidingMirrorDoor" ||
+                  currentType === "slidingGlassDoor"
+                ) {
+                  updateDoorsDrawersConfig(sectionSpacingId, null);
+                }
+              });
 
-            // Apply new door type to this spacing
-            updatedConfig[spacingId] = type as any;
-          }
-        });
-
-        updateConfig("doorsDrawersConfig", updatedConfig);
+              // Apply new door type to this spacing
+              updateDoorsDrawersConfig(spacingId, type);
+            }
+          });
+        }
       }
     }
   };

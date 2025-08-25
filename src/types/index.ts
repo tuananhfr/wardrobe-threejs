@@ -83,6 +83,14 @@ declare global {
     facadeTextureConfig: {
       [spacingId: string]: Texture;
     };
+
+    groupedDoorsConfig: {
+      [groupId: string]: {
+        spacingIds: string[];
+        doorType: string;
+        createdAt: number; // timestamp
+      };
+    };
   }
 
   interface Texture {

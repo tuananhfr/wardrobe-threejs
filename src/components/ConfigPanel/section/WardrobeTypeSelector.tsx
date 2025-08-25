@@ -22,6 +22,7 @@ const WardrobeTypeSelector: React.FC = () => {
     ) {
       // Reset facades when changing wardrobe type
       updateConfig("doorsDrawersConfig", {});
+      updateConfig("groupedDoorsConfig", {});
       updateConfig("internalEquipmentConfig", {});
       updateConfig("selectedColumnId", null);
       updateConfig("selectedSpacingId", null);

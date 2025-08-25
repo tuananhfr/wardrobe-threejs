@@ -52,6 +52,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     shelfTextureConfig: {},
     facadeTextureConfig: {},
     activeView: "entier",
+    groupedDoorsConfig: {},
   });
 
   // Hàm cập nhật cấu hình

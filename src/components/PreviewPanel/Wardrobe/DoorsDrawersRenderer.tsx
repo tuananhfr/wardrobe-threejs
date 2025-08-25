@@ -294,7 +294,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     };
   };
 
-  // Helper function to group consecutive spacings with same config by column
   const getGroupedConfiguredSpacings = () => {
     // Get all spacings that have config
     const configuredSpacings = spacingPositions
@@ -302,6 +301,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       .map((pos) => pos.spacingId);
 
     if (configuredSpacings.length === 0) return [];
+
+    // Get currently selected spacings
+    const selectedSpacings = config.selectedSpacingIds || [];
+    const groupedDoorsConfig = config.groupedDoorsConfig || {};
 
     // Group by column
     const columnGroups: Record<string, string[]> = {};
@@ -311,7 +314,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       if (parts.length < 4) return;
 
       let columnId: string;
-
       if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
         columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
       } else {
@@ -324,7 +326,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       columnGroups[columnId].push(spacingId);
     });
 
-    // For each column, group consecutive spacings with same config
     const groupedSpacings: Array<{
       groupId: string;
       spacingIds: string[];
@@ -349,132 +350,277 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         return indexA - indexB;
       });
 
-      // Find consecutive groups with same config
-      let currentGroup: string[] = [];
-      let currentStartIndex = -1;
-      let currentConfig: string | null = null;
+      // Track processed spacings
+      const processedSpacings = new Set<string>();
 
-      sortedSpacings.forEach((spacingId) => {
-        const parts = spacingId.split("-");
-        const spacingIndex =
-          parts.length === 5 ? parseInt(parts[4]) : parseInt(parts[2]);
-        const spacingConfig = config.doorsDrawersConfig[spacingId];
+      // STEP 1: Process existing grouped doors first
+      Object.entries(groupedDoorsConfig).forEach(([groupId, groupData]) => {
+        // Check if this group belongs to current column
+        const groupSpacingsInColumn = groupData.spacingIds.filter((id) =>
+          sortedSpacings.includes(id)
+        );
 
-        // Check if this is a drawer - drawers should not be grouped
-        const isDrawer =
-          spacingConfig === "drawer" || spacingConfig === "drawerVerre";
+        if (groupSpacingsInColumn.length > 0) {
+          // Validate group still exists and has same config
+          const allSpacingsStillExist = groupData.spacingIds.every(
+            (id) => config.doorsDrawersConfig[id] === groupData.doorType
+          );
 
-        // Check if this is a sliding door - sliding doors have their own logic
-        const isSlidingDoor =
-          spacingConfig === "slidingDoor" ||
-          spacingConfig === "slidingMirrorDoor" ||
-          spacingConfig === "slidingGlassDoor";
-
-        if (currentGroup.length === 0) {
-          currentGroup = [spacingId];
-          currentStartIndex = spacingIndex;
-          currentConfig = spacingConfig;
-        } else {
-          const lastParts = currentGroup[currentGroup.length - 1].split("-");
-          const lastIndex =
-            lastParts.length === 5
-              ? parseInt(lastParts[4])
-              : parseInt(lastParts[2]);
-
-          // For drawers, never group them
           if (
-            isDrawer ||
-            currentConfig === "drawer" ||
-            currentConfig === "drawerVerre"
+            allSpacingsStillExist &&
+            groupSpacingsInColumn.length === groupData.spacingIds.length
           ) {
-            // Create individual group for drawer
-            if (currentGroup.length > 0) {
-              const groupData = createGroupData(
-                currentGroup,
-                columnId,
-                currentStartIndex,
-                lastIndex
-              );
-              if (groupData) {
-                groupedSpacings.push(groupData);
-              }
+            // Group is still valid, recreate it
+            const firstParts = groupData.spacingIds[0].split("-");
+            const lastParts =
+              groupData.spacingIds[groupData.spacingIds.length - 1].split("-");
+            const startIndex =
+              firstParts.length === 5
+                ? parseInt(firstParts[4])
+                : parseInt(firstParts[2]);
+            const endIndex =
+              lastParts.length === 5
+                ? parseInt(lastParts[4])
+                : parseInt(lastParts[2]);
+
+            const createdGroupData = createGroupData(
+              groupData.spacingIds,
+              columnId,
+              startIndex,
+              endIndex
+            );
+            if (createdGroupData) {
+              groupedSpacings.push(createdGroupData);
+              // Mark these spacings as processed
+              groupData.spacingIds.forEach((id) => processedSpacings.add(id));
             }
-            currentGroup = [spacingId];
-            currentStartIndex = spacingIndex;
-            currentConfig = spacingConfig;
-          }
-          // For sliding doors, never group them (they have their own logic)
-          else if (
-            isSlidingDoor ||
-            currentConfig === "slidingDoor" ||
-            currentConfig === "slidingMirrorDoor" ||
-            currentConfig === "slidingGlassDoor"
-          ) {
-            // Create individual group for sliding door
-            if (currentGroup.length > 0) {
-              const groupData = createGroupData(
-                currentGroup,
-                columnId,
-                currentStartIndex,
-                lastIndex
-              );
-              if (groupData) {
-                groupedSpacings.push(groupData);
-              }
-            }
-            currentGroup = [spacingId];
-            currentStartIndex = spacingIndex;
-            currentConfig = spacingConfig;
-          }
-          // For other door types, group if consecutive and same config
-          else if (
-            spacingIndex === lastIndex + 1 &&
-            spacingConfig === currentConfig
-          ) {
-            // Consecutive with same config
-            currentGroup.push(spacingId);
           } else {
-            // Not consecutive or different config, create group and start new one
-            if (currentGroup.length > 0) {
-              const groupData = createGroupData(
-                currentGroup,
-                columnId,
-                currentStartIndex,
-                lastIndex
-              );
-              if (groupData) {
-                groupedSpacings.push(groupData);
-              }
-            }
-            currentGroup = [spacingId];
-            currentStartIndex = spacingIndex;
-            currentConfig = spacingConfig;
+            // Group is invalid, clean it up later
+            // Don't mark as processed so they can be handled individually
           }
         }
       });
 
-      // Add the last group
-      if (currentGroup.length > 0) {
-        const lastParts = currentGroup[currentGroup.length - 1].split("-");
-        const lastIndex =
-          lastParts.length === 5
-            ? parseInt(lastParts[4])
-            : parseInt(lastParts[2]);
+      // STEP 2: Process remaining spacings for new grouping
+      for (let i = 0; i < sortedSpacings.length; i++) {
+        const currentSpacingId = sortedSpacings[i];
+
+        if (processedSpacings.has(currentSpacingId)) continue;
+
+        const currentConfig = config.doorsDrawersConfig[currentSpacingId];
+
+        // Skip if already processed in a group
+        const alreadyProcessed = groupedSpacings.some((group) =>
+          group.spacingIds.includes(currentSpacingId)
+        );
+        if (alreadyProcessed) continue;
+
+        // Check if this spacing type should never be grouped
+        const isDrawer =
+          currentConfig === "drawer" || currentConfig === "drawerVerre";
+        const isSlidingDoor = [
+          "slidingDoor",
+          "slidingMirrorDoor",
+          "slidingGlassDoor",
+        ].includes(currentConfig);
+
+        if (isDrawer || isSlidingDoor) {
+          // Create individual group for drawers and sliding doors
+          const parts = currentSpacingId.split("-");
+          const spacingIndex =
+            parts.length === 5 ? parseInt(parts[4]) : parseInt(parts[2]);
+          const groupData = createGroupData(
+            [currentSpacingId],
+            columnId,
+            spacingIndex,
+            spacingIndex
+          );
+          if (groupData) {
+            groupedSpacings.push(groupData);
+            processedSpacings.add(currentSpacingId);
+          }
+          continue;
+        }
+
+        // Check if this should be grouped (multi-selection logic)
+        const isCurrentlySelected = selectedSpacings.includes(currentSpacingId);
+        let shouldCreateNewGroup = false;
+
+        if (isCurrentlySelected && selectedSpacings.length > 1) {
+          // Multiple selection mode: create new group if explicitly selected together
+          shouldCreateNewGroup = true;
+        }
+
+        if (shouldCreateNewGroup) {
+          // Find consecutive group with same config from selection
+          const groupMembers = findConsecutiveGroupFromSelection(
+            currentSpacingId,
+            sortedSpacings,
+            currentConfig,
+            selectedSpacings,
+            processedSpacings
+          );
+
+          if (groupMembers.length > 1) {
+            const firstParts = groupMembers[0].split("-");
+            const lastParts = groupMembers[groupMembers.length - 1].split("-");
+            const startIndex =
+              firstParts.length === 5
+                ? parseInt(firstParts[4])
+                : parseInt(firstParts[2]);
+            const endIndex =
+              lastParts.length === 5
+                ? parseInt(lastParts[4])
+                : parseInt(lastParts[2]);
+
+            const groupData = createGroupData(
+              groupMembers,
+              columnId,
+              startIndex,
+              endIndex
+            );
+            if (groupData) {
+              groupedSpacings.push(groupData);
+              groupMembers.forEach((id) => processedSpacings.add(id));
+
+              // IMPORTANT: Save this new group to groupedDoorsConfig
+              const newGroupId = `${columnId}-${startIndex}-${endIndex}-${Date.now()}`;
+              const updatedGroupedDoorsConfig = {
+                ...groupedDoorsConfig,
+                [newGroupId]: {
+                  spacingIds: groupMembers,
+                  doorType: currentConfig,
+                  createdAt: Date.now(),
+                },
+              };
+              updateConfig("groupedDoorsConfig", updatedGroupedDoorsConfig);
+            }
+            continue;
+          }
+        }
+
+        // Create individual group (single door)
+        const parts = currentSpacingId.split("-");
+        const spacingIndex =
+          parts.length === 5 ? parseInt(parts[4]) : parseInt(parts[2]);
         const groupData = createGroupData(
-          currentGroup,
+          [currentSpacingId],
           columnId,
-          currentStartIndex,
-          lastIndex
+          spacingIndex,
+          spacingIndex
         );
         if (groupData) {
           groupedSpacings.push(groupData);
+          processedSpacings.add(currentSpacingId);
         }
       }
     });
 
+    // STEP 3: Cleanup invalid groups
+    cleanupInvalidGroups();
+
     return groupedSpacings;
   };
 
+  // Helper function: Find consecutive group members from current selection
+  const findConsecutiveGroupFromSelection = (
+    startSpacingId: string,
+    sortedSpacings: string[],
+    targetConfig: string,
+    selectedSpacings: string[],
+    processedSpacings: Set<string>
+  ): string[] => {
+    const parts = startSpacingId.split("-");
+    const startIndex =
+      parts.length === 5 ? parseInt(parts[4]) : parseInt(parts[2]);
+
+    const group = [startSpacingId];
+
+    // Only include spacings that are:
+    // 1. Selected
+    // 2. Same config
+    // 3. Consecutive
+    // 4. Not already processed
+
+    // Look backwards
+    for (let i = startIndex - 1; i >= 0; i--) {
+      const candidateId = sortedSpacings.find((id) => {
+        const candidateParts = id.split("-");
+        const candidateIndex =
+          candidateParts.length === 5
+            ? parseInt(candidateParts[4])
+            : parseInt(candidateParts[2]);
+        return candidateIndex === i;
+      });
+
+      if (!candidateId || processedSpacings.has(candidateId)) break;
+
+      const candidateConfig = config.doorsDrawersConfig[candidateId];
+      if (candidateConfig !== targetConfig) break;
+
+      // Must be selected to be included in new group
+      if (!selectedSpacings.includes(candidateId)) break;
+
+      group.unshift(candidateId);
+    }
+
+    // Look forwards
+    for (let i = startIndex + 1; i < 100; i++) {
+      const candidateId = sortedSpacings.find((id) => {
+        const candidateParts = id.split("-");
+        const candidateIndex =
+          candidateParts.length === 5
+            ? parseInt(candidateParts[4])
+            : parseInt(candidateParts[2]);
+        return candidateIndex === i;
+      });
+
+      if (!candidateId || processedSpacings.has(candidateId)) break;
+
+      const candidateConfig = config.doorsDrawersConfig[candidateId];
+      if (candidateConfig !== targetConfig) break;
+
+      // Must be selected to be included in new group
+      if (!selectedSpacings.includes(candidateId)) break;
+
+      group.push(candidateId);
+    }
+
+    return group;
+  };
+
+  // Helper function: Cleanup invalid groups
+  const cleanupInvalidGroups = () => {
+    const groupedDoorsConfig = config.groupedDoorsConfig || {};
+    const updatedConfig = { ...groupedDoorsConfig };
+    let hasChanges = false;
+
+    Object.entries(groupedDoorsConfig).forEach(([groupId, groupData]) => {
+      // Check if all spacings in group still exist and have same config
+      const allValid = groupData.spacingIds.every((spacingId) => {
+        const currentConfig = config.doorsDrawersConfig[spacingId];
+        return currentConfig === groupData.doorType;
+      });
+
+      if (!allValid) {
+        delete updatedConfig[groupId];
+        hasChanges = true;
+      }
+    });
+
+    if (hasChanges) {
+      updateConfig("groupedDoorsConfig", updatedConfig);
+    }
+  };
+
+  // Helper function: Ungroup a specific group (for UI button)
+  const ungroupDoors = (groupId: string) => {
+    const groupedDoorsConfig = config.groupedDoorsConfig || {};
+    const updatedConfig = { ...groupedDoorsConfig };
+
+    delete updatedConfig[groupId];
+    updateConfig("groupedDoorsConfig", updatedConfig);
+  };
   // Helper function to group consecutive selected spacings by column
   const getGroupedSelectedSpacings = () => {
     const selectedSpacings = config.selectedSpacingIds || [];

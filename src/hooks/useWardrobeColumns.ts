@@ -73,74 +73,67 @@ export const useWardrobeColumns = () => {
       return;
     }
 
-    // Multiple columns: Cascade redistribution
-    let remainingDifference = -difference; // Amount to redistribute (opposite of change)
-    const adjustments: Array<{
-      index: number;
-      oldWidth: number;
-      newWidth: number;
-    }> = [];
+    // Adjacent-only redistribution: only move the separator with one neighbor and stop at min/max
+    const rightNeighborIndex =
+      columnIndex + 1 < newColumns.length ? columnIndex + 1 : -1;
+    const leftNeighborIndex = columnIndex - 1 >= 0 ? columnIndex - 1 : -1;
 
-    // Define cascade order: prioritize adjacent, then expand outward
-    const cascadeOrder: number[] = [];
+    // Prefer right neighbor if exists (moving the separator to the right), otherwise use left
+    const neighborIndex =
+      rightNeighborIndex !== -1 ? rightNeighborIndex : leftNeighborIndex;
 
-    // Start with immediate adjacent (right first, then left)
-    if (columnIndex + 1 < newColumns.length) cascadeOrder.push(columnIndex + 1);
-    if (columnIndex - 1 >= 0) cascadeOrder.push(columnIndex - 1);
-
-    // Then expand outward from the changed column
-    let leftExpand = columnIndex - 2;
-    let rightExpand = columnIndex + 2;
-
-    while (leftExpand >= 0 || rightExpand < newColumns.length) {
-      if (rightExpand < newColumns.length) {
-        cascadeOrder.push(rightExpand);
-        rightExpand++;
-      }
-      if (leftExpand >= 0) {
-        cascadeOrder.push(leftExpand);
-        leftExpand--;
-      }
-    }
-
-    // Try to distribute remaining difference through cascade
-    for (const targetIndex of cascadeOrder) {
-      if (Math.abs(remainingDifference) < 0.1) break; // Done
-
-      const currentWidth = newColumns[targetIndex].width;
-      const maxAdjustment =
-        remainingDifference > 0
-          ? Math.min(remainingDifference, 120 - currentWidth) // Can increase up to 120
-          : Math.max(remainingDifference, 30 - currentWidth); // Can decrease down to 30
-
-      if (Math.abs(maxAdjustment) >= 1) {
-        const newTargetWidth = currentWidth + maxAdjustment;
-
-        adjustments.push({
-          index: targetIndex,
-          oldWidth: currentWidth,
-          newWidth: newTargetWidth,
-        });
-
-        newColumns[targetIndex] = {
-          ...newColumns[targetIndex],
-          width: newTargetWidth,
-        };
-        remainingDifference -= maxAdjustment;
-      }
-    }
-
-    // Check if we could redistribute all the difference
-    if (Math.abs(remainingDifference) > 0.1) {
-      console.warn(
-        `Cannot fully redistribute: ${remainingDifference.toFixed(
-          1
-        )}cm remaining`
-      );
-      console.warn(
-        `This means the constraints prevent the desired width change.`
-      );
+    if (neighborIndex === -1) {
+      // No neighbor to adjust
+      console.warn("No adjacent column to redistribute width with.");
       return;
+    }
+
+    const neighborOldWidth = newColumns[neighborIndex].width;
+
+    if (difference > 0) {
+      // Increasing current column width -> take from neighbor down to its min (30)
+      const maxTakeFromNeighbor = Math.max(0, neighborOldWidth - 30);
+      const actualIncrease = Math.min(difference, maxTakeFromNeighbor);
+
+      // Clamp if requested increase exceeds what neighbor can give
+      const appliedNewWidth = oldWidth + actualIncrease;
+      const appliedNeighborWidth = neighborOldWidth - actualIncrease;
+
+      newColumns[columnIndex] = {
+        ...newColumns[columnIndex],
+        width: appliedNewWidth,
+      };
+      newColumns[neighborIndex] = {
+        ...newColumns[neighborIndex],
+        width: appliedNeighborWidth,
+      };
+
+      // If we could not absorb full difference, stop here (do not cascade further)
+      if (actualIncrease < difference - 0.0001) {
+        // Do not proceed; effectively we clamped at boundary
+      }
+    } else {
+      // Decreasing current column width -> give to neighbor up to its max (120)
+      const delta = -difference; // positive amount to give
+      const maxGiveToNeighbor = Math.max(0, 120 - neighborOldWidth);
+      const actualDecrease = Math.min(delta, maxGiveToNeighbor);
+
+      const appliedNewWidth = oldWidth - actualDecrease;
+      const appliedNeighborWidth = neighborOldWidth + actualDecrease;
+
+      newColumns[columnIndex] = {
+        ...newColumns[columnIndex],
+        width: appliedNewWidth,
+      };
+      newColumns[neighborIndex] = {
+        ...newColumns[neighborIndex],
+        width: appliedNeighborWidth,
+      };
+
+      // If we could not absorb full difference, stop here (do not cascade further)
+      if (actualDecrease < delta - 0.0001) {
+        // Do not proceed; effectively we clamped at boundary
+      }
     }
 
     // Final validation: Total width should remain the same

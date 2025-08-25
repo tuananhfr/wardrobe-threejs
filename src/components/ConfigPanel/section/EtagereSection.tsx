@@ -473,7 +473,6 @@ const EtagereSection: React.FC = () => {
     columnIndex: number
   ) => {
     const columnShelves = getColumnShelves(sectionKey, column.id);
-    const spacingAnalysis = getShelfSpacingAnalysis(sectionKey, column.id);
     const totalHeight = config.height - config.baseBarHeight;
 
     return (

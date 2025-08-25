@@ -11,7 +11,7 @@ const ColumnsSection: React.FC = () => {
     setColumnCount,
     handleUpdateColumnWidth,
     redistributeColumnsEvenly,
-    getRemainingSpace,
+
     validateSection,
   } = useWardrobeColumns();
   useEffect(() => {
@@ -107,7 +107,6 @@ const ColumnsSection: React.FC = () => {
     const maxCols = section.maxColumns;
 
     // Get space info for display
-    const spaceInfo = getRemainingSpace(section, config.thickness);
     const validation = validateSection(section, config.thickness);
 
     const lshapeInfo = getLShapeConstraints(config.wardrobeType, sectionKey);

@@ -20,16 +20,20 @@ const WardrobeTypeSelector: React.FC = () => {
       wardrobeType.id !== config.wardrobeType.id &&
       hasInitializedRef.current
     ) {
-      // Reset facades when changing wardrobe type
+      // Reset tất cả cấu hình khi thay đổi loại tủ quần áo
       updateConfig("doorsDrawersConfig", {});
       updateConfig("groupedDoorsConfig", {});
       updateConfig("internalEquipmentConfig", {});
       updateConfig("selectedColumnId", null);
       updateConfig("selectedSpacingId", null);
+      updateConfig("selectedSpacingIds", []);
       updateConfig("selectedDoorsDrawersType", null);
       updateConfig("selectedInternalEquipmentType", null);
       updateConfig("hoveredColumnId", null);
       updateConfig("hoveredSpacingId", null);
+      updateConfig("handleConfig", {});
+      updateConfig("shelfTextureConfig", {});
+      updateConfig("facadeTextureConfig", {});
     }
 
     // Update config context

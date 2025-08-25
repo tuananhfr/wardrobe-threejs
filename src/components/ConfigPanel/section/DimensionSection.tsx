@@ -147,7 +147,18 @@ const DimensionSection: React.FC = () => {
                     <DimensionControl
                       label="Largeur"
                       value={config.wardrobeType.sections.sectionA.width}
-                      min={36}
+                      min={
+                        config.wardrobeType.id === "Angle" &&
+                        config.wardrobeType.sections.sectionB
+                          ? config.wardrobeType.sections.sectionB.depth + 30
+                          : config.wardrobeType.id === "Forme U" &&
+                            config.wardrobeType.sections.sectionB &&
+                            config.wardrobeType.sections.sectionC
+                          ? config.wardrobeType.sections.sectionB.depth +
+                            config.wardrobeType.sections.sectionC.depth +
+                            30
+                          : 36
+                      }
                       max={600}
                       step={1}
                       onChange={(value) =>
@@ -209,9 +220,69 @@ const DimensionSection: React.FC = () => {
                       min={20}
                       max={110}
                       step={1}
-                      onChange={(value) =>
-                        handleUpdateSection("sectionB", { depth: value })
-                      }
+                      onChange={(value) => {
+                        if (
+                          config.wardrobeType.id === "Angle" &&
+                          config.wardrobeType.sections.sectionA
+                        ) {
+                          const minWidthA = value + 30;
+                          const currentWidthA =
+                            config.wardrobeType.sections.sectionA.width;
+                          if (currentWidthA < minWidthA) {
+                            // Cập nhật cả 2 cùng lúc
+                            const newSections = {
+                              ...config.wardrobeType.sections,
+                              sectionB: {
+                                ...config.wardrobeType.sections.sectionB!,
+                                depth: value,
+                              },
+                              sectionA: {
+                                ...config.wardrobeType.sections.sectionA!,
+                                width: minWidthA,
+                              },
+                            };
+                            updateConfig("wardrobeType", {
+                              ...config.wardrobeType,
+                              sections: newSections,
+                            });
+                          } else {
+                            handleUpdateSection("sectionB", { depth: value });
+                          }
+                        } else if (
+                          config.wardrobeType.id === "Forme U" &&
+                          config.wardrobeType.sections.sectionA &&
+                          config.wardrobeType.sections.sectionC
+                        ) {
+                          const minWidthA =
+                            value +
+                            config.wardrobeType.sections.sectionC.depth +
+                            30;
+                          const currentWidthA =
+                            config.wardrobeType.sections.sectionA.width;
+                          if (currentWidthA < minWidthA) {
+                            // Cập nhật cả 2 cùng lúc
+                            const newSections = {
+                              ...config.wardrobeType.sections,
+                              sectionB: {
+                                ...config.wardrobeType.sections.sectionB!,
+                                depth: value,
+                              },
+                              sectionA: {
+                                ...config.wardrobeType.sections.sectionA!,
+                                width: minWidthA,
+                              },
+                            };
+                            updateConfig("wardrobeType", {
+                              ...config.wardrobeType,
+                              sections: newSections,
+                            });
+                          } else {
+                            handleUpdateSection("sectionB", { depth: value });
+                          }
+                        } else {
+                          handleUpdateSection("sectionB", { depth: value });
+                        }
+                      }}
                     />
                   </div>
                 </div>
@@ -257,9 +328,42 @@ const DimensionSection: React.FC = () => {
                       min={20}
                       max={110}
                       step={1}
-                      onChange={(value) =>
-                        handleUpdateSection("sectionC", { depth: value })
-                      }
+                      onChange={(value) => {
+                        if (
+                          config.wardrobeType.id === "Forme U" &&
+                          config.wardrobeType.sections.sectionA &&
+                          config.wardrobeType.sections.sectionB
+                        ) {
+                          const minWidthA =
+                            config.wardrobeType.sections.sectionB.depth +
+                            value +
+                            30;
+                          const currentWidthA =
+                            config.wardrobeType.sections.sectionA.width;
+                          if (currentWidthA < minWidthA) {
+                            // Cập nhật cả 2 cùng lúc
+                            const newSections = {
+                              ...config.wardrobeType.sections,
+                              sectionC: {
+                                ...config.wardrobeType.sections.sectionC!,
+                                depth: value,
+                              },
+                              sectionA: {
+                                ...config.wardrobeType.sections.sectionA!,
+                                width: minWidthA,
+                              },
+                            };
+                            updateConfig("wardrobeType", {
+                              ...config.wardrobeType,
+                              sections: newSections,
+                            });
+                          } else {
+                            handleUpdateSection("sectionC", { depth: value });
+                          }
+                        } else {
+                          handleUpdateSection("sectionC", { depth: value });
+                        }
+                      }}
                     />
                   </div>
                 </div>

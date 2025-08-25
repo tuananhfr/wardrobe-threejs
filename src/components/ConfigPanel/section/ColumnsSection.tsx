@@ -266,58 +266,6 @@ const ColumnsSection: React.FC = () => {
                 );
               })}
             </div>
-
-            {/* Section Summary */}
-            <div className="mt-3 p-2 bg-light rounded">
-              <small className="text-muted">
-                <strong>Résumé:</strong>
-                <br />
-                Largeur totale utilisée: {spaceInfo.totalUsed}cm /{" "}
-                {section.width}cm
-                <br />
-                Espace restant: {spaceInfo.remaining}cm
-                {spaceInfo.canAddMoreColumns && (
-                  <>
-                    <br />
-                    💡 <em>Peut ajouter au moins 1 colonne de plus</em>
-                  </>
-                )}
-              </small>
-            </div>
-
-            {/* Validation Messages */}
-            {validation.errors.length > 0 && (
-              <div className="alert alert-danger mt-3">
-                <small>
-                  ❌ Erreurs:
-                  <ul className="mb-0 mt-1">
-                    {validation.errors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
-                </small>
-              </div>
-            )}
-
-            {validation.warnings.length > 0 && (
-              <div className="alert alert-warning mt-3">
-                <small>
-                  ⚠️ Avertissements:
-                  <ul className="mb-0 mt-1">
-                    {validation.warnings.map((warning, index) => (
-                      <li key={index}>{warning}</li>
-                    ))}
-                  </ul>
-                </small>
-              </div>
-            )}
-
-            {/* Success message */}
-            {validation.isValid && validation.warnings.length === 0 && (
-              <div className="alert alert-success mt-3">
-                <small>✅ Configuration valide</small>
-              </div>
-            )}
           </div>
         </div>
       </div>

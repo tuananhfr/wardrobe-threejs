@@ -674,50 +674,6 @@ const EtagereSection: React.FC = () => {
                   );
                 })}
               </div>
-
-              {/* Spacing Analysis */}
-              {spacingAnalysis && (
-                <div className="mt-3">
-                  <h6>Analyse des espacements:</h6>
-                  <div className="small">
-                    {spacingAnalysis.spacings.map((spacing, index) => (
-                      <div
-                        key={index}
-                        className={`d-flex justify-content-between align-items-center py-1 px-2 mb-1 rounded ${
-                          spacing.isValid
-                            ? spacing.isOptimal
-                              ? "bg-success bg-opacity-10"
-                              : "bg-light"
-                            : "bg-danger bg-opacity-10"
-                        }`}
-                      >
-                        <span>
-                          {index === 0
-                            ? "Sol"
-                            : `Étagère ${
-                                spacingAnalysis.spacings.length - index
-                              }`}
-                          →
-                          {index === spacingAnalysis.spacings.length - 1
-                            ? "Plafond"
-                            : `Étagère ${
-                                spacingAnalysis.spacings.length - index - 1
-                              }`}
-                        </span>
-                        <span
-                          className={
-                            spacing.isValid ? "text-success" : "text-danger"
-                          }
-                        >
-                          {spacing.height.toFixed(1)}cm
-                          {!spacing.isValid && ` (min: ${MIN_SHELF_SPACING}cm)`}
-                          {spacing.isOptimal && " ✓"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           ) : null}
         </div>

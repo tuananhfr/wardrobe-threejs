@@ -714,15 +714,160 @@ export const useWardrobeConfig = () => {
     });
   };
 
+  /**
+   * Update height (hauteur) and reset spacings like changing shelf count.
+   * Keep current shelf count per column, recompute optimal spacings for new height.
+   * If not enough height for min gap 10, reduce shelf count until feasible (or remove shelves).
+   */
+  const handleHeightChange = (newHeight: number) => {
+    const oldHeight = config.height;
+    if (newHeight === oldHeight) {
+      updateConfig("height", newHeight);
+      return;
+    }
+
+    // Helper to recompute optimal spacings for a given shelf count and total height
+    const recomputeSpacings = (shelfCount: number, totalHeight: number) => {
+      if (shelfCount <= 0) return [] as number[];
+      const MIN_GAP = 10;
+      let feasible = Math.max(0, Math.floor(shelfCount));
+      while (true) {
+        const shelvesThickness = feasible * config.thickness; // total shelf thickness
+        const wallsThickness = 2 * config.thickness; // sol + plafond
+        const available =
+          totalHeight -
+          config.baseBarHeight -
+          wallsThickness -
+          shelvesThickness;
+        const spacingCount = feasible + 1; // includes last→plafond
+        const minRequired = spacingCount * MIN_GAP;
+        if (available >= minRequired) {
+          const remaining = available - minRequired;
+          const baseExtra = Math.floor(remaining / spacingCount);
+          const remainder = remaining % spacingCount;
+          const spacings: number[] = [];
+          for (let i = 0; i < spacingCount; i++) {
+            const extra = baseExtra + (i < remainder ? 1 : 0);
+            spacings.push(MIN_GAP + extra);
+          }
+          return spacings;
+        }
+        if (feasible === 0) return [] as number[];
+        feasible -= 1;
+      }
+    };
+
+    if (newHeight < oldHeight) {
+      // Decrease height: keep spacings except adjust only the last spacing (top shelf → plafond)
+      const delta = newHeight - oldHeight; // negative
+      const updatedSections: typeof config.wardrobeType.sections = JSON.parse(
+        JSON.stringify(config.wardrobeType.sections)
+      );
+
+      (Object.keys(updatedSections) as SectionKey[]).forEach((sectionKey) => {
+        const section = updatedSections[sectionKey];
+        if (!section) return;
+        section.columns = section.columns.map((col) => {
+          if (!col.shelves?.spacings || col.shelves.spacings.length === 0) {
+            return col;
+          }
+
+          const numericSpacings = col.shelves.spacings.map((s) => s.spacing);
+          // Adjust only last spacing (last shelf → plafond)
+          numericSpacings[numericSpacings.length - 1] += delta;
+
+          // If last spacing < 10, remove top-most shelf iteratively
+          while (
+            numericSpacings.length >= 2 &&
+            numericSpacings[numericSpacings.length - 1] < 10
+          ) {
+            const last = numericSpacings.pop()!; // to plafond
+            const secondLast = numericSpacings.pop()!; // between last two shelves
+            const merged = secondLast + last + config.thickness; // remove one shelf thickness
+            numericSpacings.push(merged);
+          }
+
+          // If only one spacing remains and still < 10, drop all shelves
+          if (numericSpacings.length === 1 && numericSpacings[0] < 10) {
+            return { ...col, shelves: undefined };
+          }
+
+          const rebuiltSpacings: shelfSpacing[] = numericSpacings.map(
+            (spacing, index) => ({
+              id: `${col.id}-spacing-${index + 1}`,
+              spacing,
+            })
+          );
+
+          return {
+            ...col,
+            shelves: {
+              id: col.shelves.id || `${col.id}-shelves`,
+              shelfSpacing: 10,
+              spacings: rebuiltSpacings,
+            },
+          };
+        });
+      });
+
+      updateConfig("wardrobeType", {
+        ...config.wardrobeType,
+        sections: updatedSections,
+      });
+      updateConfig("height", newHeight);
+    } else {
+      // Increase height: reset spacings like changing shelf count
+      const updatedSections: typeof config.wardrobeType.sections = JSON.parse(
+        JSON.stringify(config.wardrobeType.sections)
+      );
+
+      (Object.keys(updatedSections) as SectionKey[]).forEach((sectionKey) => {
+        const section = updatedSections[sectionKey];
+        if (!section) return;
+        section.columns = section.columns.map((col) => {
+          const currentSpacingCount = col.shelves?.spacings?.length || 0; // spacings includes last→plafond
+          const currentShelfCount = Math.max(0, currentSpacingCount - 1);
+          if (currentShelfCount === 0) return col;
+
+          const newSpacings = recomputeSpacings(currentShelfCount, newHeight);
+          if (newSpacings.length === 0) {
+            return { ...col, shelves: undefined };
+          }
+          const rebuiltSpacings: shelfSpacing[] = newSpacings.map(
+            (spacing, index) => ({
+              id: `${col.id}-spacing-${index + 1}`,
+              spacing,
+            })
+          );
+          return {
+            ...col,
+            shelves: {
+              id: col.shelves?.id || `${col.id}-shelves`,
+              shelfSpacing: 10,
+              spacings: rebuiltSpacings,
+            },
+          };
+        });
+      });
+
+      updateConfig("wardrobeType", {
+        ...config.wardrobeType,
+        sections: updatedSections,
+      });
+      updateConfig("height", newHeight);
+    }
+  };
+
   return {
     // Core functions
     config,
     updateConfig,
     handleUpdateSection,
 
-    // Width management với auto-update
+    // Width/Height management với auto-update
     handleSectionWidthChange,
     handleThicknessChange,
+    handleHeightChange,
 
     // Refresh functions
     refreshSectionConstraints,

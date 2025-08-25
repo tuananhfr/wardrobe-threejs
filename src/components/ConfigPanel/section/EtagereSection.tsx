@@ -247,6 +247,28 @@ const EtagereSection: React.FC = () => {
   const selectedColumnData = getSelectedColumnData();
   const allColumns = getAllColumns();
 
+  // Tính số kệ tối đa dựa trên chiều cao khả dụng và khoảng cách tối thiểu
+  const computeMaxShelves = () => {
+    const totalHeight = config.height; // cm
+    const baseBar = config.baseBarHeight; // cm
+    const thickness = config.thickness; // cm (dùng cho sol + plafond + mỗi kệ)
+    const minGap = MIN_SHELF_SPACING; // cm
+
+    let count = 0;
+    while (true) {
+      const needed =
+        baseBar + 2 * thickness + count * thickness + (count + 1) * minGap;
+      if (needed <= totalHeight) {
+        count++;
+      } else {
+        break;
+      }
+    }
+    return count; // số kệ tối đa thoả điều kiện min gap
+  };
+
+  const maxShelves = computeMaxShelves();
+
   // Local state for Angle AB shelf count
   const [angleABShelfCount, setAngleABShelfCount] = useState<number>(0);
   const [angleACShelfCount, setAngleACShelfCount] = useState<number>(0);
@@ -485,16 +507,18 @@ const EtagereSection: React.FC = () => {
                 className="form-control"
                 value={columnShelves?.shelves?.length || 0}
                 min={0}
-                max={10}
+                max={maxShelves}
                 onChange={(e) => {
-                  const newCount = parseInt(e.target.value) || 0;
+                  const raw = parseInt(e.target.value) || 0;
+                  const newCount = Math.min(Math.max(0, raw), maxShelves);
                   setShelfCount(sectionKey, column.id, newCount);
                 }}
               />
               <span className="input-group-text">étagères</span>
             </div>
             <small className="text-muted">
-              Ajustez le nombre d'étagères pour cette colonne (0-10)
+              Ajustez le nombre d'étagères pour cette colonne (0-
+              {maxShelves - 1})
             </small>
           </div>
 
@@ -746,9 +770,10 @@ const EtagereSection: React.FC = () => {
                 className="form-control"
                 value={displayShelfCount}
                 min={0}
-                max={10}
+                max={maxShelves}
                 onChange={(e) => {
-                  const newCount = parseInt(e.target.value) || 0;
+                  const raw = parseInt(e.target.value) || 0;
+                  const newCount = Math.min(Math.max(0, raw), maxShelves);
 
                   // Update local state immediately for responsive UI
                   setIsUserChanging(true);
@@ -777,7 +802,8 @@ const EtagereSection: React.FC = () => {
               <span className="input-group-text">étagères</span>
             </div>
             <small className="text-muted">
-              Ajustez le nombre d'étagères pour cette colonne (0-10)
+              Ajustez le nombre d'étagères pour cette colonne (0-
+              {maxShelves - 1})
             </small>
           </div>
 
@@ -1108,9 +1134,10 @@ const EtagereSection: React.FC = () => {
                 className="form-control"
                 value={displayShelfCount}
                 min={0}
-                max={10}
+                max={maxShelves}
                 onChange={(e) => {
-                  const newCount = parseInt(e.target.value) || 0;
+                  const raw = parseInt(e.target.value) || 0;
+                  const newCount = Math.min(Math.max(0, raw), maxShelves);
 
                   // Update local state immediately for responsive UI
                   setIsUserChanging(true);
@@ -1139,7 +1166,8 @@ const EtagereSection: React.FC = () => {
               <span className="input-group-text">étagères</span>
             </div>
             <small className="text-muted">
-              Ajustez le nombre d'étagères pour cette colonne (0-10)
+              Ajustez le nombre d'étagères pour cette colonne (0-
+              {maxShelves - 1})
             </small>
           </div>
 

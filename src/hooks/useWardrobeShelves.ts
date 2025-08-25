@@ -46,25 +46,40 @@ export const useWardrobeShelves = () => {
   ): number[] => {
     if (shelfCount === 0) return [];
 
-    // Calculate available space for spacings
-    // Total space needed: baseBarHeight + sol thickness + shelfCount * shelf thickness + plafond thickness
-    const spaceForShelves = shelfCount * config.thickness;
-    const spaceForWalls = 2 * config.thickness; // sol + plafond
-    const availableHeight =
-      totalHeight - config.baseBarHeight - spaceForWalls - spaceForShelves;
+    // Always enforce minimum spacing constraint by reducing shelf count if needed
+    // Recompute available height each iteration because shelfCount affects shelf thickness total
+    let feasibleShelfCount = Math.max(0, Math.floor(shelfCount));
 
-    // Number of spacings = shelfCount + 1 (sol→shelf1, shelf1→shelf2, ..., lastShelf→plafond)
-    const spacingCount = shelfCount + 1;
-    const baseSpacing = Math.floor(availableHeight / spacingCount);
-    const remainder = availableHeight % spacingCount;
+    while (true) {
+      // Calculate available space for spacings with current shelf count
+      const spaceForShelves = feasibleShelfCount * config.thickness; // total shelf thickness
+      const spaceForWalls = 2 * config.thickness; // sol + plafond
+      const availableHeight =
+        totalHeight - config.baseBarHeight - spaceForWalls - spaceForShelves;
 
-    const spacings: number[] = [];
-    for (let i = 0; i < spacingCount; i++) {
-      // Distribute remainder evenly, starting from first spacings
-      spacings.push(baseSpacing + (i < remainder ? 1 : 0));
+      const spacingCount = feasibleShelfCount + 1; // sol→first, ..., last→plafond
+      const minRequired = spacingCount * MIN_SHELF_SPACING;
+
+      if (availableHeight >= minRequired) {
+        // We can build spacings: start from minimum, then distribute the remaining cm evenly
+        const remaining = availableHeight - minRequired;
+        const baseExtra = Math.floor(remaining / spacingCount);
+        const remainder = remaining % spacingCount;
+
+        const spacings: number[] = [];
+        for (let i = 0; i < spacingCount; i++) {
+          const extra = baseExtra + (i < remainder ? 1 : 0);
+          spacings.push(MIN_SHELF_SPACING + extra);
+        }
+        return spacings;
+      }
+
+      // Not enough height for minimum spacing — reduce shelf count
+      if (feasibleShelfCount === 0) {
+        return [];
+      }
+      feasibleShelfCount -= 1;
     }
-
-    return spacings;
   };
 
   /**

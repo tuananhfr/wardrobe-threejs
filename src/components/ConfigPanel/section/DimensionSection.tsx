@@ -9,6 +9,7 @@ const DimensionSection: React.FC = () => {
     updateConfig,
     handleSectionWidthChange,
     handleUpdateSection,
+    handleHeightChange,
   } = useWardrobeConfig();
 
   // Check if étagère accordion is open
@@ -117,7 +118,7 @@ const DimensionSection: React.FC = () => {
             min={40}
             max={275}
             step={1}
-            onChange={(value) => updateConfig("height", value)}
+            onChange={(value) => handleHeightChange(value)}
           />
 
           {/* Nested Accordion for Sections */}

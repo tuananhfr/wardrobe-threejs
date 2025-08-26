@@ -38,13 +38,9 @@ const InternalEquipmentSpacingHighlights: React.FC<
   // Check if we're in the right mode for highlighting
   const isInternalEquipmentMode =
     config.accordionOpen === "collapseInternalEquipment";
-  const isTexturesMode = config.accordionOpen === "collapseTextures";
-  const isTablettesMode = config.activeView === "tablette";
-  // const selectedColumnId = config.selectedColumnId; // not used here
 
-  // Only show highlights when in internal equipment mode OR when in textures mode with tablettes selected
-  const shouldShowHighlights =
-    isInternalEquipmentMode || (isTexturesMode && isTablettesMode);
+  // Only show highlights when in internal equipment mode
+  const shouldShowHighlights = isInternalEquipmentMode;
 
   // Don't render if not in the right mode
   if (!shouldShowHighlights) {

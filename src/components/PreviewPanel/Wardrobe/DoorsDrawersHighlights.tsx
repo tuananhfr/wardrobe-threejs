@@ -39,15 +39,12 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
   const depth = sectionData.depth;
 
   // Check if we're in the right mode for highlighting
-  const isTexturesMode = config.accordionOpen === "collapseTextures";
-  const isTablettesOrFacadesMode =
-    config.activeView === "tablette" || config.activeView === "facades";
+
   const isDoorsDrawersMode = config.accordionOpen === "collapseDoorsDrawers";
 
   // Only render highlights for doors/drawers when in doors/drawers mode
   // OR when in textures mode with tablettes/facades selected
-  const shouldShowHighlights =
-    isDoorsDrawersMode || (isTexturesMode && isTablettesOrFacadesMode);
+  const shouldShowHighlights = isDoorsDrawersMode;
 
   // Don't render if not in the right mode
   if (!shouldShowHighlights) {

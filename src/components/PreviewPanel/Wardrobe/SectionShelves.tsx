@@ -237,8 +237,8 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
                 />
               </mesh>
 
-              {/* Highlight overlay */}
-              {shouldShowHighlight && (
+              {/* Highlight overlay chỉ hiển thị ở chế độ Textures + Tablettes */}
+              {isSelectingShelves && shouldShowHighlight && (
                 <mesh
                   position={[
                     finalColumnXPosition,
@@ -259,8 +259,8 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
                 </mesh>
               )}
 
-              {/* Icon - hiển thị tất cả dấu + như bình thường, nhưng angle shelf chỉ hiển thị ở b-col-1 */}
-              {(isHovered || isSelected || isSelectingShelves) &&
+              {/* Icon: chỉ hiển thị ở chế độ Textures + Tablettes */}
+              {isSelectingShelves &&
                 (!isAngleShelf(columnIndex) ||
                   shouldShowAngleShelfIcon(columnIndex)) && (
                   <group

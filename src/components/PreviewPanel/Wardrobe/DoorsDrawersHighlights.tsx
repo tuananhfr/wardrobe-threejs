@@ -66,6 +66,17 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
     }
   }, [shouldShowHighlights, updateConfig]);
 
+  // Luôn reset khi accordion Doors/Drawers (7) bị đóng, kể cả khi đang ở Textures
+  useEffect(() => {
+    if (config.accordionOpen !== "collapseDoorsDrawers") {
+      setHoveredSpacing(null);
+      document.body.style.cursor = "auto";
+      updateConfig("selectedSpacingIds", []);
+      updateConfig("selectedSpacingId", null);
+      updateConfig("selectedDoorsDrawersType", null);
+    }
+  }, [config.accordionOpen, updateConfig]);
+
   // Helper function to get column X position
   const getColumnXPosition = (colIndex: number) => {
     let startX = -width / 2 + thickness;

@@ -10,12 +10,12 @@ import leftDoor from "@/assets/images/left.svg";
 import rightDoor from "@/assets/images/right.svg";
 
 const DoorsDrawersSection: React.FC = () => {
-  const { 
-    config, 
-    updateConfig, 
+  const {
+    config,
+    updateConfig,
     updateDoorsDrawersConfig,
     createOrUpdateGroup,
-    areSpacingsConsecutiveInSameColumn 
+    areSpacingsConsecutiveInSameColumn,
   } = useWardrobeConfig();
 
   // State for tooltip
@@ -48,7 +48,9 @@ const DoorsDrawersSection: React.FC = () => {
     if (isDoorsDrawersOpen) {
       updateConfig("selectedColumnId", null);
       updateConfig("selectedSpacingId", null);
+      updateConfig("selectedSpacingIds", []);
       updateConfig("selectedDoorsDrawersType", null);
+      updateConfig("hoveredSpacingId", null);
     }
   };
 
@@ -467,6 +469,11 @@ const DoorsDrawersSection: React.FC = () => {
       if (config.selectedSpacingId) {
         updateConfig("selectedSpacingId", null);
       }
+      // Reset multiple selected spacings as well when switching accordion
+      const hasMultipleSelected = (config.selectedSpacingIds || []).length > 0;
+      if (hasMultipleSelected) {
+        updateConfig("selectedSpacingIds", []);
+      }
       // Reset hovered column when switching to a different accordion
       if (config.hoveredColumnId) {
         updateConfig("hoveredColumnId", null);
@@ -598,10 +605,13 @@ const DoorsDrawersSection: React.FC = () => {
         });
       } else {
         // If selecting other door types, check if we should create a group
-        if (hasMultipleSelected && areSpacingsConsecutiveInSameColumn(targetSpacings)) {
+        if (
+          hasMultipleSelected &&
+          areSpacingsConsecutiveInSameColumn(targetSpacings)
+        ) {
           // Create group for multiple selected spacings
           createOrUpdateGroup(targetSpacings, type);
-          
+
           // Apply door type to all spacings in group
           targetSpacings.forEach((spacingId) => {
             updateDoorsDrawersConfig(spacingId, type);

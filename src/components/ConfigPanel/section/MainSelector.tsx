@@ -10,7 +10,7 @@ const MainSelector: React.FC<MainSelectorProps> = ({ activeOption }) => {
 
   const options = [
     { id: "entier", name: "Entière" },
-    { id: "test", name: "Test" },
+
     { id: "tablette", name: "Tablettes" },
     { id: "facades", name: "Facades" },
     { id: "led", name: "LED" },
@@ -58,7 +58,7 @@ const MainSelector: React.FC<MainSelectorProps> = ({ activeOption }) => {
         <button
           key={option.id}
           className={`btn ${
-            activeOption === option.id && activeOption !== "entier"
+            activeOption === option.id
               ? "btn-secondary"
               : "btn-outline-secondary"
           } rounded-pill me-2 mb-2`}

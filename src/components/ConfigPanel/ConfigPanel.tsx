@@ -41,14 +41,7 @@ const ConfigPanel: React.FC = () => {
       // Reset activeView when switching to textures accordion to ensure no button is selected by default
       if (!isOpen && accordionId === "collapseTextures") {
         batchUpdate({
-          activeView: "entier",
-        });
-      }
-
-      // Reset activeView when switching away from textures accordion
-      if (isOpen && accordionId === "collapseTextures") {
-        batchUpdate({
-          activeView: "entier",
+          activeView: "",
         });
       }
     };
@@ -183,8 +176,10 @@ const ConfigPanel: React.FC = () => {
         >
           <div className="accordion-body">
             <MainSelector activeOption={config.activeView} />
+            {config.activeView === "entier" && (
+              <TextureSelector type="entier" />
+            )}
             {config.activeView === "led" && <LEDColorSelector />}
-            {config.activeView === "test" && <TextureSelector type="test" />}
             {config.activeView === "tablette" && (
               <TextureSelector type="tablette" />
             )}

@@ -68,10 +68,128 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
   // Easing function
   const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
-  // Helper function to check if interactions should be disabled
-  const shouldDisableInteractions = () => {
-    return config.accordionOpen === "collapseDoorsDrawers";
+  // Function để kiểm tra các điều kiện disable
+  const shouldDisableAnimations = () => {
+    // Trường hợp 1: Khi accordion Doors & Drawers đang mở
+    if (config.accordionOpen === "collapseDoorsDrawers") {
+      return true;
+    }
+    // Trường hợp 2: Khi accordion Internal Equipment đang mở
+    if (config.accordionOpen === "collapseInternalEquipment") {
+      return true;
+    }
+
+    // Trường hợp 3: Khi đang ở chế độ facades selection
+    if (
+      config.accordionOpen === "collapseTextures" &&
+      config.activeView === "facades"
+    ) {
+      return true;
+    }
+
+    return false;
   };
+
+  // Function để vô hiệu hóa và đóng tất cả animations
+  const disableAndCloseAllAnimations = () => {
+    const shouldDisable = shouldDisableAnimations();
+    const facadeZ = depth / 2 - thickness / 3; // Calculate facadeZ locally
+    const facadeWidth = width; // Use section width
+
+    if (shouldDisable) {
+      // Đóng tất cả drawers với animation
+      Object.keys(openedDrawersRef.current).forEach((key) => {
+        if (openedDrawersRef.current[key]) {
+          const group = drawerGroupsRef.current[key];
+          if (group) {
+            // Tìm baseZ từ position hiện tại
+            const baseZ = facadeZ;
+
+            // Trigger animation đóng
+            const currentZ = group.position.z;
+            const targetZ = baseZ;
+
+            const animId = `${key}-close-${Date.now()}`;
+            drawerAnimsRef.current[animId] = {
+              key,
+              startZ: currentZ,
+              targetZ,
+              startTime: Date.now(),
+              duration: 300,
+            };
+
+            // Update trạng thái
+            openedDrawersRef.current[key] = false;
+          }
+        }
+      });
+
+      // Đóng tất cả swing doors với animation
+      Object.keys(openedDoorsRef.current).forEach((key) => {
+        if (openedDoorsRef.current[key]) {
+          const group = doorGroupsRef.current[key];
+          if (group) {
+            // Trigger animation đóng (về rotation 0)
+            const currentRot = group.rotation.y;
+            const targetRot = 0;
+
+            const animId = `${key}-close-${Date.now()}`;
+            doorAnimsRef.current[animId] = {
+              key,
+              startRotY: currentRot,
+              targetRotY: targetRot,
+              startTime: Date.now(),
+              duration: 300,
+            };
+
+            // Update trạng thái
+            openedDoorsRef.current[key] = false;
+          }
+        }
+      });
+
+      // Đóng tất cả sliding doors với animation
+      Object.keys(openedSlidersRef.current).forEach((key) => {
+        if (openedSlidersRef.current[key]) {
+          const group = sliderGroupsRef.current[key];
+          if (group) {
+            // Tính baseX từ key hoặc sử dụng logic existing
+            let baseX = 0;
+
+            // Parse key để lấy thông tin baseX, direction, width
+            if (key.includes("-left")) {
+              const slidingDoorWidth = facadeWidth / 2;
+              baseX = -slidingDoorWidth / 2;
+            } else if (key.includes("-right")) {
+              const slidingDoorWidth = facadeWidth / 2;
+              baseX = slidingDoorWidth / 2;
+            }
+
+            // Trigger animation đóng
+            const currentX = group.position.x;
+            const targetX = baseX; // Vị trí đóng
+
+            const animId = `${key}-close-${Date.now()}`;
+            sliderAnimsRef.current[animId] = {
+              key,
+              startX: currentX,
+              targetX,
+              startTime: Date.now(),
+              duration: 300,
+            };
+
+            // Update trạng thái
+            openedSlidersRef.current[key] = false;
+          }
+        }
+      });
+    }
+  };
+
+  // Thêm useEffect để monitor config changes
+  React.useEffect(() => {
+    disableAndCloseAllAnimations();
+  }, [config.accordionOpen, config.activeView]);
 
   // Helper function to check if we're in facades selection mode
   const isSelectingFacades = () => {
@@ -824,12 +942,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     const travel = Math.min(depth * 0.4, 0.4); // max 40cm
     const targetZ = open ? baseZ + travel : baseZ;
 
-    // Disable animation when accordion 7 is open
-    if (config.accordionOpen === "collapseDoorsDrawers") {
-      group.position.z = targetZ;
-      return;
-    }
-
     const id = `${key}-${Date.now()}`;
     drawerAnimsRef.current[id] = {
       key,
@@ -854,12 +966,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         : Math.PI / 3
       : 0;
 
-    // Disable animation when accordion 7 is open
-    if (config.accordionOpen === "collapseDoorsDrawers") {
-      group.rotation.y = targetRot;
-      return;
-    }
-
     const id = `${key}-${Date.now()}`;
     doorAnimsRef.current[id] = {
       key,
@@ -870,25 +976,12 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     };
   };
 
-  const triggerSlider = (
-    key: string,
-    open: boolean,
-    baseX: number,
-    dir: 1 | -1,
-    widthAmt: number
-  ) => {
+  const triggerSlider = (key: string, baseX: number) => {
     const group = sliderGroupsRef.current[key];
     if (!group) return;
     const currentX = group.position.x;
     // Mảnh 1 di chuyển tới vị trí của mảnh 2 và ngược lại
-    const travel = widthAmt; // Di chuyển toàn bộ width của mảnh cửa
-    const targetX = open ? baseX + dir * travel : baseX;
-
-    // Disable animation when accordion 7 is open
-    if (config.accordionOpen === "collapseDoorsDrawers") {
-      group.position.x = targetX;
-      return;
-    }
+    const targetX = baseX;
 
     const id = `${key}-${Date.now()}`;
     sliderAnimsRef.current[id] = {
@@ -898,6 +991,11 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       startTime: Date.now(),
       duration: 300,
     };
+  };
+
+  // Update shouldDisableInteractions function
+  const shouldDisableInteractions = () => {
+    return shouldDisableAnimations();
   };
 
   // Render different facade types for grouped spacings
@@ -2351,10 +2449,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    true,
-                    -slidingDoorWidth / 2,
-                    1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingDoorWidth
+
+                    -slidingDoorWidth / 2
                   );
               }}
               onPointerOut={(e) => {
@@ -2364,10 +2460,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    false,
-                    -slidingDoorWidth / 2,
-                    1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingDoorWidth
+
+                    -slidingDoorWidth / 2
                   );
               }}
               onClick={(e) => {
@@ -2378,10 +2472,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 openedSlidersRef.current[k] = next;
                 triggerSlider(
                   k,
-                  next,
-                  -slidingDoorWidth / 2,
-                  1, // Di chuyển sang phải (về phía mảnh 2)
-                  slidingDoorWidth
+
+                  -slidingDoorWidth / 2
                 );
               }}
             >
@@ -2487,10 +2579,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    true,
-                    slidingDoorWidth / 2,
-                    -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingDoorWidth
+
+                    slidingDoorWidth / 2
                   );
               }}
               onPointerOut={(e) => {
@@ -2500,10 +2590,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    false,
-                    slidingDoorWidth / 2,
-                    -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingDoorWidth
+
+                    slidingDoorWidth / 2
                   );
               }}
               onClick={(e) => {
@@ -2514,10 +2602,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 openedSlidersRef.current[k] = next;
                 triggerSlider(
                   k,
-                  next,
-                  slidingDoorWidth / 2,
-                  -1, // Di chuyển sang trái (về phía mảnh 1)
-                  slidingDoorWidth
+
+                  slidingDoorWidth / 2
                 );
               }}
             >
@@ -2631,10 +2717,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    true,
-                    -slidingMirrorDoorWidth / 2,
-                    1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingMirrorDoorWidth
+
+                    -slidingMirrorDoorWidth / 2
                   );
               }}
               onPointerOut={(e) => {
@@ -2644,10 +2728,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    false,
-                    -slidingMirrorDoorWidth / 2,
-                    1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingMirrorDoorWidth
+
+                    -slidingMirrorDoorWidth / 2
                   );
               }}
               onClick={(e) => {
@@ -2658,10 +2740,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 openedSlidersRef.current[k] = next;
                 triggerSlider(
                   k,
-                  next,
-                  -slidingMirrorDoorWidth / 2,
-                  1, // Di chuyển sang phải (về phía mảnh 2)
-                  slidingMirrorDoorWidth
+
+                  -slidingMirrorDoorWidth / 2
                 );
               }}
             >
@@ -2706,10 +2786,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    true,
-                    slidingMirrorDoorWidth / 2,
-                    -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingMirrorDoorWidth
+
+                    slidingMirrorDoorWidth / 2
                   );
               }}
               onPointerOut={(e) => {
@@ -2719,10 +2797,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    false,
-                    slidingMirrorDoorWidth / 2,
-                    -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingMirrorDoorWidth
+
+                    slidingMirrorDoorWidth / 2
                   );
               }}
               onClick={(e) => {
@@ -2733,10 +2809,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 openedSlidersRef.current[k] = next;
                 triggerSlider(
                   k,
-                  next,
-                  slidingMirrorDoorWidth / 2,
-                  -1, // Di chuyển sang trái (về phía mảnh 1)
-                  slidingMirrorDoorWidth
+
+                  slidingMirrorDoorWidth / 2
                 );
               }}
             >
@@ -2789,10 +2863,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    true,
-                    -slidingGlassDoorWidth / 2,
-                    1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingGlassDoorWidth
+
+                    -slidingGlassDoorWidth / 2
                   );
               }}
               onPointerOut={(e) => {
@@ -2802,10 +2874,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    false,
-                    -slidingGlassDoorWidth / 2,
-                    1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingGlassDoorWidth
+
+                    -slidingGlassDoorWidth / 2
                   );
               }}
               onClick={(e) => {
@@ -2816,10 +2886,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 openedSlidersRef.current[k] = next;
                 triggerSlider(
                   k,
-                  next,
-                  -slidingGlassDoorWidth / 2,
-                  1, // Di chuyển sang phải (về phía mảnh 2)
-                  slidingGlassDoorWidth
+
+                  -slidingGlassDoorWidth / 2
                 );
               }}
             >
@@ -2884,10 +2952,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    true,
-                    slidingGlassDoorWidth / 2,
-                    -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingGlassDoorWidth
+
+                    slidingGlassDoorWidth / 2
                   );
               }}
               onPointerOut={(e) => {
@@ -2897,10 +2963,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 if (!openedSlidersRef.current[k])
                   triggerSlider(
                     k,
-                    false,
-                    slidingGlassDoorWidth / 2,
-                    -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingGlassDoorWidth
+
+                    slidingGlassDoorWidth / 2
                   );
               }}
               onClick={(e) => {
@@ -2911,10 +2975,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 openedSlidersRef.current[k] = next;
                 triggerSlider(
                   k,
-                  next,
-                  slidingGlassDoorWidth / 2,
-                  -1, // Di chuyển sang trái (về phía mảnh 1)
-                  slidingGlassDoorWidth
+
+                  slidingGlassDoorWidth / 2
                 );
               }}
             >
@@ -2965,7 +3027,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
           </group>
         );
 
-      // Add other cases as needed...
       default:
         return null;
     }

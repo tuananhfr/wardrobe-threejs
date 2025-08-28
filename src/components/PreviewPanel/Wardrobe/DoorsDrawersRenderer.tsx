@@ -3140,11 +3140,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       firstSlidingSpacing.spacingId
     );
 
-    // Debug log
-    console.log(
-      `Sliding door debug: firstSlidingSpacing=${firstSlidingSpacing.spacingId}, sectionName=${sectionName}, wardrobeType=${config.wardrobeType.id}`
-    );
-
     // Filter out spacings from suppressed columns
     const validSpacingPositions = spacingPositions.filter((pos) => {
       const parts = pos.spacingId.split("-");
@@ -3169,13 +3164,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
 
       // Convert columnIndex to 0-based index for comparison
       const columnIndexZeroBased = columnIndex - 1; // Convert from 1-based to 0-based
-
-      // Debug log for Angle type
-      if (config.wardrobeType.id === "Angle") {
-        console.log(
-          `Sliding door check: section=${sectionName}, columnIndex=${columnIndex} (0-based: ${columnIndexZeroBased}), totalColumns=${totalColumns}, spacingId=${pos.spacingId}`
-        );
-      }
 
       return !shouldSuppressColumnForSliding(
         sectionName,

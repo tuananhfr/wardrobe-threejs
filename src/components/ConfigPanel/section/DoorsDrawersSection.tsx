@@ -288,27 +288,18 @@ const DoorsDrawersSection: React.FC = () => {
 
   // Update selected doors drawers type based on selected spacing
   useEffect(() => {
-    console.log(
-      "useEffect triggered - selectedSpacingId:",
-      config.selectedSpacingId
-    );
-    console.log("current doorsDrawersConfig:", config.doorsDrawersConfig);
-
     if (config.selectedSpacingId) {
       // First, check if the selected spacing has a specific configuration
       const doorsDrawersType =
         config.doorsDrawersConfig[config.selectedSpacingId];
-      console.log("Found doorsDrawersType for spacing:", doorsDrawersType);
 
       if (doorsDrawersType) {
-        console.log("Setting selectedDoorsDrawersType to:", doorsDrawersType);
         updateConfig("selectedDoorsDrawersType", doorsDrawersType);
         return; // Don't override user's choice
       }
 
       // If no specific configuration exists, check if user explicitly chose "vide" (null)
       if (config.selectedDoorsDrawersType === null) {
-        console.log("User chose vide, keeping null");
         return; // Don't override user's choice of "vide"
       }
 
@@ -318,21 +309,16 @@ const DoorsDrawersSection: React.FC = () => {
 
       // If section has sliding door, show it regardless of current spacing
       if (sectionSlidingDoorType) {
-        console.log(
-          "Section has sliding door, setting to:",
-          sectionSlidingDoorType
-        );
         updateConfig("selectedDoorsDrawersType", sectionSlidingDoorType as any);
         return;
       }
 
       // No configuration found
-      console.log("No config found, setting to null");
       updateConfig("selectedDoorsDrawersType", null);
     } else {
       updateConfig("selectedDoorsDrawersType", null);
     }
-  }, [config.selectedSpacingId, config.doorsDrawersConfig]); // Restore dependency
+  }, [config.selectedSpacingId, config.doorsDrawersConfig]);
 
   // NEW LOGIC: Update selected doors drawers type when doors/drawers are removed due to unsuitable dimensions
   useEffect(() => {
@@ -519,7 +505,6 @@ const DoorsDrawersSection: React.FC = () => {
 
     // Prevent selecting drawer if spacing height is not suitable
     if ((type === "drawer" || type === "drawerVerre") && isDrawerDisabled()) {
-      console.log("Drawer selection prevented - height not suitable");
       return;
     }
 
@@ -543,10 +528,8 @@ const DoorsDrawersSection: React.FC = () => {
     }
 
     if (type === "vide") {
-      console.log("Selecting vide for spacing:", config.selectedSpacingId);
       updateConfig("selectedDoorsDrawersType", null);
 
-      // Chỉ áp dụng vide cho các spacing đang được chọn (hoặc spacing hiện tại)
       const selectedSpacings = config.selectedSpacingIds || [];
       const targetSpacings =
         selectedSpacings.length > 0
@@ -556,10 +539,32 @@ const DoorsDrawersSection: React.FC = () => {
           : [];
 
       if (targetSpacings.length > 0) {
-        // Sử dụng grouped doors logic để xóa config
-        targetSpacings.forEach((spacingId) => {
-          updateDoorsDrawersConfig(spacingId, null);
+        // *** THÊM LOGIC NÀY: Kiểm tra section có sliding door không ***
+        const sectionName = getSectionNameFromSpacingId(targetSpacings[0]);
+        const sectionSpacingIds = getSpacingIdsInSection(sectionName);
+
+        const hasSlidingDoor = sectionSpacingIds.some((sectionSpacingId) => {
+          const currentType = config.doorsDrawersConfig[sectionSpacingId];
+          return (
+            currentType === "slidingDoor" ||
+            currentType === "slidingMirrorDoor" ||
+            currentType === "slidingGlassDoor"
+          );
         });
+
+        if (hasSlidingDoor) {
+          // Nếu section có sliding door: clear TẤT CẢ spacing trong section
+          updateDoorsDrawersConfig(
+            sectionSpacingIds[0],
+            null,
+            sectionSpacingIds
+          );
+        } else {
+          // Logic bình thường: chỉ clear spacing được chọn
+          targetSpacings.forEach((spacingId) => {
+            updateDoorsDrawersConfig(spacingId, null);
+          });
+        }
       }
       return;
     }
@@ -576,70 +581,81 @@ const DoorsDrawersSection: React.FC = () => {
       : [];
 
     if (targetSpacings.length > 0) {
-      // If selecting sliding door, apply to all spacings in section
       if (
         type === "slidingDoor" ||
         type === "slidingMirrorDoor" ||
         type === "slidingGlassDoor"
       ) {
-        // Get all sections that contain selected spacings
+        // SLIDING DOOR: Áp dụng cho tất cả spacing trong section
         const sectionsToUpdate = new Set<string>();
         targetSpacings.forEach((spacingId) => {
           const sectionName = getSectionNameFromSpacingId(spacingId);
           sectionsToUpdate.add(sectionName);
         });
 
-        // Apply sliding door to all spacings in affected sections
         sectionsToUpdate.forEach((sectionName) => {
           const sectionSpacingIds = getSpacingIdsInSection(sectionName);
-
-          // Clear all other door types in the section
-          sectionSpacingIds.forEach((spacingId) => {
-            updateDoorsDrawersConfig(spacingId, null);
-          });
-
-          // Apply sliding door to all spacings in section
-          sectionSpacingIds.forEach((spacingId) => {
-            updateDoorsDrawersConfig(spacingId, type);
-          });
+          // Clear và set sliding door cho tất cả spacing trong section
+          updateDoorsDrawersConfig(
+            sectionSpacingIds[0],
+            null,
+            sectionSpacingIds
+          );
+          updateDoorsDrawersConfig(
+            sectionSpacingIds[0],
+            type,
+            sectionSpacingIds
+          );
         });
       } else {
-        // If selecting other door types, check if we should create a group
-        if (
-          hasMultipleSelected &&
-          areSpacingsConsecutiveInSameColumn(targetSpacings)
-        ) {
-          // Create group for multiple selected spacings
-          createOrUpdateGroup(targetSpacings, type);
+        // CỬA KHÁC: Xử lý logic section có sliding door
+        targetSpacings.forEach((spacingId) => {
+          if (spacingId) {
+            const sectionName = getSectionNameFromSpacingId(spacingId);
+            const sectionSpacingIds = getSpacingIdsInSection(sectionName);
 
-          // Apply door type to all spacings in group
-          targetSpacings.forEach((spacingId) => {
-            updateDoorsDrawersConfig(spacingId, type);
-          });
-        } else {
-          // Single selection or non-consecutive spacings
-          targetSpacings.forEach((spacingId) => {
-            if (spacingId) {
-              // Remove sliding doors from the section first
-              const sectionName = getSectionNameFromSpacingId(spacingId);
-              const sectionSpacingIds = getSpacingIdsInSection(sectionName);
-
-              sectionSpacingIds.forEach((sectionSpacingId) => {
+            const hasSlidingDoor = sectionSpacingIds.some(
+              (sectionSpacingId) => {
                 const currentType = config.doorsDrawersConfig[sectionSpacingId];
-                if (
+                return (
                   currentType === "slidingDoor" ||
                   currentType === "slidingMirrorDoor" ||
                   currentType === "slidingGlassDoor"
-                ) {
-                  updateDoorsDrawersConfig(sectionSpacingId, null);
-                }
+                );
+              }
+            );
+
+            if (hasSlidingDoor) {
+              // Thay vì gọi riêng biệt, combine thành 1 operation
+              const sectionSpacingIds = getSpacingIdsInSection(sectionName);
+              const finalConfig = { ...config.doorsDrawersConfig };
+
+              // Clear tất cả spacing trong section
+              sectionSpacingIds.forEach((id) => {
+                delete finalConfig[id];
               });
 
-              // Apply new door type to this spacing
-              updateDoorsDrawersConfig(spacingId, type);
+              // Set cửa mới cho spacing được chọn
+              finalConfig[spacingId] = type as any;
+
+              // Update 1 lần duy nhất
+              updateConfig("doorsDrawersConfig", finalConfig);
+            } else {
+              // Logic bình thường
+              if (
+                hasMultipleSelected &&
+                areSpacingsConsecutiveInSameColumn(targetSpacings)
+              ) {
+                createOrUpdateGroup(targetSpacings, type);
+                targetSpacings.forEach((targetSpacingId) => {
+                  updateDoorsDrawersConfig(targetSpacingId, type);
+                });
+              } else {
+                updateDoorsDrawersConfig(spacingId, type);
+              }
             }
-          });
-        }
+          }
+        });
       }
     }
   };

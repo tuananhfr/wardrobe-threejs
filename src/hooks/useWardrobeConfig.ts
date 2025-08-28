@@ -1035,14 +1035,17 @@ export const useWardrobeConfig = () => {
   /**
    * Cập nhật doors/drawers config cho spacing và group của nó
    */
+
   const updateDoorsDrawersConfig = (
     spacingId: string,
-    doorType: string | null
+    doorType: string | null,
+    targetSpacings?: string[]
   ): void => {
-    const groupMembers = getGroupMembersForSpacing(spacingId);
+    const spacingsToUpdate =
+      targetSpacings || getGroupMembersForSpacing(spacingId);
+
     const updatedConfig = { ...config.doorsDrawersConfig };
 
-    // Kiểm tra xem doorType có phải là drawer hoặc sliding door không
     const isDrawer = doorType === "drawer" || doorType === "drawerVerre";
     const isSlidingDoor =
       doorType === "slidingDoor" ||
@@ -1050,35 +1053,37 @@ export const useWardrobeConfig = () => {
       doorType === "slidingGlassDoor";
 
     if (doorType === null) {
-      // Xóa config cho tất cả group members (vide sync)
-      groupMembers.forEach((id) => {
+      spacingsToUpdate.forEach((id) => {
         delete updatedConfig[id];
       });
 
-      // Xóa group nếu có
-      const updatedGroupedConfig = { ...config.groupedDoorsConfig };
-      Object.keys(updatedGroupedConfig).forEach((groupId) => {
-        const group = updatedGroupedConfig[groupId];
-        if (group.spacingIds.includes(spacingId)) {
-          delete updatedGroupedConfig[groupId];
-        }
-      });
-      updateConfig("groupedDoorsConfig", updatedGroupedConfig);
+      if (!targetSpacings) {
+        const updatedGroupedConfig = { ...config.groupedDoorsConfig };
+        Object.keys(updatedGroupedConfig).forEach((groupId) => {
+          const group = updatedGroupedConfig[groupId];
+          if (group.spacingIds.includes(spacingId)) {
+            delete updatedGroupedConfig[groupId];
+          }
+        });
+        updateConfig("groupedDoorsConfig", updatedGroupedConfig);
+      }
     } else {
-      // Áp dụng doorType cho tất cả group members (door type sync)
-      groupMembers.forEach((id) => {
+      spacingsToUpdate.forEach((id) => {
         updatedConfig[id] = doorType as any;
       });
 
-      // Cập nhật group nếu có nhiều hơn 1 member và không phải drawer/sliding door
-      if (groupMembers.length > 1 && !isDrawer && !isSlidingDoor) {
-        createOrUpdateGroup(groupMembers, doorType);
+      if (
+        spacingsToUpdate.length > 1 &&
+        !isDrawer &&
+        !isSlidingDoor &&
+        !targetSpacings
+      ) {
+        createOrUpdateGroup(spacingsToUpdate, doorType);
       }
     }
 
     updateConfig("doorsDrawersConfig", updatedConfig);
   };
-
   /**
    * Xóa group chứa spacingId
    */

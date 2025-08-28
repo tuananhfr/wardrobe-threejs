@@ -595,6 +595,7 @@ const DoorsDrawersSection: React.FC = () => {
 
         sectionsToUpdate.forEach((sectionName) => {
           const sectionSpacingIds = getSpacingIdsInSection(sectionName);
+
           // Clear và set sliding door cho tất cả spacing trong section
           updateDoorsDrawersConfig(
             sectionSpacingIds[0],

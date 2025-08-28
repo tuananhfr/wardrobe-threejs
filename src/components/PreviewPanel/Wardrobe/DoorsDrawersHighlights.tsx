@@ -547,7 +547,7 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
         return (
           <group
             key={`doors-drawers-icon-${pos.spacingId}`}
-            position={[pos.x, pos.y, depth / 2 + 0.01]}
+            position={[pos.x, pos.y, depth / 2 + thickness + 0.01]}
           >
             {/* Icon background */}
             <mesh>

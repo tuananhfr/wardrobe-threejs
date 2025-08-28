@@ -1,5 +1,5 @@
 import { useConfig } from "@/components/context/WardrobeContext";
-import React, { useState, useRef } from "react";
+import React, { useState } from "react";
 
 const WardrobeTypeSelector: React.FC = () => {
   const { config, updateConfig } = useConfig();
@@ -9,21 +9,15 @@ const WardrobeTypeSelector: React.FC = () => {
     x: number;
     y: number;
   } | null>(null);
-  const hasInitializedRef = useRef(false);
 
   // Get current selected wardrobe type from config
   const selectedWardrobeType = config.wardrobeType;
 
   const handleWardrobeTypeSelect = (wardrobeType: WardrobeType) => {
     // Only reset if actually changing to a different wardrobe type AND not on first mount
-    if (
-      wardrobeType.id !== config.wardrobeType.id &&
-      hasInitializedRef.current
-    ) {
+    if (wardrobeType.id !== config.wardrobeType.id) {
       // Reset tất cả cấu hình khi thay đổi loại tủ quần áo
-      updateConfig("doorsDrawersConfig", {});
-      updateConfig("groupedDoorsConfig", {});
-      updateConfig("internalEquipmentConfig", {});
+
       updateConfig("selectedColumnId", null);
       updateConfig("selectedSpacingId", null);
       updateConfig("selectedSpacingIds", []);
@@ -31,6 +25,10 @@ const WardrobeTypeSelector: React.FC = () => {
       updateConfig("selectedInternalEquipmentType", null);
       updateConfig("hoveredColumnId", null);
       updateConfig("hoveredSpacingId", null);
+
+      updateConfig("doorsDrawersConfig", {});
+      updateConfig("groupedDoorsConfig", {});
+      updateConfig("internalEquipmentConfig", {});
       updateConfig("handleConfig", {});
       updateConfig("shelfTextureConfig", {});
       updateConfig("facadeTextureConfig", {});

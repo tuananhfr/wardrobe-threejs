@@ -996,35 +996,16 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     // Helper function to render handle based on type
     const renderHandle = (
       handleType: string,
-      position: [number, number, number],
-      isVertical: boolean = false
+      position: [number, number, number]
     ) => {
       if (handleType === "none") return null;
 
       switch (handleType) {
-        case "round":
+        case "baton":
           return (
             <mesh position={position}>
-              <cylinderGeometry args={[0.01, 0.01, 0.08, 8]} />
+              <boxGeometry args={[0.02, 0.15, 0.02]} />
               <meshStandardMaterial color="#666" />
-            </mesh>
-          );
-        case "bar":
-          return (
-            <mesh position={position}>
-              <boxGeometry
-                args={isVertical ? [0.02, 0.15, 0.02] : [0.15, 0.02, 0.02]}
-              />
-              <meshStandardMaterial color="#666" />
-            </mesh>
-          );
-        case "recessed":
-          return (
-            <mesh position={position}>
-              <boxGeometry
-                args={isVertical ? [0.03, 0.12, 0.01] : [0.12, 0.03, 0.01]}
-              />
-              <meshStandardMaterial color="#333" />
             </mesh>
           );
         default:
@@ -1329,8 +1310,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               />
             </mesh>
 
-            {/* Drawer handle in center */}
-            {renderHandle(handleType, [0, 0, thickness / 2 + 0.01])}
+            {/* Drawer handle - removed for drawers */}
           </group>
         );
 
@@ -1668,8 +1648,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               />
             </mesh>
 
-            {/* Drawer handle in center */}
-            {renderHandle(handleType, [0, 0, thickness / 2 + 0.01])}
+            {/* Drawer handle - removed for drawers */}
           </group>
         );
 
@@ -2340,12 +2319,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 spacingId={firstSpacingId}
               />
 
-              {/* Left door handle */}
-              {renderHandle(handleType, [
-                slidingDoorWidth / 2 - 0.05,
-                0,
-                thickness / 2 + 0.01,
-              ])}
+              {/* Left door handle - removed for sliding doors */}
             </group>
 
             {/* Right sliding door */}
@@ -2431,12 +2405,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 spacingId={firstSpacingId}
               />
 
-              {/* Right door handle */}
-              {renderHandle(handleType, [
-                -slidingDoorWidth / 2 + 0.05,
-                0,
-                thickness / 2 + 0.01,
-              ])}
+              {/* Right door handle - removed for sliding doors */}
             </group>
           </group>
         );
@@ -2514,12 +2483,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   envMapIntensity={1.0}
                 />
               </mesh>
-              {/* Left door handle */}
-              {renderHandle(handleType, [
-                slidingMirrorDoorWidth / 2 - 0.05,
-                0,
-                thickness / 2 + 0.01,
-              ])}
+              {/* Left door handle - removed for sliding doors */}
             </group>
 
             {/* Right sliding mirror door */}
@@ -2589,12 +2553,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   envMapIntensity={1.0}
                 />
               </mesh>
-              {/* Right door handle */}
-              {renderHandle(handleType, [
-                -slidingMirrorDoorWidth / 2 + 0.05,
-                0,
-                thickness / 2 + 0.01,
-              ])}
+              {/* Right door handle - removed for sliding doors */}
             </group>
           </group>
         );
@@ -2692,12 +2651,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   opacity={0.3}
                 />
               </mesh>
-              {/* Left door handle */}
-              {renderHandle(handleType, [
-                slidingGlassDoorWidth / 2 - 0.05,
-                0,
-                thickness / 2 + 0.01,
-              ])}
+              {/* Left door handle - removed for sliding doors */}
             </group>
 
             {/* Right sliding glass door */}
@@ -2787,12 +2741,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   opacity={0.3}
                 />
               </mesh>
-              {/* Right door handle */}
-              {renderHandle(handleType, [
-                -slidingGlassDoorWidth / 2 + 0.05,
-                0,
-                thickness / 2 + 0.01,
-              ])}
+              {/* Right door handle - removed for sliding doors */}
             </group>
           </group>
         );

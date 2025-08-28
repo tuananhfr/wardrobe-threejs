@@ -70,9 +70,9 @@ declare global {
         | "slidingGlassDoor";
     };
 
-    handleType: "none" | "round" | "bar" | "recessed";
+    handleType: "none" | "baton";
     handleConfig: {
-      [spacingId: string]: "none" | "round" | "bar" | "recessed";
+      [spacingId: string]: "none" | "baton";
     };
 
     ledColor: string;

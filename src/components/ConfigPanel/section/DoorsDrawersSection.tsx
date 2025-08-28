@@ -1538,7 +1538,7 @@ const DoorsDrawersSection: React.FC = () => {
             <h6 className="mb-3">Choisir le type de poignée</h6>
             <div className="row g-2">
               {/* Không có tay nắm */}
-              <div className="col-3">
+              <div className="col-6">
                 <button
                   className={`btn w-100 p-2 ${
                     ((config.selectedSpacingId &&
@@ -1559,7 +1559,7 @@ const DoorsDrawersSection: React.FC = () => {
                 >
                   <div className="mb-1">
                     <i
-                      className="bi bi-circle"
+                      className="bi bi-x-circle"
                       style={{ fontSize: "1.5rem" }}
                     ></i>
                   </div>
@@ -1567,52 +1567,22 @@ const DoorsDrawersSection: React.FC = () => {
                 </button>
               </div>
 
-              {/* Tay nắm tròn */}
-              <div className="col-3">
+              {/* Tay nắm bâton */}
+              <div className="col-6">
                 <button
                   className={`btn w-100 p-2 ${
                     ((config.selectedSpacingId &&
                       config.handleConfig[config.selectedSpacingId]) ||
-                      config.handleType) === "round"
+                      config.handleType) === "baton"
                       ? "btn-primary"
                       : "btn-outline-secondary"
                   }`}
                   onClick={() => {
                     if (config.selectedSpacingId) {
                       const updatedConfig = { ...config.handleConfig };
-                      updatedConfig[config.selectedSpacingId] = "round";
+                      updatedConfig[config.selectedSpacingId] = "baton";
                       updateConfig("handleConfig", updatedConfig);
-                      updateConfig("handleType", "round");
-                    }
-                  }}
-                  style={{ height: "80px", fontSize: "12px" }}
-                >
-                  <div className="mb-1">
-                    <i
-                      className="bi bi-circle-fill"
-                      style={{ fontSize: "1.5rem" }}
-                    ></i>
-                  </div>
-                  <span>Ronde</span>
-                </button>
-              </div>
-
-              {/* Tay nắm thanh */}
-              <div className="col-3">
-                <button
-                  className={`btn w-100 p-2 ${
-                    ((config.selectedSpacingId &&
-                      config.handleConfig[config.selectedSpacingId]) ||
-                      config.handleType) === "bar"
-                      ? "btn-primary"
-                      : "btn-outline-secondary"
-                  }`}
-                  onClick={() => {
-                    if (config.selectedSpacingId) {
-                      const updatedConfig = { ...config.handleConfig };
-                      updatedConfig[config.selectedSpacingId] = "bar";
-                      updateConfig("handleConfig", updatedConfig);
-                      updateConfig("handleType", "bar");
+                      updateConfig("handleType", "baton");
                     }
                   }}
                   style={{ height: "80px", fontSize: "12px" }}
@@ -1623,37 +1593,7 @@ const DoorsDrawersSection: React.FC = () => {
                       style={{ fontSize: "1.5rem" }}
                     ></i>
                   </div>
-                  <span>Barre</span>
-                </button>
-              </div>
-
-              {/* Tay nắm lõm */}
-              <div className="col-3">
-                <button
-                  className={`btn w-100 p-2 ${
-                    ((config.selectedSpacingId &&
-                      config.handleConfig[config.selectedSpacingId]) ||
-                      config.handleType) === "recessed"
-                      ? "btn-primary"
-                      : "btn-outline-secondary"
-                  }`}
-                  onClick={() => {
-                    if (config.selectedSpacingId) {
-                      const updatedConfig = { ...config.handleConfig };
-                      updatedConfig[config.selectedSpacingId] = "recessed";
-                      updateConfig("handleConfig", updatedConfig);
-                      updateConfig("handleType", "recessed");
-                    }
-                  }}
-                  style={{ height: "80px", fontSize: "12px" }}
-                >
-                  <div className="mb-1">
-                    <i
-                      className="bi bi-square"
-                      style={{ fontSize: "1.5rem" }}
-                    ></i>
-                  </div>
-                  <span>Encastrée</span>
+                  <span>Bâton</span>
                 </button>
               </div>
             </div>

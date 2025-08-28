@@ -1195,6 +1195,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
 
       case "drawer":
         // Tiroir - ngăn kéo đầy đủ bộ phận (mặt trước mỏng, 2 thành, đáy, mặt sau)
+        const drawerDepth = depth * 0.6; // Độ sâu của ngăn kéo
+        const drawerHeight = facadeHeight * 0.8; // Chiều cao bên trong ngăn kéo
+        const sideThickness = thickness * 0.5; // Độ dày thành bên
+
         return (
           <group
             position={[groupData.x, groupData.centerY, facadeZ]}
@@ -1224,152 +1228,109 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               triggerDrawer(k, next, facadeZ);
             }}
           >
-            {(() => {
-              const drawerDepth = depth * 0.8;
-              const frontThickness = thickness / 3;
-              const sideThickness = thickness;
-              const innerZ = -drawerDepth / 2 + frontThickness / 2;
+            {/* Drawer front panel */}
+            <mesh
+              position={[0, 0, 0]}
+              userData={{
+                type: "facade",
+                spacingId: firstSpacingId,
+                columnId: groupData.columnId,
+                sectionName: getSectionNameFromSpacingId(firstSpacingId),
+              }}
+              onPointerOver={() => handleFacadePointerOver(firstSpacingId)}
+              onPointerOut={handleFacadePointerOut}
+              onClick={() => handleFacadeClick(firstSpacingId)}
+            >
+              <boxGeometry
+                args={[facadeWidth, facadeHeight + thickness, thickness]}
+              />
+              <meshStandardMaterial
+                map={getFacadeTexture(firstSpacingId)}
+                color="white"
+                roughness={0.7}
+                metalness={0.1}
+              />
+            </mesh>
 
-              return (
-                <>
-                  {/* Mặt trước ngăn kéo (mỏng) */}
-                  <mesh
-                    position={[0, 0, frontThickness / 2]}
-                    userData={{
-                      type: "facade",
-                      spacingId: firstSpacingId,
-                      columnId: groupData.columnId,
-                      sectionName: getSectionNameFromSpacingId(firstSpacingId),
-                    }}
-                    onPointerOver={() =>
-                      handleFacadePointerOver(firstSpacingId)
-                    }
-                    onPointerOut={handleFacadePointerOut}
-                    onClick={() => handleFacadeClick(firstSpacingId)}
-                  >
-                    <boxGeometry
-                      args={[
-                        facadeWidth,
-                        facadeHeight - thickness,
-                        frontThickness,
-                      ]}
-                    />
-                    <meshStandardMaterial
-                      map={getFacadeTexture(firstSpacingId)}
-                      color="white"
-                      roughness={0.7}
-                      metalness={0.1}
-                    />
-                  </mesh>
+            <FacadeHighlight
+              overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+              overlayPosition={[0, 0, 0.01]}
+              iconPosition={[0, 0, thickness / 2 + 0.02]}
+              spacingId={firstSpacingId}
+            />
 
-                  <FacadeHighlight
-                    overlaySize={[
-                      facadeWidth,
-                      facadeHeight + thickness,
-                      frontThickness,
-                    ]}
-                    overlayPosition={[0, 0, frontThickness / 2 + 0.01]}
-                    iconPosition={[
-                      0,
-                      0,
-                      frontThickness / 2 + thickness / 2 + 0.02,
-                    ]}
-                    spacingId={firstSpacingId}
-                  />
+            {/* Left side panel */}
+            <mesh
+              position={[
+                -facadeWidth / 2 + sideThickness / 2,
+                0,
+                -drawerDepth / 2,
+              ]}
+            >
+              <boxGeometry args={[sideThickness, drawerHeight, drawerDepth]} />
+              <meshStandardMaterial
+                map={getFacadeTexture(firstSpacingId)}
+                roughness={0.7}
+                metalness={0.1}
+              />
+            </mesh>
 
-                  {/* Tay cầm ngăn kéo */}
-                  {renderHandle(handleType, [0, 0, frontThickness + 0.005])}
+            {/* Right side panel */}
+            <mesh
+              position={[
+                facadeWidth / 2 - sideThickness / 2,
+                0,
+                -drawerDepth / 2,
+              ]}
+            >
+              <boxGeometry args={[sideThickness, drawerHeight, drawerDepth]} />
+              <meshStandardMaterial
+                map={getFacadeTexture(firstSpacingId)}
+                roughness={0.7}
+                metalness={0.1}
+              />
+            </mesh>
 
-                  {/* Thành bên trái */}
-                  <mesh
-                    position={[
-                      -facadeWidth / 2 + sideThickness / 2,
-                      thickness / 2,
-                      innerZ,
-                    ]}
-                  >
-                    <boxGeometry
-                      args={[
-                        sideThickness,
-                        facadeHeight - thickness - sideThickness,
-                        drawerDepth,
-                      ]}
-                    />
-                    <meshStandardMaterial
-                      map={getFacadeTexture(firstSpacingId)}
-                      roughness={0.7}
-                      metalness={0.1}
-                    />
-                  </mesh>
+            {/* Bottom panel */}
+            <mesh
+              position={[
+                0,
+                -drawerHeight / 2 + sideThickness / 2,
+                -drawerDepth / 2,
+              ]}
+            >
+              <boxGeometry
+                args={[
+                  facadeWidth - sideThickness * 2,
+                  sideThickness,
+                  drawerDepth,
+                ]}
+              />
+              <meshStandardMaterial
+                map={getFacadeTexture(firstSpacingId)}
+                roughness={0.7}
+                metalness={0.1}
+              />
+            </mesh>
 
-                  {/* Thành bên phải */}
-                  <mesh
-                    position={[
-                      facadeWidth / 2 - sideThickness / 2,
-                      thickness / 2,
-                      innerZ,
-                    ]}
-                  >
-                    <boxGeometry
-                      args={[
-                        sideThickness,
-                        facadeHeight - thickness - sideThickness,
-                        drawerDepth,
-                      ]}
-                    />
-                    <meshStandardMaterial
-                      map={getFacadeTexture(firstSpacingId)}
-                      roughness={0.7}
-                      metalness={0.1}
-                    />
-                  </mesh>
+            {/* Back panel */}
+            <mesh position={[0, 0, -drawerDepth]}>
+              <boxGeometry
+                args={[
+                  facadeWidth - sideThickness * 2,
+                  drawerHeight,
+                  sideThickness,
+                ]}
+              />
+              <meshStandardMaterial
+                map={getFacadeTexture(firstSpacingId)}
+                roughness={0.7}
+                metalness={0.1}
+              />
+            </mesh>
 
-                  {/* Đáy ngăn kéo */}
-                  <mesh
-                    position={[
-                      0,
-                      -(facadeHeight / 2 - thickness / 2) + sideThickness / 2,
-                      innerZ,
-                    ]}
-                  >
-                    <boxGeometry
-                      args={[
-                        facadeWidth - sideThickness * 2,
-                        sideThickness,
-                        drawerDepth,
-                      ]}
-                    />
-                    <meshStandardMaterial
-                      map={getFacadeTexture(firstSpacingId)}
-                      roughness={0.7}
-                      metalness={0.1}
-                    />
-                  </mesh>
-
-                  {/* Mặt sau ngăn kéo */}
-                  <mesh
-                    position={[
-                      0,
-                      0,
-                      -drawerDepth + sideThickness / 2 + frontThickness / 2,
-                    ]}
-                  >
-                    <boxGeometry
-                      args={[
-                        facadeWidth - sideThickness * 2,
-                        facadeHeight - sideThickness,
-                        sideThickness,
-                      ]}
-                    />
-                    <meshStandardMaterial
-                      map={getFacadeTexture(firstSpacingId)}
-                      roughness={0.7}
-                      metalness={0.1}
-                    />
-                  </mesh>
-                </>
-              );
-            })()}
+            {/* Drawer handle in center */}
+            {renderHandle(handleType, [0, 0, thickness / 2 + 0.01])}
           </group>
         );
 

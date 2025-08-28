@@ -218,18 +218,13 @@ const DoorsDrawersSection: React.FC = () => {
             return config.height - config.baseBarHeight - 2 * config.thickness;
           }
 
-          // If this is the last spacing, there's no shelf below
-          if (spacingIndex >= spacings.length - 1) {
-            return null;
-          }
-
           // Calculate height from floor to the shelf below this spacing
-          let heightFromFloor = config.baseBarHeight + config.thickness; // Start from base bar + thickness
+          // baseBarHeight + thickness (mặt sol) + sum_{k=0..spacingIndex-1}(spacing_k + thickness)
+          let heightFromFloor = config.baseBarHeight + config.thickness;
 
-          // Add heights of all spacings up to the shelf below
-          for (let i = 0; i <= spacingIndex + 1; i++) {
+          for (let i = 0; i < spacingIndex; i++) {
             if (i < spacings.length) {
-              heightFromFloor += spacings[i].spacing;
+              heightFromFloor += spacings[i].spacing + config.thickness;
             }
           }
 

@@ -1,7 +1,8 @@
 // src/components/PreviewPanel/Wardrobe/DoorsDrawersRenderer.tsx
 import React, { useRef } from "react";
 import * as THREE from "three";
-import { Text } from "@react-three/drei";
+
+import FacadeHighlight from "./FacadeHighlight";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useConfig } from "@/components/context/WardrobeContext";
 import { useFrame } from "@react-three/fiber";
@@ -196,32 +197,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     const isTexturesMode = config.accordionOpen === "collapseTextures";
     const isFacadesMode = config.activeView === "facades";
     return isTexturesMode && isFacadesMode;
-  };
-
-  // Helper function to get facade highlight state
-  const getFacadeHighlightState = (spacingId: string) => {
-    // Chỉ highlight khi ở chế độ facades
-    if (!isSelectingFacades())
-      return {
-        isHighlighted: false,
-        isSelected: false,
-        isLightHighlight: false,
-      };
-
-    const isHovered = config.hoveredSpacingId === spacingId;
-    const isSelected = config.selectedSpacingIds.includes(spacingId);
-
-    // Không cần highlight màu sắc khi ở chế độ facades
-    const isLightHighlight = false;
-
-    // Chỉ highlight đậm khi có facade được chọn hoặc hover
-    const isStrongHighlight = isHovered || isSelected;
-
-    return {
-      isHighlighted: isStrongHighlight,
-      isSelected,
-      isLightHighlight,
-    };
   };
 
   // Helper function to handle facade pointer events
@@ -1064,10 +1039,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     switch (type) {
       case "leftDoor":
         // Porte Gauche - door hinged on left side
-        const leftDoorHighlightState = getFacadeHighlightState(firstSpacingId);
-        const leftDoorIsHovered = config.hoveredSpacingId === firstSpacingId;
-        const leftDoorIsSelected =
-          config.selectedSpacingIds.includes(firstSpacingId);
 
         return (
           <group
@@ -1128,57 +1099,12 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              {/* Highlight overlay */}
-              {leftDoorHighlightState.isHighlighted && (
-                <mesh
-                  position={[facadeWidth / 2, 0, 0.01]} // Slightly in front
-                >
-                  <boxGeometry
-                    args={[facadeWidth, facadeHeight + thickness, thickness]}
-                  />
-                  <meshBasicMaterial
-                    color="#f8f9fa"
-                    transparent
-                    opacity={leftDoorIsSelected ? 0.6 : 0.4}
-                    depthWrite={false}
-                    depthTest={false}
-                  />
-                </mesh>
-              )}
-
-              {/* Icon */}
-              {(leftDoorIsHovered ||
-                leftDoorIsSelected ||
-                isSelectingFacades()) && (
-                <group
-                  position={[
-                    facadeWidth / 2,
-                    0,
-                    thickness / 2 + 0.02, // In front of facade
-                  ]}
-                >
-                  {/* Icon background */}
-                  <mesh>
-                    <circleGeometry args={[0.05, 32]} />
-                    <meshBasicMaterial
-                      color="white"
-                      transparent
-                      opacity={0.9}
-                    />
-                  </mesh>
-
-                  {/* Icon text */}
-                  <Text
-                    position={[0, 0, 0.01]}
-                    color={leftDoorIsSelected ? "green" : "#4169E1"}
-                    fontSize={0.1}
-                    anchorX="center"
-                    anchorY="middle"
-                  >
-                    {leftDoorIsSelected ? "✓" : "+"}
-                  </Text>
-                </group>
-              )}
+              <FacadeHighlight
+                overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+                overlayPosition={[facadeWidth / 2, 0, 0.01]}
+                iconPosition={[facadeWidth / 2, 0, thickness / 2 + 0.02]}
+                spacingId={firstSpacingId}
+              />
 
               {/* Door handle ở RIGHT SIDE của door */}
               {renderHandle(handleType, [
@@ -1191,11 +1117,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         );
 
       case "rightDoor":
-        const rightDoorHighlightState = getFacadeHighlightState(firstSpacingId);
-        const rightDoorIsHovered = config.hoveredSpacingId === firstSpacingId;
-        const rightDoorIsSelected =
-          config.selectedSpacingIds.includes(firstSpacingId);
-
         return (
           <group
             position={[
@@ -1255,57 +1176,12 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              {/* Highlight overlay */}
-              {rightDoorHighlightState.isHighlighted && (
-                <mesh
-                  position={[-facadeWidth / 2, 0, 0.01]} // Slightly in front
-                >
-                  <boxGeometry
-                    args={[facadeWidth, facadeHeight + thickness, thickness]}
-                  />
-                  <meshBasicMaterial
-                    color="#f8f9fa"
-                    transparent
-                    opacity={rightDoorIsSelected ? 0.6 : 0.4}
-                    depthWrite={false}
-                    depthTest={false}
-                  />
-                </mesh>
-              )}
-
-              {/* Icon */}
-              {(rightDoorIsHovered ||
-                rightDoorIsSelected ||
-                isSelectingFacades()) && (
-                <group
-                  position={[
-                    -facadeWidth / 2,
-                    0,
-                    thickness / 2 + 0.02, // In front of facade
-                  ]}
-                >
-                  {/* Icon background */}
-                  <mesh>
-                    <circleGeometry args={[0.05, 32]} />
-                    <meshBasicMaterial
-                      color="white"
-                      transparent
-                      opacity={0.9}
-                    />
-                  </mesh>
-
-                  {/* Icon text */}
-                  <Text
-                    position={[0, 0, 0.01]}
-                    color={rightDoorIsSelected ? "green" : "#4169E1"}
-                    fontSize={0.1}
-                    anchorX="center"
-                    anchorY="middle"
-                  >
-                    {rightDoorIsSelected ? "✓" : "+"}
-                  </Text>
-                </group>
-              )}
+              <FacadeHighlight
+                overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+                overlayPosition={[-facadeWidth / 2, 0, 0.01]}
+                iconPosition={[-facadeWidth / 2, 0, thickness / 2 + 0.02]}
+                spacingId={firstSpacingId}
+              />
 
               {/* Door handle ở LEFT SIDE của door */}
               {renderHandle(handleType, [
@@ -1322,10 +1198,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         // const drawerDepth = depth * 0.6; // Độ sâu của ngăn kéo
         // const drawerHeight = facadeHeight * 0.8; // Chiều cao bên trong ngăn kéo
         // const sideThickness = thickness * 0.5; // Độ dày thành bên
-        const drawerHighlightState = getFacadeHighlightState(firstSpacingId);
-        const drawerIsHovered = config.hoveredSpacingId === firstSpacingId;
-        const drawerIsSelected =
-          config.selectedSpacingIds.includes(firstSpacingId);
 
         return (
           <group
@@ -1378,51 +1250,12 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               />
             </mesh>
 
-            {/* Highlight overlay */}
-            {drawerHighlightState.isHighlighted && (
-              <mesh
-                position={[0, 0, 0.01]} // Slightly in front
-              >
-                <boxGeometry
-                  args={[facadeWidth, facadeHeight + thickness, thickness]}
-                />
-                <meshBasicMaterial
-                  color="#f8f9fa"
-                  transparent
-                  opacity={drawerIsSelected ? 0.6 : 0.4}
-                  depthWrite={false}
-                  depthTest={false}
-                />
-              </mesh>
-            )}
-
-            {/* Icon */}
-            {(drawerIsHovered || drawerIsSelected || isSelectingFacades()) && (
-              <group
-                position={[
-                  0,
-                  0,
-                  thickness / 2 + 0.02, // In front of facade
-                ]}
-              >
-                {/* Icon background */}
-                <mesh>
-                  <circleGeometry args={[0.05, 32]} />
-                  <meshBasicMaterial color="white" transparent opacity={0.9} />
-                </mesh>
-
-                {/* Icon text */}
-                <Text
-                  position={[0, 0, 0.01]}
-                  color={drawerIsSelected ? "green" : "#4169E1"}
-                  fontSize={0.1}
-                  anchorX="center"
-                  anchorY="middle"
-                >
-                  {drawerIsSelected ? "✓" : "+"}
-                </Text>
-              </group>
-            )}
+            <FacadeHighlight
+              overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+              overlayPosition={[0, 0, 0.01]}
+              iconPosition={[0, 0, thickness / 2 + 0.02]}
+              spacingId={firstSpacingId}
+            />
 
             {/* Drawer handle in center */}
             {renderHandle(handleType, [0, 0, thickness / 2 + 0.01])}
@@ -1771,11 +1604,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       case "doubleSwingDoor":
         // Porte Double - two doors hinged on opposite sides
         const doorWidthSwing = facadeWidth / 2; // Mỗi cửa chiếm đúng một nửa chiều rộng
-        const doubleSwingHighlightState =
-          getFacadeHighlightState(firstSpacingId);
-        const doubleSwingIsHovered = config.hoveredSpacingId === firstSpacingId;
-        const doubleSwingIsSelected =
-          config.selectedSpacingIds.includes(firstSpacingId);
 
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
@@ -1833,57 +1661,16 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              {/* Highlight overlay */}
-              {doubleSwingHighlightState.isHighlighted && (
-                <mesh
-                  position={[doorWidthSwing / 2, 0, 0.01]} // Slightly in front
-                >
-                  <boxGeometry
-                    args={[doorWidthSwing, facadeHeight + thickness, thickness]}
-                  />
-                  <meshBasicMaterial
-                    color="#f8f9fa"
-                    transparent
-                    opacity={doubleSwingIsSelected ? 0.6 : 0.4}
-                    depthWrite={false}
-                    depthTest={false}
-                  />
-                </mesh>
-              )}
-
-              {/* Icon */}
-              {(doubleSwingIsHovered ||
-                doubleSwingIsSelected ||
-                isSelectingFacades()) && (
-                <group
-                  position={[
-                    doorWidthSwing / 2,
-                    0,
-                    thickness / 2 + 0.02, // In front of facade
-                  ]}
-                >
-                  {/* Icon background */}
-                  <mesh>
-                    <circleGeometry args={[0.05, 32]} />
-                    <meshBasicMaterial
-                      color="white"
-                      transparent
-                      opacity={0.9}
-                    />
-                  </mesh>
-
-                  {/* Icon text */}
-                  <Text
-                    position={[0, 0, 0.01]}
-                    color={doubleSwingIsSelected ? "green" : "#4169E1"}
-                    fontSize={0.1}
-                    anchorX="center"
-                    anchorY="middle"
-                  >
-                    {doubleSwingIsSelected ? "✓" : "+"}
-                  </Text>
-                </group>
-              )}
+              <FacadeHighlight
+                overlaySize={[
+                  doorWidthSwing,
+                  facadeHeight + thickness,
+                  thickness,
+                ]}
+                overlayPosition={[doorWidthSwing / 2, 0, 0.01]}
+                iconPosition={[doorWidthSwing / 2, 0, thickness / 2 + 0.02]}
+                spacingId={firstSpacingId}
+              />
 
               {/* Left door handle ở RIGHT SIDE */}
               {renderHandle(handleType, [
@@ -1947,57 +1734,16 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              {/* Highlight overlay */}
-              {doubleSwingHighlightState.isHighlighted && (
-                <mesh
-                  position={[-doorWidthSwing / 2, 0, 0.01]} // Slightly in front
-                >
-                  <boxGeometry
-                    args={[doorWidthSwing, facadeHeight + thickness, thickness]}
-                  />
-                  <meshBasicMaterial
-                    color="#f8f9fa"
-                    transparent
-                    opacity={doubleSwingIsSelected ? 0.6 : 0.4}
-                    depthWrite={false}
-                    depthTest={false}
-                  />
-                </mesh>
-              )}
-
-              {/* Icon */}
-              {(doubleSwingIsHovered ||
-                doubleSwingIsSelected ||
-                isSelectingFacades()) && (
-                <group
-                  position={[
-                    -doorWidthSwing / 2,
-                    0,
-                    thickness / 2 + 0.02, // In front of facade
-                  ]}
-                >
-                  {/* Icon background */}
-                  <mesh>
-                    <circleGeometry args={[0.05, 32]} />
-                    <meshBasicMaterial
-                      color="white"
-                      transparent
-                      opacity={0.9}
-                    />
-                  </mesh>
-
-                  {/* Icon text */}
-                  <Text
-                    position={[0, 0, 0.01]}
-                    color={doubleSwingIsSelected ? "green" : "#4169E1"}
-                    fontSize={0.1}
-                    anchorX="center"
-                    anchorY="middle"
-                  >
-                    {doubleSwingIsSelected ? "✓" : "+"}
-                  </Text>
-                </group>
-              )}
+              <FacadeHighlight
+                overlaySize={[
+                  doorWidthSwing,
+                  facadeHeight + thickness,
+                  thickness,
+                ]}
+                overlayPosition={[-doorWidthSwing / 2, 0, 0.01]}
+                iconPosition={[-doorWidthSwing / 2, 0, thickness + 0.02]}
+                spacingId={firstSpacingId}
+              />
 
               {/* Right door handle ở LEFT SIDE */}
               {renderHandle(handleType, [
@@ -2436,11 +2182,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       case "slidingDoor":
         // Porte Coulissante - sliding door
         const slidingDoorWidth = facadeWidth / 2; // Mỗi cửa chiếm một nửa chiều rộng
-        const slidingDoorHighlightState =
-          getFacadeHighlightState(firstSpacingId);
-        const slidingDoorIsHovered = config.hoveredSpacingId === firstSpacingId;
-        const slidingDoorIsSelected =
-          config.selectedSpacingIds.includes(firstSpacingId);
 
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
@@ -2516,61 +2257,16 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              {/* Highlight overlay */}
-              {slidingDoorHighlightState.isHighlighted && (
-                <mesh
-                  position={[0, 0, 0.01]} // Slightly in front
-                >
-                  <boxGeometry
-                    args={[
-                      slidingDoorWidth,
-                      facadeHeight + thickness,
-                      thickness,
-                    ]}
-                  />
-                  <meshBasicMaterial
-                    color="#f8f9fa"
-                    transparent
-                    opacity={slidingDoorIsSelected ? 0.6 : 0.4}
-                    depthWrite={false}
-                    depthTest={false}
-                  />
-                </mesh>
-              )}
-
-              {/* Icon */}
-              {(slidingDoorIsHovered ||
-                slidingDoorIsSelected ||
-                isSelectingFacades()) && (
-                <group
-                  position={[
-                    0,
-                    0,
-                    thickness / 2 + 0.02, // In front of facade
-                  ]}
-                >
-                  {/* Icon background */}
-                  <mesh>
-                    <circleGeometry args={[0.05, 32]} />
-                    <meshBasicMaterial
-                      color="white"
-                      transparent
-                      opacity={0.9}
-                    />
-                  </mesh>
-
-                  {/* Icon text */}
-                  <Text
-                    position={[0, 0, 0.01]}
-                    color={slidingDoorIsSelected ? "green" : "#4169E1"}
-                    fontSize={0.1}
-                    anchorX="center"
-                    anchorY="middle"
-                  >
-                    {slidingDoorIsSelected ? "✓" : "+"}
-                  </Text>
-                </group>
-              )}
+              <FacadeHighlight
+                overlaySize={[
+                  slidingDoorWidth,
+                  facadeHeight + thickness,
+                  thickness,
+                ]}
+                overlayPosition={[0, 0, 0.01]}
+                iconPosition={[0, 0, thickness / 2 + 0.02]}
+                spacingId={firstSpacingId}
+              />
 
               {/* Left door handle */}
               {renderHandle(handleType, [
@@ -2652,61 +2348,16 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              {/* Highlight overlay */}
-              {slidingDoorHighlightState.isHighlighted && (
-                <mesh
-                  position={[0, 0, 0.01]} // Slightly in front
-                >
-                  <boxGeometry
-                    args={[
-                      slidingDoorWidth,
-                      facadeHeight + thickness,
-                      thickness,
-                    ]}
-                  />
-                  <meshBasicMaterial
-                    color="#f8f9fa"
-                    transparent
-                    opacity={slidingDoorIsSelected ? 0.6 : 0.4}
-                    depthWrite={false}
-                    depthTest={false}
-                  />
-                </mesh>
-              )}
-
-              {/* Icon */}
-              {(slidingDoorIsHovered ||
-                slidingDoorIsSelected ||
-                isSelectingFacades()) && (
-                <group
-                  position={[
-                    0,
-                    0,
-                    thickness / 2 + 0.02, // In front of facade
-                  ]}
-                >
-                  {/* Icon background */}
-                  <mesh>
-                    <circleGeometry args={[0.05, 32]} />
-                    <meshBasicMaterial
-                      color="white"
-                      transparent
-                      opacity={0.9}
-                    />
-                  </mesh>
-
-                  {/* Icon text */}
-                  <Text
-                    position={[0, 0, 0.01]}
-                    color={slidingDoorIsSelected ? "green" : "#4169E1"}
-                    fontSize={0.1}
-                    anchorX="center"
-                    anchorY="middle"
-                  >
-                    {slidingDoorIsSelected ? "✓" : "+"}
-                  </Text>
-                </group>
-              )}
+              <FacadeHighlight
+                overlaySize={[
+                  slidingDoorWidth,
+                  facadeHeight + thickness,
+                  thickness,
+                ]}
+                overlayPosition={[0, 0, 0.01]}
+                iconPosition={[0, 0, thickness / 2 + 0.02]}
+                spacingId={firstSpacingId}
+              />
 
               {/* Right door handle */}
               {renderHandle(handleType, [

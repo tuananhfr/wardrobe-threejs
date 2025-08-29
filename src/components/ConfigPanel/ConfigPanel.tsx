@@ -149,7 +149,7 @@ const ConfigPanel: React.FC = () => {
       {/* 7. doors & drawers */}
       <DoorsDrawersSection />
 
-      {/* n. Sélection & Textures */}
+      {/* 8. Sélection & Textures */}
       <div className="accordion-item">
         <h2 className="accordion-header" id="headingTextures">
           <button

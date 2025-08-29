@@ -9,12 +9,15 @@ import AngleWardrobe from "./AngleWardrobe";
 import FormeUWardrobe from "./FormeUWardrobe";
 import WardrobeInteractions from "./WardrobeInteractions";
 import BaseBar from "./BaseBar";
+import SectionMeasurements from "./SectionMeasurements";
 
 interface WardrobeModelProps {
-  showMeasurements?: boolean;
+  showMeasurements: boolean;
 }
 
-const WardrobeModel: React.FC<WardrobeModelProps> = () => {
+const WardrobeModel: React.FC<WardrobeModelProps> = ({
+  showMeasurements = false,
+}) => {
   const { config } = useConfig();
   const groupRef = useRef<THREE.Group>(null);
   const texture = useLoader(TextureLoader, config.texture.src);
@@ -134,6 +137,15 @@ const WardrobeModel: React.FC<WardrobeModelProps> = () => {
       />
       {/* Main wardrobe structure */}
       {renderWardrobeType()}
+
+      {/* Section Measurements - hiển thị kích thước các section */}
+      <SectionMeasurements
+        sections={sectionsInMeters.sections}
+        height={height}
+        thickness={thickness}
+        wardrobeType={currentWardrobeType.id}
+        showMeasurements={showMeasurements}
+      />
 
       {/* Interactive behaviors */}
       <WardrobeInteractions />

@@ -1,6 +1,7 @@
 // src/pages/WardrobePage.tsx
 import ConfigPanel from "@/components/ConfigPanel/ConfigPanel";
 import PreviewPanel from "@/components/PreviewPanel/PreviewPanel";
+import PriceSection from "./components/ConfigPanel/section/PriceSection";
 
 function App() {
   return (
@@ -63,7 +64,9 @@ function App() {
         style={{ minHeight: "70px" }}
       >
         {/* PriceSection à gauche */}
-        <div className="flex-grow-1 me-3">{/* <PriceSection /> */}</div>
+        <div className="flex-grow-1 me-3">
+          <PriceSection />
+        </div>
 
         {/* ActionButtons à droite */}
         <div className="flex-shrink-0">{/* <ActionButtons /> */}</div>

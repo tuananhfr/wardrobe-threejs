@@ -6,6 +6,16 @@ export const usePrice = () => {
   const WOOD_PANEL_PRICE_PER_M2 = 200;
   const BASE_BAR_WIDTH_PRICE = 12;
 
+  // LED pricing constants
+  const LED_STRIP_PRICE_PER_METER = 120; // 120€/m (100cm)
+  const LED_CONVERTISSEUR_PRICE = 40; // 40€ cho 1 convertisseur
+
+  // Internal Equipment pricing constants
+  const EQUIPMENT_VIDE_PRICE = 0; // 0€
+  const EQUIPMENT_TRIGLE_PRICE = 30; // 30€
+  const EQUIPMENT_PENDERIE_ESCAMOTABLE_PRICE = 120; // 120€
+  const EQUIPMENT_DOUBLE_RAIL_PRICE = 150; // 150€ (30€ + 120€)
+
   // Hàm tính giá chân kệ dựa trên các section
   const calculateFeetPrice = () => {
     const { wardrobeType } = config;
@@ -172,45 +182,169 @@ export const usePrice = () => {
     };
   };
 
+  // Hàm tính giá kệ (shelves)
+  const calculateShelvesPrice = () => {
+    const { wardrobeType, thickness } = config;
+    let totalShelvesPrice = 0;
+
+    // Helper: xác định cột góc (giống logic trong SectionShelves)
+    const getCornerConfiguration = (
+      sectionName: string,
+      columnIndex: number,
+      totalColumns: number
+    ) => {
+      const { id } = wardrobeType;
+      const isFirst = columnIndex === 0;
+      const isLast = columnIndex === totalColumns - 1;
+
+      if (id === "Angle" && sectionName === "sectionB" && isFirst) {
+        return true;
+      }
+      if (id === "Forme U" && sectionName === "sectionB" && isLast) {
+        return true;
+      }
+      if (id === "Forme U" && sectionName === "sectionC" && isFirst) {
+        return true;
+      }
+      return false;
+    };
+
+    // Tính giá kệ cho từng section
+    Object.entries(wardrobeType.sections).forEach(([sectionName, section]) => {
+      if (!section || !section.columns) return;
+
+      section.columns.forEach((column, columnIndex) => {
+        if (!column.shelves?.spacings) return;
+
+        // Tính width theo logic SectionShelves
+        const isCorner = getCornerConfiguration(
+          sectionName,
+          columnIndex,
+          section.columns.length
+        );
+        const shelfWidth = column.width + (isCorner ? 2 * thickness : 0);
+
+        // Tính depth: section.depth - 2*thickness
+        const shelfDepth = section.depth - 2 * thickness;
+
+        // Tính diện tích kệ: width * depth
+        const shelfArea = shelfWidth * shelfDepth;
+
+        // Tính giá kệ: diện tích * giá gỗ/m²
+        const shelfPrice = (shelfArea / 10000) * WOOD_PANEL_PRICE_PER_M2;
+
+        // Nhân với số lượng kệ trong cột này
+        const shelfCount = column.shelves.spacings.length - 1; // Trừ đi spacing cuối (đến plafond)
+        totalShelvesPrice += shelfPrice * shelfCount;
+      });
+    });
+
+    return totalShelvesPrice;
+  };
+
+  // Hàm tính giá LED
+  const calculateLEDPrice = () => {
+    const { wardrobeType, height, baseBarHeight } = config;
+
+    // Chỉ tính giá nếu có LED
+    if (!config.ledColor || config.ledColor === "") {
+      return { total: 0, stripsPrice: 0, convertisseurPrice: 0 };
+    }
+
+    let totalLedLength = 0; // Tổng chiều dài LED (cm)
+    let totalLedStrips = 0; // Tổng số LED strips
+
+    // Tính tổng chiều dài LED cho tất cả section
+    Object.entries(wardrobeType.sections).forEach(([, section]) => {
+      if (!section || !section.columns) return;
+
+      // LED ở cột ngăn (giữa các cột)
+      const columnLedCount =
+        section.columns.length > 1 ? (section.columns.length - 1) * 2 : 0;
+
+      // LED ở cạnh trái và phải khung tủ (SectionFrame)
+      const frameLedCount = 2; // Luôn có 2 LED (trái + phải)
+
+      // Tổng số LED strips cho section này
+      const sectionLedStrips = columnLedCount + frameLedCount;
+      totalLedStrips += sectionLedStrips;
+
+      // Chiều cao LED (trừ 10cm khoảng cách an toàn)
+      const ledHeight = Math.max(0, height - baseBarHeight - 10);
+
+      // Tổng chiều dài LED cho section này
+      const sectionLedLength = sectionLedStrips * ledHeight;
+      totalLedLength += sectionLedLength;
+    });
+
+    // Tính giá LED strips: 120€/m (100cm)
+    const stripsPrice = (totalLedLength / 100) * LED_STRIP_PRICE_PER_METER;
+
+    // Giá Convertisseur: 40€ (chỉ cần 1 cái)
+    const convertisseurPrice = LED_CONVERTISSEUR_PRICE;
+
+    const total = stripsPrice + convertisseurPrice;
+
+    return {
+      total,
+      stripsPrice,
+      convertisseurPrice,
+      totalLedLength,
+      totalLedStrips,
+    };
+  };
+
+  // Hàm tính giá thiết bị nội thất
+  const calculateInternalEquipmentPrice = () => {
+    let totalEquipmentPrice = 0;
+    let equipmentCount = 0;
+
+    Object.entries(config.internalEquipmentConfig || {}).forEach(
+      ([, equipmentType]) => {
+        let price = 0;
+
+        switch (equipmentType) {
+          case "vide":
+            price = EQUIPMENT_VIDE_PRICE;
+            break;
+          case "trigle":
+            price = EQUIPMENT_TRIGLE_PRICE;
+            break;
+          case "penderieEscamotable":
+            price = EQUIPMENT_PENDERIE_ESCAMOTABLE_PRICE;
+            break;
+          case "doubleRail":
+            price = EQUIPMENT_DOUBLE_RAIL_PRICE;
+            break;
+          default:
+            price = 0;
+        }
+
+        totalEquipmentPrice += price;
+        if (price > 0) equipmentCount++;
+      }
+    );
+
+    return {
+      total: totalEquipmentPrice,
+      equipmentCount,
+      totalSpacings: Object.keys(config.internalEquipmentConfig || {}).length,
+    };
+  };
+
   // Hàm cập nhật giá
   const updatePrice = () => {
     const feet = calculateFeetPrice();
     const frame = calculateFramePrice();
-    const calculatedPrice = feet + frame.total;
+    const shelves = calculateShelvesPrice();
+    const led = calculateLEDPrice();
+    const internalEquipment = calculateInternalEquipmentPrice();
+    const calculatedPrice =
+      feet + frame.total + shelves + led.total + internalEquipment.total;
     const finalPrice = Math.round(calculatedPrice * 100) / 100;
     const originalPrice = finalPrice * 1.2; // originalPrice = 1.2 × price
 
-    // Log breakdown
-    try {
-      // Nhóm log cho dễ đọc trên console
-      console.groupCollapsed("Price breakdown");
-      console.log("feetPrice:", feet);
-      // Log số lượng panel dọc của mỗi section (chỉ tính khi > 1 cột)
-      try {
-        const sections = config.wardrobeType.sections;
-        const countPanels = (section?: WardrobeSection) =>
-          !section ? 0 : Math.max(0, (section.columns?.length || 0) - 1);
-        const verticalPanels = {
-          sectionA: countPanels(sections.sectionA),
-          sectionB: countPanels(sections.sectionB),
-          sectionC: countPanels(sections.sectionC),
-        };
-        console.groupCollapsed("vertical panels by section");
-        console.log(verticalPanels);
-        console.groupEnd();
-      } catch {}
-      console.groupCollapsed("framePrice");
-      console.log(
-        "vertical (sides + panels between columns):",
-        frame.verticalFramePrice
-      );
-      console.log("horizontal (sol + plafond):", frame.horizontalFramePrice);
-      console.log("backPanel:", frame.backPanelPrice);
-      console.log("total:", frame.total);
-      console.groupEnd();
-      console.log("finalPrice:", finalPrice, "originalPrice:", originalPrice);
-      console.groupEnd();
-    } catch {}
+    // Không còn logging - chỉ cập nhật giá
 
     // Chỉ cập nhật nếu giá thay đổi
     if (Math.abs(finalPrice - config.price) > 0.01) {
@@ -230,7 +364,14 @@ export const usePrice = () => {
   // Effect để cập nhật giá khi có thay đổi
   useEffect(() => {
     updatePrice();
-  }, [wardrobeType, thickness, height, baseBarHeight]);
+  }, [
+    wardrobeType,
+    thickness,
+    height,
+    baseBarHeight,
+    config.ledColor,
+    config.internalEquipmentConfig,
+  ]);
 
   // Return các giá trị và hàm hữu ích
   return {
@@ -242,6 +383,15 @@ export const usePrice = () => {
 
     // Chi tiết giá khung
     framePrice: calculateFramePrice(),
+
+    // Chi tiết giá kệ
+    shelvesPrice: calculateShelvesPrice(),
+
+    // Chi tiết giá LED
+    ledPrice: calculateLEDPrice(),
+
+    // Chi tiết giá thiết bị nội thất
+    internalEquipmentPrice: calculateInternalEquipmentPrice(),
 
     // Discount percentage
     discountPercentage: config.originalPrice

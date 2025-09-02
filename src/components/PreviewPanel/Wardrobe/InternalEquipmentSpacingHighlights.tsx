@@ -42,7 +42,10 @@ const InternalEquipmentSpacingHighlights: React.FC<
   // Only show highlights when in internal equipment mode
   const shouldShowHighlights = isInternalEquipmentMode;
 
-  // ✅ DI CHUYỂN TẤT CẢ HOOKS LÊN TRÊN TRƯỚC KHI CÓ BẤT KỲ EARLY RETURN NÀO
+  // Don't render if not in the right mode
+  if (!shouldShowHighlights) {
+    return null;
+  }
 
   // Reset when internal equipment mode is disabled
   useEffect(() => {
@@ -53,125 +56,6 @@ const InternalEquipmentSpacingHighlights: React.FC<
       updateConfig("selectedSpacingIds", []);
     }
   }, [shouldShowHighlights, updateConfig]);
-
-  // Auto-update config when shelves change
-  useEffect(() => {
-    const updatedConfig = { ...config.internalEquipmentConfig };
-    let hasChanges = false;
-
-    // Helper function to get spacing height
-    const getSpacingHeight = (spacingId: string): number | null => {
-      if (!spacingId) return null;
-
-      // Parse spacingId format: "sectionA-col-1-spacing-3"
-      const parts = spacingId.split("-");
-      if (parts.length < 4) return null;
-
-      // Extract column ID and spacing index
-      let columnId: string;
-      let spacingIndex: number;
-
-      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
-        // Format: "sectionA-col-1-spacing-3"
-        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`; // "sectionA-col-1"
-        spacingIndex = parseInt(parts[4]); // 3
-      } else {
-        // Fallback to old format: "columnId-spacing-index"
-        columnId = parts[0];
-        spacingIndex = parseInt(parts[2]);
-      }
-
-      // Find the column in sections
-      for (const [, section] of Object.entries(config.wardrobeType.sections)) {
-        if (section && section.columns) {
-          const column = section.columns.find(
-            (col: any) => col.id === columnId
-          );
-          if (column) {
-            const spacings = column.shelves?.spacings || [];
-
-            // If no spacings, return full column height
-            if (spacings.length === 0) {
-              return (
-                config.height - config.baseBarHeight - 2 * config.thickness
-              );
-            }
-
-            // Return spacing height if index exists
-            if (spacingIndex >= 0 && spacingIndex < spacings.length) {
-              return spacings[spacingIndex].spacing;
-            }
-          }
-        }
-      }
-
-      return null;
-    };
-
-    // Check each column for shelf changes
-    Object.entries(config.wardrobeType.sections).forEach(([, section]) => {
-      if (section && section.columns) {
-        section.columns.forEach((column) => {
-          const columnSpacingId = `${column.id}-spacing-0`;
-          const hasShelves =
-            column.shelves?.spacings && column.shelves.spacings.length > 0;
-
-          // If column has shelves and has column rail config, move it to first spacing
-          if (hasShelves && updatedConfig[columnSpacingId] === "trigle") {
-            const firstSpacingId = `${column.id}-spacing-0`;
-            if (updatedConfig[firstSpacingId] !== "trigle") {
-              updatedConfig[firstSpacingId] = "trigle";
-              delete updatedConfig[columnSpacingId];
-              hasChanges = true;
-            }
-          }
-          // If column has no shelves and has spacing rail config, move it to column
-          else if (!hasShelves && updatedConfig[columnSpacingId] !== "trigle") {
-            // Check if any spacing of this column has trigle config
-            const columnSpacingIds = Object.keys(updatedConfig).filter(
-              (id) => id.startsWith(column.id) && id !== columnSpacingId
-            );
-
-            const hasSpacingRail = columnSpacingIds.some(
-              (id) => updatedConfig[id] === "trigle"
-            );
-            if (hasSpacingRail) {
-              updatedConfig[columnSpacingId] = "trigle";
-              // Remove all spacing rails for this column
-              columnSpacingIds.forEach((id) => {
-                if (updatedConfig[id] === "trigle") {
-                  delete updatedConfig[id];
-                }
-              });
-              hasChanges = true;
-            }
-          }
-        });
-      }
-    });
-
-    // NEW LOGIC: Remove rail from spacings that are too small (< 80cm)
-    Object.keys(updatedConfig).forEach((spacingId) => {
-      if (updatedConfig[spacingId] === "trigle") {
-        const spacingHeight = getSpacingHeight(spacingId);
-        if (spacingHeight !== null && spacingHeight < 80) {
-          // Remove rail from spacing that's too small
-          delete updatedConfig[spacingId];
-          hasChanges = true;
-        }
-      }
-    });
-
-    if (hasChanges) {
-      updateConfig("internalEquipmentConfig", updatedConfig);
-    }
-  }, [config.wardrobeType, config.internalEquipmentConfig, updateConfig]);
-
-  // ✅ CHỈ SAU KHI TẤT CẢ HOOKS ĐÃ ĐƯỢC GỌI, MỚI KIỂM TRA ĐIỀU KIỆN RETURN
-  // Don't render if not in the right mode
-  if (!shouldShowHighlights) {
-    return null;
-  }
 
   // Helper function to get column X position
   const getColumnXPosition = (colIndex: number) => {
@@ -307,6 +191,119 @@ const InternalEquipmentSpacingHighlights: React.FC<
 
   const spacingPositions = getSpacingPositions();
 
+  // Auto-update config when shelves change
+  useEffect(() => {
+    const updatedConfig = { ...config.internalEquipmentConfig };
+    let hasChanges = false;
+
+    // Helper function to get spacing height
+    const getSpacingHeight = (spacingId: string): number | null => {
+      if (!spacingId) return null;
+
+      // Parse spacingId format: "sectionA-col-1-spacing-3"
+      const parts = spacingId.split("-");
+      if (parts.length < 4) return null;
+
+      // Extract column ID and spacing index
+      let columnId: string;
+      let spacingIndex: number;
+
+      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+        // Format: "sectionA-col-1-spacing-3"
+        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`; // "sectionA-col-1"
+        spacingIndex = parseInt(parts[4]); // 3
+      } else {
+        // Fallback to old format: "columnId-spacing-index"
+        columnId = parts[0];
+        spacingIndex = parseInt(parts[2]);
+      }
+
+      // Find the column in sections
+      for (const [, section] of Object.entries(config.wardrobeType.sections)) {
+        if (section && section.columns) {
+          const column = section.columns.find(
+            (col: any) => col.id === columnId
+          );
+          if (column) {
+            const spacings = column.shelves?.spacings || [];
+
+            // If no spacings, return full column height
+            if (spacings.length === 0) {
+              return (
+                config.height - config.baseBarHeight - 2 * config.thickness
+              );
+            }
+
+            // Return spacing height if index exists
+            if (spacingIndex >= 0 && spacingIndex < spacings.length) {
+              return spacings[spacingIndex].spacing;
+            }
+          }
+        }
+      }
+
+      return null;
+    };
+
+    // Check each column for shelf changes
+    Object.entries(config.wardrobeType.sections).forEach(([, section]) => {
+      if (section && section.columns) {
+        section.columns.forEach((column) => {
+          const columnSpacingId = `${column.id}-spacing-0`;
+          const hasShelves =
+            column.shelves?.spacings && column.shelves.spacings.length > 0;
+
+          // If column has shelves and has column rail config, move it to first spacing
+          if (hasShelves && updatedConfig[columnSpacingId] === "trigle") {
+            const firstSpacingId = `${column.id}-spacing-0`;
+            if (updatedConfig[firstSpacingId] !== "trigle") {
+              updatedConfig[firstSpacingId] = "trigle";
+              delete updatedConfig[columnSpacingId];
+              hasChanges = true;
+            }
+          }
+          // If column has no shelves and has spacing rail config, move it to column
+          else if (!hasShelves && updatedConfig[columnSpacingId] !== "trigle") {
+            // Check if any spacing of this column has trigle config
+            const columnSpacingIds = Object.keys(updatedConfig).filter(
+              (id) => id.startsWith(column.id) && id !== columnSpacingId
+            );
+
+            const hasSpacingRail = columnSpacingIds.some(
+              (id) => updatedConfig[id] === "trigle"
+            );
+            if (hasSpacingRail) {
+              updatedConfig[columnSpacingId] = "trigle";
+              // Remove all spacing rails for this column
+              columnSpacingIds.forEach((id) => {
+                if (updatedConfig[id] === "trigle") {
+                  delete updatedConfig[id];
+                }
+              });
+              hasChanges = true;
+            }
+          }
+        });
+      }
+    });
+
+    // NEW LOGIC: Remove rail from spacings that are too small (< 80cm)
+    Object.keys(updatedConfig).forEach((spacingId) => {
+      if (updatedConfig[spacingId] === "trigle") {
+        const spacingHeight = getSpacingHeight(spacingId);
+        if (spacingHeight !== null && spacingHeight < 80) {
+          // Remove rail from spacing that's too small
+          delete updatedConfig[spacingId];
+          hasChanges = true;
+        }
+      }
+    });
+
+    if (hasChanges) {
+      updateConfig("internalEquipmentConfig", updatedConfig);
+    }
+  }, [config.wardrobeType, config.internalEquipmentConfig, updateConfig]);
+
   // Handle spacing click
   const handleSpacingClick = (spacingId: string) => {
     if (config.selectedSpacingId === spacingId) {
@@ -373,6 +370,11 @@ const InternalEquipmentSpacingHighlights: React.FC<
     setHoveredSpacing(null);
     document.body.style.cursor = "auto";
   };
+
+  // Don't render if not in the right mode
+  if (!shouldShowHighlights) {
+    return null;
+  }
 
   return (
     <group

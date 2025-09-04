@@ -16,6 +16,12 @@ export const usePrice = () => {
   const EQUIPMENT_PENDERIE_ESCAMOTABLE_PRICE = 120; // 120€
   const EQUIPMENT_DOUBLE_RAIL_PRICE = 150; // 150€ (30€ + 120€)
 
+  // Tiroir internal pricing constants
+  const TIROIR_WIDTH_45_PRICE = 150; // <45cm = 150€
+  const TIROIR_WIDTH_65_PRICE = 190; // <65cm = 190€
+  const TIROIR_WIDTH_95_PRICE = 210; // <95cm = 210€
+  const TIROIR_WIDTH_OVER_95_PRICE = 230; // >95cm = 230€
+
   // Hàm tính giá chân kệ dựa trên các section
   const calculateFeetPrice = () => {
     const { wardrobeType } = config;
@@ -300,24 +306,45 @@ export const usePrice = () => {
     let equipmentCount = 0;
 
     Object.entries(config.internalEquipmentConfig || {}).forEach(
-      ([, equipmentType]) => {
+      ([, equipmentVal]) => {
         let price = 0;
 
-        switch (equipmentType) {
-          case "vide":
-            price = EQUIPMENT_VIDE_PRICE;
-            break;
-          case "trigle":
-            price = EQUIPMENT_TRIGLE_PRICE;
-            break;
-          case "penderieEscamotable":
-            price = EQUIPMENT_PENDERIE_ESCAMOTABLE_PRICE;
-            break;
-          case "doubleRail":
-            price = EQUIPMENT_DOUBLE_RAIL_PRICE;
-            break;
-          default:
-            price = 0;
+        if (typeof equipmentVal === "string") {
+          // Equipment type là string
+          switch (equipmentVal) {
+            case "vide":
+              price = EQUIPMENT_VIDE_PRICE;
+              break;
+            case "trigle":
+              price = EQUIPMENT_TRIGLE_PRICE;
+              break;
+            case "penderieEscamotable":
+              price = EQUIPMENT_PENDERIE_ESCAMOTABLE_PRICE;
+              break;
+            case "doubleRail":
+              price = EQUIPMENT_DOUBLE_RAIL_PRICE;
+              break;
+            default:
+              price = 0;
+          }
+        } else if (
+          typeof equipmentVal === "object" &&
+          equipmentVal?.type === "tiroirInterieur"
+        ) {
+          // Tiroir internal: tính giá theo width của từng tiroir
+          equipmentVal.items.forEach((tiroir) => {
+            const width = tiroir.width;
+            if (width < 45) {
+              price += TIROIR_WIDTH_45_PRICE;
+            } else if (width < 65) {
+              price += TIROIR_WIDTH_65_PRICE;
+            } else if (width < 95) {
+              price += TIROIR_WIDTH_95_PRICE;
+            } else {
+              // Width >= 95cm
+              price += TIROIR_WIDTH_OVER_95_PRICE;
+            }
+          });
         }
 
         totalEquipmentPrice += price;

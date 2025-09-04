@@ -41,7 +41,10 @@ declare global {
         | "trigle"
         | "penderieEscamotable"
         | "doubleRail"
-        | "tiroirInterieur";
+        | {
+            type: "tiroirInterieur";
+            items: Array<{ id: string; height: number; width: number }>;
+          };
     };
     selectedDoorsDrawersType:
       | "vide"

@@ -117,16 +117,23 @@ const RailRenderer: React.FC<RailRendererProps> = ({
 
   // Get all spacing IDs that have rail equipment for this section
   const railSpacingIds = Object.entries(config.internalEquipmentConfig)
-    .filter(([spacingId, equipmentType]) => {
+    .filter(([spacingId, equipmentVal]) => {
+      const type =
+        typeof equipmentVal === "string" ? equipmentVal : equipmentVal?.type;
       return (
-        (equipmentType === "trigle" ||
-          equipmentType === "penderieEscamotable" ||
-          equipmentType === "doubleRail" ||
-          equipmentType === "tiroirInterieur") &&
+        (type === "trigle" ||
+          type === "penderieEscamotable" ||
+          type === "doubleRail" ||
+          type === "tiroirInterieur") &&
         spacingId.startsWith(sectionName)
       );
     })
-    .map(([spacingId, equipmentType]) => ({ spacingId, equipmentType }));
+    .map(([spacingId, equipmentVal]) => ({
+      spacingId,
+      equipmentType:
+        typeof equipmentVal === "string" ? equipmentVal : equipmentVal?.type,
+      equipmentVal,
+    }));
 
   // Don't render if no rail equipment is configured for this section
   if (railSpacingIds.length === 0) {
@@ -169,7 +176,7 @@ const RailRenderer: React.FC<RailRendererProps> = ({
 
   // Render all rails for configured rail equipment
   const renderRails = () => {
-    return railSpacingIds.map(({ spacingId, equipmentType }) => {
+    return railSpacingIds.map(({ spacingId, equipmentType, equipmentVal }) => {
       const { foundColumn, foundColumnIndex, spacingIndex } =
         parseSpacingId(spacingId);
 
@@ -246,115 +253,142 @@ const RailRenderer: React.FC<RailRendererProps> = ({
       // Render tiroir intérieur
       if (equipmentType === "tiroirInterieur") {
         const tiroirDepth = railPosition.depth * 0.6; // Độ sâu của tiroir
-        const tiroirHeight = 0.15; // Chiều cao cố định của tiroir (15cm)
+        // Lấy cấu hình tiroir từ equipmentVal (object)
+        const items =
+          typeof equipmentVal === "object" &&
+          equipmentVal?.type === "tiroirInterieur"
+            ? equipmentVal.items
+            : [];
+        const tiroirHeight = (items[0]?.height || 15) / 100; // cm -> m
         const sideThickness = thickness * 0.5; // Độ dày thành bên
         const facadeZ = railPosition.depth / 2 - thickness / 3;
+        // Tính đáy (bottom) của spacing này theo world Y
+        let bottomYWorld = baseBarHeight * 100; // cm
+        const spacingsForCol = foundColumn.shelves?.spacings || [];
+        for (let i = 0; i < spacingIndex; i++) {
+          const s = spacingsForCol[i];
+          bottomYWorld += (s?.spacing || 0) + thickness * 100;
+        }
+        bottomYWorld = bottomYWorld / 100 - height / 2; // m
+
+        // Render theo số lượng tiroir: xếp chồng từ đáy lên, gap cố định 2cm
+        const gapY = 2 * thickness; // m
+        const startY = bottomYWorld + tiroirHeight / 2; // m
 
         return (
-          <group
-            key={spacingId}
-            position={[railPosition.x, railPosition.y, facadeZ]}
-            ref={(ref) => {
-              if (ref) tiroirGroupsRef.current[`${spacingId}-tiroir`] = ref;
-            }}
-            onPointerOver={(e) => {
-              e.stopPropagation();
-              const k = `${spacingId}-tiroir`;
-              // Always open on hover
-              triggerTiroir(k, true, facadeZ);
-            }}
-            onPointerOut={(e) => {
-              e.stopPropagation();
-              const k = `${spacingId}-tiroir`;
-              // Always close when not hovering
-              triggerTiroir(k, false, facadeZ);
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              const k = `${spacingId}-tiroir`;
-              const next = !openedTiroirsRef.current[k];
-              openedTiroirsRef.current[k] = next;
-              triggerTiroir(k, next, facadeZ);
-            }}
-          >
-            {/* Tiroir front panel */}
-            <mesh position={[0, 0, -thickness]}>
-              <boxGeometry
-                args={[railPosition.width, tiroirHeight + thickness, thickness]}
-              />
-              <meshStandardMaterial
-                map={getSectionTexture(spacingId)}
-                color="white"
-              />
-            </mesh>
+          <group key={spacingId}>
+            {items.map((_, idx) => {
+              const y = startY + idx * (tiroirHeight + gapY);
+              const key = `${spacingId}-tiroir-${idx + 1}`;
+              return (
+                <group
+                  key={key}
+                  position={[railPosition.x, y, facadeZ]}
+                  ref={(ref) => {
+                    if (ref) tiroirGroupsRef.current[key] = ref as any;
+                  }}
+                  onPointerOver={(e) => {
+                    e.stopPropagation();
+                    triggerTiroir(key, true, facadeZ);
+                  }}
+                  onPointerOut={(e) => {
+                    e.stopPropagation();
+                    triggerTiroir(key, false, facadeZ);
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const next = !openedTiroirsRef.current[key];
+                    openedTiroirsRef.current[key] = next;
+                    triggerTiroir(key, next, facadeZ);
+                  }}
+                >
+                  {/* Tiroir front panel */}
+                  <mesh position={[0, 0, -thickness]}>
+                    <boxGeometry
+                      args={[
+                        railPosition.width,
+                        tiroirHeight + thickness,
+                        thickness,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      map={getSectionTexture(spacingId)}
+                      color="white"
+                    />
+                  </mesh>
 
-            {/* Left side panel */}
-            <mesh
-              position={[
-                -railPosition.width / 2 + sideThickness / 2,
-                0,
-                -tiroirDepth / 2 - thickness,
-              ]}
-            >
-              <boxGeometry args={[sideThickness, tiroirHeight, tiroirDepth]} />
-              <meshStandardMaterial
-                map={getSectionTexture(spacingId)}
-                color="white"
-              />
-            </mesh>
+                  {/* Left side panel */}
+                  <mesh
+                    position={[
+                      -railPosition.width / 2 + sideThickness / 2,
+                      0,
+                      -tiroirDepth / 2 - thickness,
+                    ]}
+                  >
+                    <boxGeometry
+                      args={[sideThickness, tiroirHeight, tiroirDepth]}
+                    />
+                    <meshStandardMaterial
+                      map={getSectionTexture(spacingId)}
+                      color="white"
+                    />
+                  </mesh>
 
-            {/* Right side panel */}
-            <mesh
-              position={[
-                railPosition.width / 2 - sideThickness / 2,
-                0,
-                -tiroirDepth / 2 - thickness,
-              ]}
-            >
-              <boxGeometry args={[sideThickness, tiroirHeight, tiroirDepth]} />
-              <meshStandardMaterial
-                map={getSectionTexture(spacingId)}
-                color="white"
-              />
-            </mesh>
+                  {/* Right side panel */}
+                  <mesh
+                    position={[
+                      railPosition.width / 2 - sideThickness / 2,
+                      0,
+                      -tiroirDepth / 2 - thickness,
+                    ]}
+                  >
+                    <boxGeometry
+                      args={[sideThickness, tiroirHeight, tiroirDepth]}
+                    />
+                    <meshStandardMaterial
+                      map={getSectionTexture(spacingId)}
+                      color="white"
+                    />
+                  </mesh>
 
-            {/* Bottom panel */}
-            <mesh
-              position={[
-                0,
-                -tiroirHeight / 2 + sideThickness / 2,
-                -tiroirDepth / 2 - thickness,
-              ]}
-            >
-              <boxGeometry
-                args={[
-                  railPosition.width - sideThickness * 2,
-                  sideThickness,
-                  tiroirDepth,
-                ]}
-              />
-              <meshStandardMaterial
-                map={getSectionTexture(spacingId)}
-                color="white"
-              />
-            </mesh>
+                  {/* Bottom panel */}
+                  <mesh
+                    position={[
+                      0,
+                      -tiroirHeight / 2 + sideThickness / 2,
+                      -tiroirDepth / 2 - thickness,
+                    ]}
+                  >
+                    <boxGeometry
+                      args={[
+                        railPosition.width - sideThickness * 2,
+                        sideThickness,
+                        tiroirDepth,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      map={getSectionTexture(spacingId)}
+                      color="white"
+                    />
+                  </mesh>
 
-            {/* Back panel */}
-            <mesh position={[0, 0, -tiroirDepth]}>
-              <boxGeometry
-                args={[
-                  railPosition.width - sideThickness * 2,
-                  tiroirHeight,
-                  sideThickness - thickness,
-                ]}
-              />
-              <meshStandardMaterial
-                map={getSectionTexture(spacingId)}
-                color="white"
-              />
-            </mesh>
-
-            {/* Không có tay nắm (poignée) */}
+                  {/* Back panel */}
+                  <mesh position={[0, 0, -tiroirDepth]}>
+                    <boxGeometry
+                      args={[
+                        railPosition.width - sideThickness * 2,
+                        tiroirHeight,
+                        sideThickness - thickness,
+                      ]}
+                    />
+                    <meshStandardMaterial
+                      map={getSectionTexture(spacingId)}
+                      color="white"
+                    />
+                  </mesh>
+                </group>
+              );
+            })}
           </group>
         );
       }

@@ -183,10 +183,16 @@ const InternalEquipmentSection: React.FC = () => {
   // Update selected equipment type based on selected spacing
   useEffect(() => {
     if (config.selectedSpacingId) {
-      const equipmentType =
+      const equipmentVal =
         config.internalEquipmentConfig[config.selectedSpacingId];
-      if (equipmentType) {
-        updateConfig("selectedInternalEquipmentType", equipmentType);
+      if (equipmentVal) {
+        const normalizedType =
+          typeof equipmentVal === "string"
+            ? equipmentVal
+            : equipmentVal.type === "tiroirInterieur"
+            ? "tiroirInterieur"
+            : (null as any);
+        updateConfig("selectedInternalEquipmentType", normalizedType);
       } else {
         updateConfig("selectedInternalEquipmentType", null);
       }
@@ -199,8 +205,12 @@ const InternalEquipmentSection: React.FC = () => {
   useEffect(() => {
     if (config.selectedSpacingId) {
       const spacingHeight = getSpacingHeight(config.selectedSpacingId);
-      const currentEquipment =
+      const currentEquipmentVal =
         config.internalEquipmentConfig[config.selectedSpacingId];
+      const currentEquipment =
+        typeof currentEquipmentVal === "string"
+          ? currentEquipmentVal
+          : currentEquipmentVal?.type;
 
       // If spacing is too small and has trigle, remove it and set to vide
       if (
@@ -338,14 +348,72 @@ const InternalEquipmentSection: React.FC = () => {
       return;
     }
 
-    updateConfig("selectedInternalEquipmentType", type);
-
     // Save equipment configuration for the selected spacing
     if (config.selectedSpacingId) {
-      updateConfig("internalEquipmentConfig", {
-        ...config.internalEquipmentConfig,
-        [config.selectedSpacingId]: type,
-      });
+      if (type === "tiroirInterieur") {
+        // Generate default tiroir list based on spacing height and column width
+        const spacingHeightCm = getSpacingHeight(config.selectedSpacingId) || 0;
+        const gap = 2 * config.thickness; // gap = 2 * thickness cm
+
+        // Tìm số tiroir tối ưu: spacingHeight = tiroirHeight × sốTiroir + gap × sốTiroir
+        // → tiroirHeight = (spacingHeight - gap × sốTiroir) / sốTiroir
+        // Tìm sốTiroir lớn nhất sao cho tiroirHeight trong khoảng [10, 30]cm
+        let optimalCount = 1;
+        let optimalHeight = spacingHeightCm;
+
+        for (let count = 1; count <= 10; count++) {
+          // thử tối đa 10 tiroir
+          const calculatedHeight = (spacingHeightCm - gap * count) / count;
+          if (calculatedHeight >= 10 && calculatedHeight <= 30) {
+            optimalCount = count;
+            optimalHeight = calculatedHeight;
+          }
+        }
+
+        const count = optimalCount;
+        const itemHeight = Math.round(optimalHeight * 10) / 10; // làm tròn 1 chữ số thập phân
+
+        // Find column width in cm from spacingId
+        const parts = config.selectedSpacingId.split("-");
+        let columnId = parts[0];
+        if (
+          parts.length === 5 &&
+          parts[1] === "col" &&
+          parts[3] === "spacing"
+        ) {
+          columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+        }
+        let columnWidth = 0;
+        for (const [, section] of Object.entries(
+          config.wardrobeType.sections
+        )) {
+          if (section?.columns) {
+            const col = section.columns.find((c: any) => c.id === columnId);
+            if (col) {
+              columnWidth = col.width;
+              break;
+            }
+          }
+        }
+
+        const items = Array.from({ length: count }).map((_, idx) => ({
+          id: `${config.selectedSpacingId}-tiroir-${idx + 1}`,
+          height: itemHeight,
+          width: columnWidth,
+        }));
+
+        updateConfig("internalEquipmentConfig", {
+          ...config.internalEquipmentConfig,
+          [config.selectedSpacingId]: { type: "tiroirInterieur", items },
+        });
+        updateConfig("selectedInternalEquipmentType", "tiroirInterieur");
+      } else {
+        updateConfig("internalEquipmentConfig", {
+          ...config.internalEquipmentConfig,
+          [config.selectedSpacingId]: type,
+        });
+        updateConfig("selectedInternalEquipmentType", type);
+      }
     }
   };
 

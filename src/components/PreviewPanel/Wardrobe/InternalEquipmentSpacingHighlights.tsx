@@ -315,7 +315,11 @@ const InternalEquipmentSpacingHighlights: React.FC<
       const existingEquipment = config.internalEquipmentConfig[spacingId];
       if (existingEquipment) {
         // If equipment is already configured, use that
-        updateConfig("selectedInternalEquipmentType", existingEquipment);
+        const normalizedType =
+          typeof existingEquipment === "string"
+            ? existingEquipment
+            : existingEquipment.type;
+        updateConfig("selectedInternalEquipmentType", normalizedType as any);
       } else {
         // If no equipment configured, default to "vide"
         updateConfig("selectedInternalEquipmentType", "vide");

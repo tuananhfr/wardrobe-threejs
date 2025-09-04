@@ -296,6 +296,55 @@ const InternalEquipmentSpacingHighlights: React.FC<
       }
     });
 
+    // NEW LOGIC: Auto-update tiroir configuration when spacing height changes
+    Object.keys(updatedConfig).forEach((spacingId) => {
+      const equipmentVal = updatedConfig[spacingId];
+      if (
+        typeof equipmentVal === "object" &&
+        equipmentVal?.type === "tiroirInterieur"
+      ) {
+        const spacingHeight = getSpacingHeight(spacingId);
+        if (spacingHeight !== null) {
+          const gap = 2 * config.thickness; // gap = 2 * thickness cm
+
+          // Tìm số tiroir tối ưu mới
+          let optimalCount = 1;
+          let optimalHeight = spacingHeight;
+
+          for (let count = 1; count <= 10; count++) {
+            const calculatedHeight = (spacingHeight - gap * count) / count;
+            if (calculatedHeight >= 10 && calculatedHeight <= 30) {
+              optimalCount = count;
+              optimalHeight = calculatedHeight;
+            }
+          }
+
+          const newItemHeight = Math.round(optimalHeight * 10) / 10;
+
+          // Tạo danh sách tiroir mới
+          const newItems = Array.from({ length: optimalCount }).map(
+            (_, idx) => ({
+              id: `${spacingId}-tiroir-${idx + 1}`,
+              height: newItemHeight,
+              width: equipmentVal.items[0]?.width || 0, // giữ nguyên width
+            })
+          );
+
+          // Cập nhật nếu có thay đổi
+          if (
+            optimalCount !== equipmentVal.items.length ||
+            Math.abs(newItemHeight - (equipmentVal.items[0]?.height || 0)) > 0.1
+          ) {
+            updatedConfig[spacingId] = {
+              type: "tiroirInterieur",
+              items: newItems,
+            };
+            hasChanges = true;
+          }
+        }
+      }
+    });
+
     if (hasChanges) {
       updateConfig("internalEquipmentConfig", updatedConfig);
     }

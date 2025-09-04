@@ -1,5 +1,7 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
+import { useFrame } from "@react-three/fiber";
+import * as THREE from "three";
 
 interface RailRendererProps {
   sectionName: string;
@@ -7,6 +9,7 @@ interface RailRendererProps {
   height: number;
   baseBarHeight: number;
   thickness: number;
+  texture: THREE.Texture;
 }
 
 const RailRenderer: React.FC<RailRendererProps> = ({
@@ -15,8 +18,102 @@ const RailRenderer: React.FC<RailRendererProps> = ({
   height,
   baseBarHeight,
   thickness,
+  texture,
 }) => {
   const { config } = useWardrobeConfig();
+
+  // Animation refs for tiroir intérieur
+  const openedTiroirsRef = useRef<Record<string, boolean>>({});
+  const tiroirGroupsRef = useRef<Record<string, THREE.Group>>({});
+  const tiroirAnimsRef = useRef<Record<string, any>>({});
+
+  // Easing function
+  const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+
+  // Function to check if animations should be disabled
+  const shouldDisableAnimations = () => {
+    // Disable when Internal Equipment accordion is open
+    if (config.accordionOpen === "collapseInternalEquipment") {
+      return true;
+    }
+    return false;
+  };
+
+  // Function to trigger tiroir animation
+  const triggerTiroir = (key: string, open: boolean, baseZ: number) => {
+    // Don't animate if animations are disabled
+    if (shouldDisableAnimations()) {
+      return;
+    }
+
+    const group = tiroirGroupsRef.current[key];
+    if (!group) return;
+    const currentZ = group.position.z;
+    const travel = Math.min(sectionData.depth * 0.4, 0.4); // max 40cm
+    const targetZ = open ? baseZ + travel : baseZ;
+
+    const id = `${key}-${Date.now()}`;
+    tiroirAnimsRef.current[id] = {
+      key,
+      startZ: currentZ,
+      targetZ,
+      startTime: Date.now(),
+      duration: 300,
+    };
+  };
+
+  // useEffect to close all tiroirs when accordion opens
+  React.useEffect(() => {
+    if (shouldDisableAnimations()) {
+      // Close all tiroirs immediately when accordion opens
+      Object.keys(openedTiroirsRef.current).forEach((key) => {
+        if (openedTiroirsRef.current[key]) {
+          const group = tiroirGroupsRef.current[key];
+          if (group) {
+            // Reset to base position
+            const baseZ = parseFloat(group.position.z.toString()) - 0.4; // Assuming max travel is 0.4
+            group.position.z = baseZ;
+            openedTiroirsRef.current[key] = false;
+          }
+        }
+      });
+    }
+  }, [config.accordionOpen]);
+
+  // useFrame to step tiroir animations
+  useFrame(() => {
+    // Don't animate if animations are disabled
+    if (shouldDisableAnimations()) {
+      return;
+    }
+
+    const now = Date.now();
+
+    // Tiroir animations
+    Object.keys(tiroirAnimsRef.current).forEach((id) => {
+      const anim = tiroirAnimsRef.current[id];
+      const group = tiroirGroupsRef.current[anim.key];
+      if (!group) return;
+      const t = Math.min((now - anim.startTime) / anim.duration, 1);
+      const v = easeOutCubic(t);
+      const z = anim.startZ + (anim.targetZ - anim.startZ) * v;
+      group.position.z = z;
+      if (t >= 1) delete tiroirAnimsRef.current[id];
+    });
+  });
+
+  // Function to get section texture
+  const getSectionTexture = (spacingId: string): THREE.Texture => {
+    // Kiểm tra xem spacing có texture riêng không
+    const customTexture = config.facadeTextureConfig[spacingId];
+    if (customTexture) {
+      // Load custom texture
+      const textureLoader = new THREE.TextureLoader();
+      return textureLoader.load(customTexture.src);
+    }
+    // Sử dụng texture mặc định của section
+    return texture;
+  };
 
   // Get all spacing IDs that have rail equipment for this section
   const railSpacingIds = Object.entries(config.internalEquipmentConfig)
@@ -24,7 +121,8 @@ const RailRenderer: React.FC<RailRendererProps> = ({
       return (
         (equipmentType === "trigle" ||
           equipmentType === "penderieEscamotable" ||
-          equipmentType === "doubleRail") &&
+          equipmentType === "doubleRail" ||
+          equipmentType === "tiroirInterieur") &&
         spacingId.startsWith(sectionName)
       );
     })
@@ -143,6 +241,122 @@ const RailRenderer: React.FC<RailRendererProps> = ({
 
       if (!railPosition) {
         return null;
+      }
+
+      // Render tiroir intérieur
+      if (equipmentType === "tiroirInterieur") {
+        const tiroirDepth = railPosition.depth * 0.6; // Độ sâu của tiroir
+        const tiroirHeight = 0.15; // Chiều cao cố định của tiroir (15cm)
+        const sideThickness = thickness * 0.5; // Độ dày thành bên
+        const facadeZ = railPosition.depth / 2 - thickness / 3;
+
+        return (
+          <group
+            key={spacingId}
+            position={[railPosition.x, railPosition.y, facadeZ]}
+            ref={(ref) => {
+              if (ref) tiroirGroupsRef.current[`${spacingId}-tiroir`] = ref;
+            }}
+            onPointerOver={(e) => {
+              e.stopPropagation();
+              const k = `${spacingId}-tiroir`;
+              // Always open on hover
+              triggerTiroir(k, true, facadeZ);
+            }}
+            onPointerOut={(e) => {
+              e.stopPropagation();
+              const k = `${spacingId}-tiroir`;
+              // Always close when not hovering
+              triggerTiroir(k, false, facadeZ);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              const k = `${spacingId}-tiroir`;
+              const next = !openedTiroirsRef.current[k];
+              openedTiroirsRef.current[k] = next;
+              triggerTiroir(k, next, facadeZ);
+            }}
+          >
+            {/* Tiroir front panel */}
+            <mesh position={[0, 0, -thickness]}>
+              <boxGeometry
+                args={[railPosition.width, tiroirHeight + thickness, thickness]}
+              />
+              <meshStandardMaterial
+                map={getSectionTexture(spacingId)}
+                color="white"
+              />
+            </mesh>
+
+            {/* Left side panel */}
+            <mesh
+              position={[
+                -railPosition.width / 2 + sideThickness / 2,
+                0,
+                -tiroirDepth / 2 - thickness,
+              ]}
+            >
+              <boxGeometry args={[sideThickness, tiroirHeight, tiroirDepth]} />
+              <meshStandardMaterial
+                map={getSectionTexture(spacingId)}
+                color="white"
+              />
+            </mesh>
+
+            {/* Right side panel */}
+            <mesh
+              position={[
+                railPosition.width / 2 - sideThickness / 2,
+                0,
+                -tiroirDepth / 2 - thickness,
+              ]}
+            >
+              <boxGeometry args={[sideThickness, tiroirHeight, tiroirDepth]} />
+              <meshStandardMaterial
+                map={getSectionTexture(spacingId)}
+                color="white"
+              />
+            </mesh>
+
+            {/* Bottom panel */}
+            <mesh
+              position={[
+                0,
+                -tiroirHeight / 2 + sideThickness / 2,
+                -tiroirDepth / 2 - thickness,
+              ]}
+            >
+              <boxGeometry
+                args={[
+                  railPosition.width - sideThickness * 2,
+                  sideThickness,
+                  tiroirDepth,
+                ]}
+              />
+              <meshStandardMaterial
+                map={getSectionTexture(spacingId)}
+                color="white"
+              />
+            </mesh>
+
+            {/* Back panel */}
+            <mesh position={[0, 0, -tiroirDepth]}>
+              <boxGeometry
+                args={[
+                  railPosition.width - sideThickness * 2,
+                  tiroirHeight,
+                  sideThickness - thickness,
+                ]}
+              />
+              <meshStandardMaterial
+                map={getSectionTexture(spacingId)}
+                color="white"
+              />
+            </mesh>
+
+            {/* Không có tay nắm (poignée) */}
+          </group>
+        );
       }
 
       // Render different rail types based on equipment type

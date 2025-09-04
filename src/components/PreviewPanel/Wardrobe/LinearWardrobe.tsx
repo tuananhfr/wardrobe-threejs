@@ -118,6 +118,7 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
         height={height}
         baseBarHeight={baseBarHeight}
         thickness={thickness}
+        texture={texture}
       />
     </group>
   );

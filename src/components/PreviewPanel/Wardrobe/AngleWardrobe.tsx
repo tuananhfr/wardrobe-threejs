@@ -167,6 +167,7 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
         height={height}
         baseBarHeight={baseBarHeight}
         thickness={thickness}
+        texture={texture}
       />
 
       {/* Section B */}
@@ -255,6 +256,7 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
           height={height}
           baseBarHeight={baseBarHeight}
           thickness={thickness}
+          texture={texture}
         />
       </group>
     </group>

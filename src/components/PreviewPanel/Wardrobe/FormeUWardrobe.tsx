@@ -178,6 +178,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
         height={height}
         baseBarHeight={baseBarHeight}
         thickness={thickness}
+        texture={texture}
       />
 
       {/* Section B - cánh trái */}
@@ -265,6 +266,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           height={height}
           baseBarHeight={baseBarHeight}
           thickness={thickness}
+          texture={texture}
         />
       </group>
 
@@ -353,6 +355,7 @@ const FormeUWardrobe: React.FC<FormeUWardrobeProps> = ({
           height={height}
           baseBarHeight={baseBarHeight}
           thickness={thickness}
+          texture={texture}
         />
       </group>
     </group>

@@ -33,13 +33,15 @@ declare global {
       | "trigle"
       | "penderieEscamotable"
       | "doubleRail"
+      | "tiroirInterieur"
       | null;
     internalEquipmentConfig: {
       [spacingId: string]:
         | "vide"
         | "trigle"
         | "penderieEscamotable"
-        | "doubleRail";
+        | "doubleRail"
+        | "tiroirInterieur";
     };
     selectedDoorsDrawersType:
       | "vide"

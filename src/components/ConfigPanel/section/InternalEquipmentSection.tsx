@@ -81,6 +81,58 @@ const InternalEquipmentSection: React.FC = () => {
     return null;
   };
 
+  // Get shelf below height from selectedSpacingId
+  const getShelfBelowHeight = (spacingId: string): number | null => {
+    if (!spacingId) return null;
+
+    // Parse spacingId format: "sectionA-col-1-spacing-3"
+    const parts = spacingId.split("-");
+    if (parts.length < 4) return null;
+
+    // Extract column ID and spacing index
+    let columnId: string;
+    let spacingIndex: number;
+
+    if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+      // Format: "sectionA-col-1-spacing-3"
+      columnId = `${parts[0]}-${parts[1]}-${parts[2]}`; // "sectionA-col-1"
+      spacingIndex = parseInt(parts[4]); // 3
+    } else {
+      // Fallback to old format: "columnId-spacing-index"
+      columnId = parts[0];
+      spacingIndex = parseInt(parts[2]);
+    }
+
+    // Find the column in sections
+    for (const [, section] of Object.entries(config.wardrobeType.sections)) {
+      if (section && section.columns) {
+        const column = section.columns.find((col: any) => col.id === columnId);
+        if (column) {
+          const spacings = column.shelves?.spacings || [];
+
+          // If no spacings, return full column height
+          if (spacings.length === 0) {
+            return config.height - config.baseBarHeight - 2 * config.thickness;
+          }
+
+          // Calculate height from floor to the shelf below this spacing
+          // baseBarHeight + thickness (mặt sol) + sum_{k=0..spacingIndex-1}(spacing_k + thickness)
+          let heightFromFloor = config.baseBarHeight + config.thickness;
+
+          for (let i = 0; i < spacingIndex; i++) {
+            if (i < spacings.length) {
+              heightFromFloor += spacings[i].spacing + config.thickness;
+            }
+          }
+
+          return heightFromFloor;
+        }
+      }
+    }
+
+    return null;
+  };
+
   // Check if trigle button should be disabled
   const isTrigleDisabled = (): boolean => {
     if (!config.selectedSpacingId) return false;
@@ -112,6 +164,20 @@ const InternalEquipmentSection: React.FC = () => {
 
     // Disable if spacing height is less than 200cm
     return spacingHeight < 200;
+  };
+
+  // Check if tiroir intérieur button should be disabled
+  const isTiroirInterieurDisabled = (): boolean => {
+    if (!config.selectedSpacingId) return false;
+
+    // Check if shelf below is too high (> 100cm) - same as drawer logic
+    const shelfBelowHeight = getShelfBelowHeight(config.selectedSpacingId);
+    if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
+      return true; // Disable tiroir intérieur when shelf below is too high
+    }
+
+    // No other restrictions - tiroir intérieur can be used for any spacing height
+    return false;
   };
 
   // Update selected equipment type based on selected spacing
@@ -186,6 +252,22 @@ const InternalEquipmentSection: React.FC = () => {
         // Update selected equipment type to vide
         updateConfig("selectedInternalEquipmentType", "vide");
       }
+
+      // If shelf below is too high and has tiroir intérieur, remove it and set to vide
+      if (currentEquipment === "tiroirInterieur") {
+        const shelfBelowHeight = getShelfBelowHeight(config.selectedSpacingId);
+        if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
+          // Remove tiroir intérieur from config
+          const updatedConfig = { ...config.internalEquipmentConfig };
+          delete updatedConfig[config.selectedSpacingId];
+
+          // Update config
+          updateConfig("internalEquipmentConfig", updatedConfig);
+
+          // Update selected equipment type to vide
+          updateConfig("selectedInternalEquipmentType", "vide");
+        }
+      }
     }
   }, [config.selectedSpacingId, config.internalEquipmentConfig]);
 
@@ -229,7 +311,12 @@ const InternalEquipmentSection: React.FC = () => {
 
   // Handle internal equipment type selection
   const handleEquipmentTypeSelect = (
-    type: "vide" | "trigle" | "penderieEscamotable" | "doubleRail"
+    type:
+      | "vide"
+      | "trigle"
+      | "penderieEscamotable"
+      | "doubleRail"
+      | "tiroirInterieur"
   ) => {
     // Prevent selecting trigle if spacing is too small
     if (type === "trigle" && isTrigleDisabled()) {
@@ -243,6 +330,11 @@ const InternalEquipmentSection: React.FC = () => {
 
     // Prevent selecting double rail if spacing is too small
     if (type === "doubleRail" && isDoubleRailDisabled()) {
+      return;
+    }
+
+    // Prevent selecting tiroir intérieur if shelf below is too high
+    if (type === "tiroirInterieur" && isTiroirInterieurDisabled()) {
       return;
     }
 
@@ -303,6 +395,21 @@ const InternalEquipmentSection: React.FC = () => {
     setHoveredButton(null);
   };
 
+  const handleTiroirInterieurMouseEnter = (event: React.MouseEvent) => {
+    if (isTiroirInterieurDisabled()) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setHoveredButton({
+        type: "tiroirInterieur",
+        x: rect.left + rect.width / 2,
+        y: rect.top - 10,
+      });
+    }
+  };
+
+  const handleTiroirInterieurMouseLeave = () => {
+    setHoveredButton(null);
+  };
+
   const renderSelectionPrompt = () => (
     <div className="text-center py-5">
       <p className="text-secondary">
@@ -321,6 +428,7 @@ const InternalEquipmentSection: React.FC = () => {
     const trigleDisabled = isTrigleDisabled();
     const penderieEscamotableDisabled = isPenderieEscamotableDisabled();
     const doubleRailDisabled = isDoubleRailDisabled();
+    const tiroirInterieurDisabled = isTiroirInterieurDisabled();
     const spacingHeight = config.selectedSpacingId
       ? getSpacingHeight(config.selectedSpacingId)
       : null;
@@ -534,6 +642,65 @@ const InternalEquipmentSection: React.FC = () => {
           </div>
         </div>
 
+        {/* Hàng mới cho Tiroir intérieur */}
+        <div className="row g-3 mt-3">
+          <div className="col-6">
+            <div
+              onMouseEnter={handleTiroirInterieurMouseEnter}
+              onMouseLeave={handleTiroirInterieurMouseLeave}
+              style={{ position: "relative" }}
+            >
+              <button
+                className={`btn w-100 p-3 ${
+                  tiroirInterieurDisabled ? "disabled" : ""
+                }`}
+                onClick={() => handleEquipmentTypeSelect("tiroirInterieur")}
+                disabled={tiroirInterieurDisabled}
+                style={{
+                  height: "140px",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  border: `1px solid ${
+                    config.selectedInternalEquipmentType === "tiroirInterieur"
+                      ? "#0d6efd"
+                      : "#dee2e6"
+                  }`,
+                  backgroundColor: tiroirInterieurDisabled
+                    ? "#f8f9fa"
+                    : "transparent",
+                  opacity: tiroirInterieurDisabled ? 0.6 : 1,
+                  cursor: tiroirInterieurDisabled ? "not-allowed" : "pointer",
+                }}
+              >
+                <div className="mb-2" style={{ fontSize: "2rem" }}>
+                  <img
+                    src={doubleRail}
+                    alt="Tiroir Intérieur"
+                    style={{
+                      width: "50px",
+                      height: "50px",
+                      opacity: tiroirInterieurDisabled ? 0.5 : 1,
+                    }}
+                  />
+                </div>
+                <span
+                  className={`fw-bold ${
+                    config.selectedInternalEquipmentType === "tiroirInterieur"
+                      ? "text-primary"
+                      : tiroirInterieurDisabled
+                      ? "text-muted"
+                      : ""
+                  }`}
+                >
+                  Tiroir intérieur
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         {/* Tooltip - message đơn giản như alert */}
         {hoveredButton && trigleDisabled && hoveredButton.type === "trigle" && (
           <div
@@ -607,6 +774,43 @@ const InternalEquipmentSection: React.FC = () => {
                     :
                   </p>
                   <p>❌ &lt; 200 cm de hauteur (courant {spacingHeight} cm)</p>
+                </span>
+              </div>
+            </div>
+          )}
+
+        {/* Tooltip for Tiroir Intérieur */}
+        {hoveredButton &&
+          tiroirInterieurDisabled &&
+          hoveredButton.type === "tiroirInterieur" && (
+            <div
+              className="position-fixed bg-white text-dark p-3 rounded shadow-lg border"
+              style={{
+                left: hoveredButton.x - 175,
+                top: hoveredButton.y - 80,
+                zIndex: 9999,
+                pointerEvents: "none",
+                minWidth: "350px",
+                fontSize: "14px",
+              }}
+            >
+              <div className="d-flex align-items-center">
+                <span>
+                  <p className="fw-bold">
+                    Cette option est compatible avec des dimensions de casier de
+                    :
+                  </p>
+                  {(() => {
+                    const shelfBelowHeight = getShelfBelowHeight(
+                      config.selectedSpacingId || ""
+                    );
+
+                    if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
+                      return `❌ L'étagère en dessous est trop haute (${shelfBelowHeight} cm depuis le sol > 100 cm)`;
+                    }
+
+                    return `❌ L'étagère en dessous est trop haute`;
+                  })()}
                 </span>
               </div>
             </div>

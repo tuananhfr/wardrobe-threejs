@@ -47,10 +47,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
   const isAngleABSelected = selectedColumnId === "angle-ab";
   const isAngleACSelected = selectedColumnId === "angle-ac";
 
-  // Don't render if not in the right mode
-  if (!shouldShowHighlights) {
-    return null;
-  }
+  // Don't early-return here to keep hooks order stable
 
   // Reset when étagère mode is disabled
   useEffect(() => {
@@ -282,8 +279,8 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
     document.body.style.cursor = "auto";
   };
 
-  // Don't render if not in étagère mode - AFTER all hooks
-  if (!isEtagereMode) {
+  // Don't render if not in the right mode - AFTER all hooks
+  if (!shouldShowHighlights) {
     return null;
   }
 

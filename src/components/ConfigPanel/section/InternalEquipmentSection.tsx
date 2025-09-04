@@ -31,7 +31,7 @@ const InternalEquipmentSection: React.FC = () => {
     // Clear selection when closing accordion
     if (isInternalEquipmentOpen) {
       updateConfig("selectedColumnId", null);
-      updateConfig("selectedSpacingId", null);
+      updateConfig("selectedInternalEquipmentSpacingId", null);
       updateConfig("selectedInternalEquipmentType", null);
     }
   };
@@ -135,9 +135,11 @@ const InternalEquipmentSection: React.FC = () => {
 
   // Check if trigle button should be disabled
   const isTrigleDisabled = (): boolean => {
-    if (!config.selectedSpacingId) return false;
+    if (!config.selectedInternalEquipmentSpacingId) return false;
 
-    const spacingHeight = getSpacingHeight(config.selectedSpacingId);
+    const spacingHeight = getSpacingHeight(
+      config.selectedInternalEquipmentSpacingId
+    );
     if (spacingHeight === null) return false;
 
     // Disable if spacing height is less than 80cm
@@ -146,9 +148,11 @@ const InternalEquipmentSection: React.FC = () => {
 
   // Check if penderie escamotable button should be disabled
   const isPenderieEscamotableDisabled = (): boolean => {
-    if (!config.selectedSpacingId) return false;
+    if (!config.selectedInternalEquipmentSpacingId) return false;
 
-    const spacingHeight = getSpacingHeight(config.selectedSpacingId);
+    const spacingHeight = getSpacingHeight(
+      config.selectedInternalEquipmentSpacingId
+    );
     if (spacingHeight === null) return false;
 
     // Disable if spacing height is less than 160cm
@@ -157,9 +161,11 @@ const InternalEquipmentSection: React.FC = () => {
 
   // Check if double rail button should be disabled
   const isDoubleRailDisabled = (): boolean => {
-    if (!config.selectedSpacingId) return false;
+    if (!config.selectedInternalEquipmentSpacingId) return false;
 
-    const spacingHeight = getSpacingHeight(config.selectedSpacingId);
+    const spacingHeight = getSpacingHeight(
+      config.selectedInternalEquipmentSpacingId
+    );
     if (spacingHeight === null) return false;
 
     // Disable if spacing height is less than 200cm
@@ -168,10 +174,12 @@ const InternalEquipmentSection: React.FC = () => {
 
   // Check if tiroir intérieur button should be disabled
   const isTiroirInterieurDisabled = (): boolean => {
-    if (!config.selectedSpacingId) return false;
+    if (!config.selectedInternalEquipmentSpacingId) return false;
 
     // Check if shelf below is too high (> 100cm) - same as drawer logic
-    const shelfBelowHeight = getShelfBelowHeight(config.selectedSpacingId);
+    const shelfBelowHeight = getShelfBelowHeight(
+      config.selectedInternalEquipmentSpacingId
+    );
     if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
       return true; // Disable tiroir intérieur when shelf below is too high
     }
@@ -182,9 +190,11 @@ const InternalEquipmentSection: React.FC = () => {
 
   // Update selected equipment type based on selected spacing
   useEffect(() => {
-    if (config.selectedSpacingId) {
+    if (config.selectedInternalEquipmentSpacingId) {
       const equipmentVal =
-        config.internalEquipmentConfig[config.selectedSpacingId];
+        config.internalEquipmentConfig[
+          config.selectedInternalEquipmentSpacingId
+        ];
       if (equipmentVal) {
         const normalizedType =
           typeof equipmentVal === "string"
@@ -199,14 +209,21 @@ const InternalEquipmentSection: React.FC = () => {
     } else {
       updateConfig("selectedInternalEquipmentType", null);
     }
-  }, [config.selectedSpacingId, config.internalEquipmentConfig]);
+  }, [
+    config.selectedInternalEquipmentSpacingId,
+    config.internalEquipmentConfig,
+  ]);
 
   // NEW LOGIC: Update selected equipment type when rail is removed due to small spacing
   useEffect(() => {
-    if (config.selectedSpacingId) {
-      const spacingHeight = getSpacingHeight(config.selectedSpacingId);
+    if (config.selectedInternalEquipmentSpacingId) {
+      const spacingHeight = getSpacingHeight(
+        config.selectedInternalEquipmentSpacingId
+      );
       const currentEquipmentVal =
-        config.internalEquipmentConfig[config.selectedSpacingId];
+        config.internalEquipmentConfig[
+          config.selectedInternalEquipmentSpacingId
+        ];
       const currentEquipment =
         typeof currentEquipmentVal === "string"
           ? currentEquipmentVal
@@ -220,7 +237,7 @@ const InternalEquipmentSection: React.FC = () => {
       ) {
         // Remove trigle from config
         const updatedConfig = { ...config.internalEquipmentConfig };
-        delete updatedConfig[config.selectedSpacingId];
+        delete updatedConfig[config.selectedInternalEquipmentSpacingId];
 
         // Update config
         updateConfig("internalEquipmentConfig", updatedConfig);
@@ -237,7 +254,7 @@ const InternalEquipmentSection: React.FC = () => {
       ) {
         // Remove penderie escamotable from config
         const updatedConfig = { ...config.internalEquipmentConfig };
-        delete updatedConfig[config.selectedSpacingId];
+        delete updatedConfig[config.selectedInternalEquipmentSpacingId];
 
         // Update config
         updateConfig("internalEquipmentConfig", updatedConfig);
@@ -254,7 +271,7 @@ const InternalEquipmentSection: React.FC = () => {
       ) {
         // Remove double rail from config
         const updatedConfig = { ...config.internalEquipmentConfig };
-        delete updatedConfig[config.selectedSpacingId];
+        delete updatedConfig[config.selectedInternalEquipmentSpacingId];
 
         // Update config
         updateConfig("internalEquipmentConfig", updatedConfig);
@@ -265,11 +282,13 @@ const InternalEquipmentSection: React.FC = () => {
 
       // If shelf below is too high and has tiroir intérieur, remove it and set to vide
       if (currentEquipment === "tiroirInterieur") {
-        const shelfBelowHeight = getShelfBelowHeight(config.selectedSpacingId);
+        const shelfBelowHeight = getShelfBelowHeight(
+          config.selectedInternalEquipmentSpacingId
+        );
         if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
           // Remove tiroir intérieur from config
           const updatedConfig = { ...config.internalEquipmentConfig };
-          delete updatedConfig[config.selectedSpacingId];
+          delete updatedConfig[config.selectedInternalEquipmentSpacingId];
 
           // Update config
           updateConfig("internalEquipmentConfig", updatedConfig);
@@ -279,7 +298,10 @@ const InternalEquipmentSection: React.FC = () => {
         }
       }
     }
-  }, [config.selectedSpacingId, config.internalEquipmentConfig]);
+  }, [
+    config.selectedInternalEquipmentSpacingId,
+    config.internalEquipmentConfig,
+  ]);
 
   // Reset selection and hover when accordion changes
   useEffect(() => {
@@ -298,16 +320,16 @@ const InternalEquipmentSection: React.FC = () => {
         updateConfig("selectedColumnId", null);
       }
       // Reset selected spacing when switching to a different accordion
-      if (config.selectedSpacingId) {
-        updateConfig("selectedSpacingId", null);
+      if (config.selectedInternalEquipmentSpacingId) {
+        updateConfig("selectedInternalEquipmentSpacingId", null);
       }
       // Reset hovered column when switching to a different accordion
       if (config.hoveredColumnId) {
         updateConfig("hoveredColumnId", null);
       }
       // Reset hovered spacing when switching to a different accordion
-      if (config.hoveredSpacingId) {
-        updateConfig("hoveredSpacingId", null);
+      if (config.hoveredInternalEquipmentSpacingId) {
+        updateConfig("hoveredInternalEquipmentSpacingId", null);
       }
       // Reset selected internal equipment type when switching to a different accordion
       if (config.selectedInternalEquipmentType) {
@@ -349,10 +371,11 @@ const InternalEquipmentSection: React.FC = () => {
     }
 
     // Save equipment configuration for the selected spacing
-    if (config.selectedSpacingId) {
+    if (config.selectedInternalEquipmentSpacingId) {
       if (type === "tiroirInterieur") {
         // Generate default tiroir list based on spacing height and column width
-        const spacingHeightCm = getSpacingHeight(config.selectedSpacingId) || 0;
+        const spacingHeightCm =
+          getSpacingHeight(config.selectedInternalEquipmentSpacingId) || 0;
         const gap = 2 * config.thickness; // gap = 2 * thickness cm
 
         // Tìm số tiroir tối ưu: spacingHeight = tiroirHeight × sốTiroir + gap × sốTiroir
@@ -374,7 +397,7 @@ const InternalEquipmentSection: React.FC = () => {
         const itemHeight = Math.round(optimalHeight * 10) / 10; // làm tròn 1 chữ số thập phân
 
         // Find column width in cm from spacingId
-        const parts = config.selectedSpacingId.split("-");
+        const parts = config.selectedInternalEquipmentSpacingId.split("-");
         let columnId = parts[0];
         if (
           parts.length === 5 &&
@@ -397,20 +420,23 @@ const InternalEquipmentSection: React.FC = () => {
         }
 
         const items = Array.from({ length: count }).map((_, idx) => ({
-          id: `${config.selectedSpacingId}-tiroir-${idx + 1}`,
+          id: `${config.selectedInternalEquipmentSpacingId}-tiroir-${idx + 1}`,
           height: itemHeight,
           width: columnWidth,
         }));
 
         updateConfig("internalEquipmentConfig", {
           ...config.internalEquipmentConfig,
-          [config.selectedSpacingId]: { type: "tiroirInterieur", items },
+          [config.selectedInternalEquipmentSpacingId]: {
+            type: "tiroirInterieur",
+            items,
+          },
         });
         updateConfig("selectedInternalEquipmentType", "tiroirInterieur");
       } else {
         updateConfig("internalEquipmentConfig", {
           ...config.internalEquipmentConfig,
-          [config.selectedSpacingId]: type,
+          [config.selectedInternalEquipmentSpacingId]: type,
         });
         updateConfig("selectedInternalEquipmentType", type);
       }
@@ -497,8 +523,8 @@ const InternalEquipmentSection: React.FC = () => {
     const penderieEscamotableDisabled = isPenderieEscamotableDisabled();
     const doubleRailDisabled = isDoubleRailDisabled();
     const tiroirInterieurDisabled = isTiroirInterieurDisabled();
-    const spacingHeight = config.selectedSpacingId
-      ? getSpacingHeight(config.selectedSpacingId)
+    const spacingHeight = config.selectedInternalEquipmentSpacingId
+      ? getSpacingHeight(config.selectedInternalEquipmentSpacingId)
       : null;
 
     return (
@@ -870,7 +896,7 @@ const InternalEquipmentSection: React.FC = () => {
                   </p>
                   {(() => {
                     const shelfBelowHeight = getShelfBelowHeight(
-                      config.selectedSpacingId || ""
+                      config.selectedInternalEquipmentSpacingId || ""
                     );
 
                     if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
@@ -911,7 +937,7 @@ const InternalEquipmentSection: React.FC = () => {
         data-bs-parent="#configAccordion"
       >
         <div className="accordion-body">
-          {config.selectedSpacingId
+          {config.selectedInternalEquipmentSpacingId
             ? renderEquipmentTypeButtons()
             : renderSelectionPrompt()}
         </div>

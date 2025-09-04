@@ -202,18 +202,18 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
   // Helper function to handle facade pointer events
   const handleFacadePointerOver = (spacingId: string) => {
     if (!isSelectingFacades()) return;
-    updateConfig("hoveredSpacingId", spacingId);
+    updateConfig("hoveredDoorsDrawersSpacingId", spacingId);
   };
 
   const handleFacadePointerOut = () => {
     if (!isSelectingFacades()) return;
-    updateConfig("hoveredSpacingId", null);
+    updateConfig("hoveredDoorsDrawersSpacingId", null);
   };
 
   const handleFacadeClick = (spacingId: string) => {
     if (!isSelectingFacades()) return;
 
-    const currentSelectedIds = [...config.selectedSpacingIds];
+    const currentSelectedIds = [...config.selectedDoorsDrawersSpacingIds];
     const index = currentSelectedIds.indexOf(spacingId);
 
     if (index > -1) {
@@ -224,7 +224,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       currentSelectedIds.push(spacingId);
     }
 
-    updateConfig("selectedSpacingIds", currentSelectedIds);
+    updateConfig("selectedDoorsDrawersSpacingIds", currentSelectedIds);
   };
 
   // Helper function to get section name from spacingId
@@ -398,7 +398,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     if (configuredSpacings.length === 0) return [];
 
     // Get currently selected spacings
-    const selectedSpacings = config.selectedSpacingIds || [];
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
     const groupedDoorsConfig = config.groupedDoorsConfig || {};
 
     // Group by column
@@ -710,7 +710,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
 
   // Helper function to group consecutive selected spacings by column
   const getGroupedSelectedSpacings = () => {
-    const selectedSpacings = config.selectedSpacingIds || [];
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
     if (selectedSpacings.length === 0) return [];
 
     // Group by column

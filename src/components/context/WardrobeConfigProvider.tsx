@@ -38,11 +38,25 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     showMeasurements: false,
     showSections: "",
     accordionOpen: "collapseType",
+    // EtagereColumnHighlights states
     selectedColumnId: null,
     hoveredColumnId: null,
-    selectedSpacingId: null,
-    selectedSpacingIds: [],
-    hoveredSpacingId: null,
+
+    // FacadeHighlight states
+    selectedFacadeSpacingIds: [],
+    hoveredFacadeSpacingId: null,
+
+    // DoorsDrawersHighlights states
+    selectedDoorsDrawersSpacingIds: [],
+    hoveredDoorsDrawersSpacingId: null,
+
+    // InternalEquipmentSpacingHighlights states
+    selectedInternalEquipmentSpacingId: null,
+    hoveredInternalEquipmentSpacingId: null,
+
+    // SectionShelves states
+    selectedShelvesSpacingIds: [],
+    hoveredShelvesSpacingId: null,
     selectedInternalEquipmentType: null,
     internalEquipmentConfig: {},
     selectedDoorsDrawersType: null,

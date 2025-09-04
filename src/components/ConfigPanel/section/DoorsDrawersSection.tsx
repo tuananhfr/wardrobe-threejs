@@ -47,10 +47,10 @@ const DoorsDrawersSection: React.FC = () => {
     // Clear selection when closing accordion
     if (isDoorsDrawersOpen) {
       updateConfig("selectedColumnId", null);
-      updateConfig("selectedSpacingId", null);
-      updateConfig("selectedSpacingIds", []);
+      updateConfig("selectedDoorsDrawersSpacingIds", []);
+      updateConfig("selectedDoorsDrawersSpacingIds", []);
       updateConfig("selectedDoorsDrawersType", null);
-      updateConfig("hoveredSpacingId", null);
+      updateConfig("hoveredDoorsDrawersSpacingId", null);
     }
   };
 
@@ -238,19 +238,27 @@ const DoorsDrawersSection: React.FC = () => {
 
   // Check if drawer button should be disabled
   const isDrawerDisabled = (): boolean => {
-    if (!config.selectedSpacingId) return false;
+    if (
+      !config.selectedDoorsDrawersSpacingIds ||
+      config.selectedDoorsDrawersSpacingIds.length === 0
+    )
+      return false;
 
     // Check if multiple spacings are selected
-    const selectedSpacings = config.selectedSpacingIds || [];
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
     if (selectedSpacings.length > 1) {
       return true; // Disable drawer when multiple spacings are selected
     }
 
-    const spacingHeight = getSpacingHeight(config.selectedSpacingId);
+    const spacingHeight = getSpacingHeight(
+      config.selectedDoorsDrawersSpacingIds[0]
+    );
     if (spacingHeight === null) return false;
 
     // Check if shelf below is too high (> 100cm)
-    const shelfBelowHeight = getShelfBelowHeight(config.selectedSpacingId);
+    const shelfBelowHeight = getShelfBelowHeight(
+      config.selectedDoorsDrawersSpacingIds[0]
+    );
     if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
       return true; // Disable drawer when shelf below is too high
     }
@@ -261,9 +269,15 @@ const DoorsDrawersSection: React.FC = () => {
 
   // Check if double swing door button should be disabled
   const isDoubleSwingDoorDisabled = (): boolean => {
-    if (!config.selectedSpacingId) return false;
+    if (
+      !config.selectedDoorsDrawersSpacingIds ||
+      config.selectedDoorsDrawersSpacingIds.length === 0
+    )
+      return false;
 
-    const spacingWidth = getSpacingWidth(config.selectedSpacingId);
+    const spacingWidth = getSpacingWidth(
+      config.selectedDoorsDrawersSpacingIds[0]
+    );
     if (spacingWidth === null) return false;
 
     // Disable if spacing width is not between 40-109cm
@@ -272,9 +286,15 @@ const DoorsDrawersSection: React.FC = () => {
 
   // Check if left/right door button should be disabled
   const isLeftRightDoorDisabled = (): boolean => {
-    if (!config.selectedSpacingId) return false;
+    if (
+      !config.selectedDoorsDrawersSpacingIds ||
+      config.selectedDoorsDrawersSpacingIds.length === 0
+    )
+      return false;
 
-    const spacingWidth = getSpacingWidth(config.selectedSpacingId);
+    const spacingWidth = getSpacingWidth(
+      config.selectedDoorsDrawersSpacingIds[0]
+    );
     if (spacingWidth === null) return false;
 
     // Disable if spacing width is not between 26-60cm
@@ -283,10 +303,13 @@ const DoorsDrawersSection: React.FC = () => {
 
   // Update selected doors drawers type based on selected spacing
   useEffect(() => {
-    if (config.selectedSpacingId) {
+    if (
+      config.selectedDoorsDrawersSpacingIds &&
+      config.selectedDoorsDrawersSpacingIds.length > 0
+    ) {
       // First, check if the selected spacing has a specific configuration
       const doorsDrawersType =
-        config.doorsDrawersConfig[config.selectedSpacingId];
+        config.doorsDrawersConfig[config.selectedDoorsDrawersSpacingIds[0]];
 
       if (doorsDrawersType) {
         updateConfig("selectedDoorsDrawersType", doorsDrawersType);
@@ -299,7 +322,9 @@ const DoorsDrawersSection: React.FC = () => {
       }
 
       // Only apply sliding door logic if no specific configuration exists and user didn't choose vide
-      const sectionName = getSectionNameFromSpacingId(config.selectedSpacingId);
+      const sectionName = getSectionNameFromSpacingId(
+        config.selectedDoorsDrawersSpacingIds[0]
+      );
       const sectionSlidingDoorType = getSectionSlidingDoorType(sectionName);
 
       // If section has sliding door, show it regardless of current spacing
@@ -313,15 +338,22 @@ const DoorsDrawersSection: React.FC = () => {
     } else {
       updateConfig("selectedDoorsDrawersType", null);
     }
-  }, [config.selectedSpacingId, config.doorsDrawersConfig]);
+  }, [config.selectedDoorsDrawersSpacingIds[0], config.doorsDrawersConfig]);
 
   // NEW LOGIC: Update selected doors drawers type when doors/drawers are removed due to unsuitable dimensions
   useEffect(() => {
-    if (config.selectedSpacingId) {
-      const spacingHeight = getSpacingHeight(config.selectedSpacingId);
-      const spacingWidth = getSpacingWidth(config.selectedSpacingId);
+    if (
+      config.selectedDoorsDrawersSpacingIds &&
+      config.selectedDoorsDrawersSpacingIds.length > 0
+    ) {
+      const spacingHeight = getSpacingHeight(
+        config.selectedDoorsDrawersSpacingIds[0]
+      );
+      const spacingWidth = getSpacingWidth(
+        config.selectedDoorsDrawersSpacingIds[0]
+      );
       const currentDoorsDrawers =
-        config.doorsDrawersConfig[config.selectedSpacingId];
+        config.doorsDrawersConfig[config.selectedDoorsDrawersSpacingIds[0]];
 
       let shouldRemove = false;
 
@@ -360,13 +392,16 @@ const DoorsDrawersSection: React.FC = () => {
 
       if (shouldRemove) {
         // Remove from config using grouped doors logic
-        updateDoorsDrawersConfig(config.selectedSpacingId, null);
+        updateDoorsDrawersConfig(
+          config.selectedDoorsDrawersSpacingIds[0],
+          null
+        );
 
         // Update selected doors drawers type to null (force reselect)
         updateConfig("selectedDoorsDrawersType", null as any);
       }
     }
-  }, [config.selectedSpacingId, config.doorsDrawersConfig]);
+  }, [config.selectedDoorsDrawersSpacingIds[0], config.doorsDrawersConfig]);
 
   // GLOBAL LOGIC: Remove all incompatible doors/drawers when dimensions change
   useEffect(() => {
@@ -418,8 +453,8 @@ const DoorsDrawersSection: React.FC = () => {
 
     // Clear selected type if it was removed
     if (
-      config.selectedSpacingId &&
-      !config.doorsDrawersConfig[config.selectedSpacingId]
+      config.selectedDoorsDrawersSpacingIds[0] &&
+      !config.doorsDrawersConfig[config.selectedDoorsDrawersSpacingIds[0]]
     ) {
       updateConfig("selectedDoorsDrawersType", null as any);
     }
@@ -447,21 +482,25 @@ const DoorsDrawersSection: React.FC = () => {
         updateConfig("selectedColumnId", null);
       }
       // Reset selected spacing when switching to a different accordion
-      if (config.selectedSpacingId) {
-        updateConfig("selectedSpacingId", null);
+      if (
+        config.selectedDoorsDrawersSpacingIds &&
+        config.selectedDoorsDrawersSpacingIds.length > 0
+      ) {
+        updateConfig("selectedDoorsDrawersSpacingIds", []);
       }
       // Reset multiple selected spacings as well when switching accordion
-      const hasMultipleSelected = (config.selectedSpacingIds || []).length > 0;
+      const hasMultipleSelected =
+        (config.selectedDoorsDrawersSpacingIds || []).length > 0;
       if (hasMultipleSelected) {
-        updateConfig("selectedSpacingIds", []);
+        updateConfig("selectedDoorsDrawersSpacingIds", []);
       }
       // Reset hovered column when switching to a different accordion
       if (config.hoveredColumnId) {
         updateConfig("hoveredColumnId", null);
       }
       // Reset hovered spacing when switching to a different accordion
-      if (config.hoveredSpacingId) {
-        updateConfig("hoveredSpacingId", null);
+      if (config.hoveredDoorsDrawersSpacingId) {
+        updateConfig("hoveredDoorsDrawersSpacingId", null);
       }
       // Reset selected doors drawers type when switching to a different accordion
       if (config.selectedDoorsDrawersType) {
@@ -525,12 +564,12 @@ const DoorsDrawersSection: React.FC = () => {
     if (type === "vide") {
       updateConfig("selectedDoorsDrawersType", null);
 
-      const selectedSpacings = config.selectedSpacingIds || [];
+      const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
       const targetSpacings =
         selectedSpacings.length > 0
           ? selectedSpacings
-          : config.selectedSpacingId
-          ? [config.selectedSpacingId]
+          : config.selectedDoorsDrawersSpacingIds[0]
+          ? [config.selectedDoorsDrawersSpacingIds[0]]
           : [];
 
       if (targetSpacings.length > 0) {
@@ -567,12 +606,12 @@ const DoorsDrawersSection: React.FC = () => {
     updateConfig("selectedDoorsDrawersType", type as any);
 
     // Save doors drawers configuration for the selected spacings
-    const selectedSpacings = config.selectedSpacingIds || [];
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
     const hasMultipleSelected = selectedSpacings.length > 0;
     const targetSpacings = hasMultipleSelected
       ? selectedSpacings
-      : config.selectedSpacingId
-      ? [config.selectedSpacingId]
+      : config.selectedDoorsDrawersSpacingIds[0]
+      ? [config.selectedDoorsDrawersSpacingIds[0]]
       : [];
 
     if (targetSpacings.length > 0) {
@@ -1412,20 +1451,25 @@ const DoorsDrawersSection: React.FC = () => {
                 {hoveredButton.type === "drawer" && (
                   <p>
                     {(() => {
-                      const selectedSpacings = config.selectedSpacingIds || [];
+                      const selectedSpacings =
+                        config.selectedDoorsDrawersSpacingIds || [];
                       if (selectedSpacings.length > 1) {
                         return "❌ La façade sélectionnée ne peut pas être installée sur plusieurs casiers";
                       }
 
                       const shelfBelowHeight = getShelfBelowHeight(
-                        config.selectedSpacingId || ""
+                        (config.selectedDoorsDrawersSpacingIds &&
+                          config.selectedDoorsDrawersSpacingIds[0]) ||
+                          ""
                       );
                       if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
                         return `❌ L'étagère en dessous est trop haute (${shelfBelowHeight} cm depuis le sol > 100 cm)`;
                       }
 
                       return `❌ 10-60 cm de hauteur (courant ${getSpacingHeight(
-                        config.selectedSpacingId || ""
+                        (config.selectedDoorsDrawersSpacingIds &&
+                          config.selectedDoorsDrawersSpacingIds[0]) ||
+                          ""
                       )} cm)`;
                     })()}
                   </p>
@@ -1433,20 +1477,25 @@ const DoorsDrawersSection: React.FC = () => {
                 {hoveredButton.type === "drawerVerre" && (
                   <p>
                     {(() => {
-                      const selectedSpacings = config.selectedSpacingIds || [];
+                      const selectedSpacings =
+                        config.selectedDoorsDrawersSpacingIds || [];
                       if (selectedSpacings.length > 1) {
                         return "❌ La façade sélectionnée ne peut pas être installée sur plusieurs casiers";
                       }
 
                       const shelfBelowHeight = getShelfBelowHeight(
-                        config.selectedSpacingId || ""
+                        (config.selectedDoorsDrawersSpacingIds &&
+                          config.selectedDoorsDrawersSpacingIds[0]) ||
+                          ""
                       );
                       if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
                         return `❌ L'étagère en dessous est trop haute (${shelfBelowHeight} cm depuis le sol > 100 cm)`;
                       }
 
                       return `❌ 10-60 cm de hauteur (courant ${getSpacingHeight(
-                        config.selectedSpacingId || ""
+                        (config.selectedDoorsDrawersSpacingIds &&
+                          config.selectedDoorsDrawersSpacingIds[0]) ||
+                          ""
                       )} cm)`;
                     })()}
                   </p>
@@ -1454,14 +1503,20 @@ const DoorsDrawersSection: React.FC = () => {
                 {hoveredButton.type === "doubleSwingDoor" && (
                   <p>
                     ❌ 40-109 cm de largeur (courant{" "}
-                    {getSpacingWidth(config.selectedSpacingId || "")} cm)
+                    {getSpacingWidth(
+                      config.selectedDoorsDrawersSpacingIds[0] || ""
+                    )}{" "}
+                    cm)
                   </p>
                 )}
                 {(hoveredButton.type === "leftDoor" ||
                   hoveredButton.type === "rightDoor") && (
                   <p>
                     ❌ 26-60 cm de largeur (courant{" "}
-                    {getSpacingWidth(config.selectedSpacingId || "")} cm)
+                    {getSpacingWidth(
+                      config.selectedDoorsDrawersSpacingIds[0] || ""
+                    )}{" "}
+                    cm)
                   </p>
                 )}
               </span>
@@ -1518,7 +1573,7 @@ const DoorsDrawersSection: React.FC = () => {
         data-bs-parent="#configAccordion"
       >
         <div className="accordion-body">
-          {config.selectedSpacingId
+          {config.selectedDoorsDrawersSpacingIds[0]
             ? renderDoorsDrawersTypeButtons()
             : renderSelectionPrompt()}
         </div>
@@ -1526,7 +1581,8 @@ const DoorsDrawersSection: React.FC = () => {
 
       {/* Section chọn tay nắm - chỉ hiển thị cho porte (không phải tiroir hoặc cửa kéo) */}
       {isDoorsDrawersOpen &&
-        config.selectedSpacingId &&
+        config.selectedDoorsDrawersSpacingIds &&
+        config.selectedDoorsDrawersSpacingIds.length > 0 &&
         config.selectedDoorsDrawersType &&
         config.selectedDoorsDrawersType !== "vide" &&
         config.selectedDoorsDrawersType !== "drawer" &&
@@ -1541,16 +1597,22 @@ const DoorsDrawersSection: React.FC = () => {
               <div className="col-6">
                 <button
                   className={`btn w-100 p-2 ${
-                    ((config.selectedSpacingId &&
-                      config.handleConfig[config.selectedSpacingId]) ||
+                    ((config.selectedDoorsDrawersSpacingIds[0] &&
+                      config.handleConfig[
+                        config.selectedDoorsDrawersSpacingIds[0]
+                      ]) ||
                       config.handleType) === "none"
                       ? "btn-primary"
                       : "btn-outline-secondary"
                   }`}
                   onClick={() => {
-                    if (config.selectedSpacingId) {
+                    if (
+                      config.selectedDoorsDrawersSpacingIds &&
+                      config.selectedDoorsDrawersSpacingIds.length > 0
+                    ) {
                       const updatedConfig = { ...config.handleConfig };
-                      updatedConfig[config.selectedSpacingId] = "none";
+                      updatedConfig[config.selectedDoorsDrawersSpacingIds[0]] =
+                        "none";
                       updateConfig("handleConfig", updatedConfig);
                       updateConfig("handleType", "none");
                     }
@@ -1571,16 +1633,22 @@ const DoorsDrawersSection: React.FC = () => {
               <div className="col-6">
                 <button
                   className={`btn w-100 p-2 ${
-                    ((config.selectedSpacingId &&
-                      config.handleConfig[config.selectedSpacingId]) ||
+                    ((config.selectedDoorsDrawersSpacingIds[0] &&
+                      config.handleConfig[
+                        config.selectedDoorsDrawersSpacingIds[0]
+                      ]) ||
                       config.handleType) === "baton"
                       ? "btn-primary"
                       : "btn-outline-secondary"
                   }`}
                   onClick={() => {
-                    if (config.selectedSpacingId) {
+                    if (
+                      config.selectedDoorsDrawersSpacingIds &&
+                      config.selectedDoorsDrawersSpacingIds.length > 0
+                    ) {
                       const updatedConfig = { ...config.handleConfig };
-                      updatedConfig[config.selectedSpacingId] = "baton";
+                      updatedConfig[config.selectedDoorsDrawersSpacingIds[0]] =
+                        "baton";
                       updateConfig("handleConfig", updatedConfig);
                       updateConfig("handleType", "baton");
                     }

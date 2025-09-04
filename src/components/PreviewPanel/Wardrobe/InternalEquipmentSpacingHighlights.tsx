@@ -25,11 +25,11 @@ const InternalEquipmentSpacingHighlights: React.FC<
 }) => {
   const { config, updateConfig } = useWardrobeConfig();
   // Use global state for hover
-  const hoveredSpacing = config.hoveredSpacingId || null;
+  const hoveredSpacing = config.hoveredInternalEquipmentSpacingId || null;
 
   // Helper function to set global hover state
   const setHoveredSpacing = (spacingId: string | null) => {
-    updateConfig("hoveredSpacingId", spacingId);
+    updateConfig("hoveredInternalEquipmentSpacingId", spacingId);
   };
 
   const width = sectionData.width;
@@ -50,7 +50,7 @@ const InternalEquipmentSpacingHighlights: React.FC<
       setHoveredSpacing(null);
       document.body.style.cursor = "auto";
       // Reset selected spacings when closing accordion
-      updateConfig("selectedSpacingIds", []);
+      updateConfig("selectedInternalEquipmentSpacingId", null);
     }
   }, [shouldShowHighlights, updateConfig]);
 
@@ -352,13 +352,13 @@ const InternalEquipmentSpacingHighlights: React.FC<
 
   // Handle spacing click
   const handleSpacingClick = (spacingId: string) => {
-    if (config.selectedSpacingId === spacingId) {
+    if (config.selectedInternalEquipmentSpacingId === spacingId) {
       // Deselect if already selected
-      updateConfig("selectedSpacingId", null);
+      updateConfig("selectedInternalEquipmentSpacingId", null);
       updateConfig("selectedInternalEquipmentType", null);
     } else {
       // Select new spacing
-      updateConfig("selectedSpacingId", spacingId);
+      updateConfig("selectedInternalEquipmentSpacingId", spacingId);
 
       // Check if this spacing already has equipment configured
       const existingEquipment = config.internalEquipmentConfig[spacingId];
@@ -434,7 +434,8 @@ const InternalEquipmentSpacingHighlights: React.FC<
     >
       {/* Spacing highlights */}
       {spacingPositions.map((pos) => {
-        const isSelected = config.selectedSpacingId === pos.spacingId;
+        const isSelected =
+          config.selectedInternalEquipmentSpacingId === pos.spacingId;
         const isHovered = hoveredSpacing === pos.spacingId;
 
         // Determine highlight state and color
@@ -477,7 +478,8 @@ const InternalEquipmentSpacingHighlights: React.FC<
 
       {/* Icons and labels */}
       {spacingPositions.map((pos) => {
-        const isSelected = config.selectedSpacingId === pos.spacingId;
+        const isSelected =
+          config.selectedInternalEquipmentSpacingId === pos.spacingId;
         const isHovered = hoveredSpacing === pos.spacingId;
 
         // Show icon only when hovered or selected

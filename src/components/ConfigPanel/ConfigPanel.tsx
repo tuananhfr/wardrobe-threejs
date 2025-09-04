@@ -28,9 +28,14 @@ const ConfigPanel: React.FC = () => {
       if (!isOpen) {
         // When opening any accordion, reset all selection states
         batchUpdate({
-          selectedSpacingIds: [],
-          selectedSpacingId: null,
-          hoveredSpacingId: null,
+          selectedFacadeSpacingIds: [],
+          selectedShelvesSpacingIds: [],
+          selectedDoorsDrawersSpacingIds: [],
+          selectedInternalEquipmentSpacingId: null,
+          hoveredFacadeSpacingId: null,
+          hoveredShelvesSpacingId: null,
+          hoveredDoorsDrawersSpacingId: null,
+          hoveredInternalEquipmentSpacingId: null,
           selectedColumnId: null,
           hoveredColumnId: null,
           selectedDoorsDrawersType: null,

@@ -19,12 +19,17 @@ const WardrobeTypeSelector: React.FC = () => {
       // Reset tất cả cấu hình khi thay đổi loại tủ quần áo
 
       updateConfig("selectedColumnId", null);
-      updateConfig("selectedSpacingId", null);
-      updateConfig("selectedSpacingIds", []);
+      updateConfig("selectedFacadeSpacingIds", []);
+      updateConfig("selectedShelvesSpacingIds", []);
+      updateConfig("selectedDoorsDrawersSpacingIds", []);
+      updateConfig("selectedInternalEquipmentSpacingId", null);
       updateConfig("selectedDoorsDrawersType", null);
       updateConfig("selectedInternalEquipmentType", null);
       updateConfig("hoveredColumnId", null);
-      updateConfig("hoveredSpacingId", null);
+      updateConfig("hoveredFacadeSpacingId", null);
+      updateConfig("hoveredShelvesSpacingId", null);
+      updateConfig("hoveredDoorsDrawersSpacingId", null);
+      updateConfig("hoveredInternalEquipmentSpacingId", null);
 
       updateConfig("doorsDrawersConfig", {});
       updateConfig("groupedDoorsConfig", {});

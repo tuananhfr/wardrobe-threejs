@@ -72,7 +72,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
 
     // Nếu đang ở chế độ tablette, chỉ đếm những shelf đang được chọn
     if (type === "tablette") {
-      config.selectedSpacingIds.forEach((spacingId) => {
+      config.selectedShelvesSpacingIds.forEach((spacingId) => {
         if (spacingId.startsWith("angle-")) {
           const relatedSpacingIds = getAllSpacingIdsInAngleGroup(spacingId);
           const isAngleUsingTexture = relatedSpacingIds.some((relatedId) => {
@@ -97,7 +97,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
       });
     } else if (type === "facades") {
       // Nếu đang ở chế độ facades, chỉ đếm những facade đang được chọn
-      config.selectedSpacingIds.forEach((spacingId) => {
+      config.selectedFacadeSpacingIds.forEach((spacingId) => {
         const customTexture = config.facadeTextureConfig[spacingId];
         const textureToCheck = customTexture || config.texture;
 
@@ -252,7 +252,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
     // Tạo map để theo dõi các angle groups đã được xử lý
     const processedAngleGroups = new Set<string>();
 
-    config.selectedSpacingIds.forEach((spacingId) => {
+    config.selectedShelvesSpacingIds.forEach((spacingId) => {
       // Kiểm tra xem spacingId này có phải là angle group không
       if (spacingId.startsWith("angle-")) {
         // Nếu đã xử lý angle group này rồi thì bỏ qua
@@ -287,8 +287,8 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
 
     // Tự động deselect tất cả các kệ sau khi áp dụng texture
     batchUpdate({
-      selectedSpacingIds: [],
-      hoveredSpacingId: null,
+      selectedShelvesSpacingIds: [],
+      hoveredShelvesSpacingId: null,
     });
 
     // Reset hoveredTexture để ẩn tooltip
@@ -372,7 +372,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
   const updateSelectedFacades = (textureName: string, textureSrc: string) => {
     const newFacadeTextureConfig = { ...config.facadeTextureConfig };
 
-    config.selectedSpacingIds.forEach((spacingId) => {
+    config.selectedFacadeSpacingIds.forEach((spacingId) => {
       newFacadeTextureConfig[spacingId] = {
         name: textureName,
         src: textureSrc,
@@ -384,8 +384,8 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
 
     // Tự động deselect tất cả các facade sau khi áp dụng texture
     batchUpdate({
-      selectedSpacingIds: [],
-      hoveredSpacingId: null,
+      selectedFacadeSpacingIds: [],
+      hoveredFacadeSpacingId: null,
     });
 
     // Reset hoveredTexture để ẩn tooltip
@@ -395,26 +395,26 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
   // Hàm reset các kệ đã chọn
   const resetSelectedShelves = () => {
     batchUpdate({
-      selectedSpacingIds: [],
-      hoveredSpacingId: null,
+      selectedShelvesSpacingIds: [],
+      hoveredShelvesSpacingId: null,
     });
   };
 
   // Hàm reset các facade đã chọn
   const resetSelectedFacades = () => {
     batchUpdate({
-      selectedSpacingIds: [],
-      hoveredSpacingId: null,
+      selectedFacadeSpacingIds: [],
+      hoveredFacadeSpacingId: null,
     });
   };
 
   // Kiểm tra có nên hiển thị danh sách texture không
   const shouldShowTextureGrid = () => {
     if (type === "tablette") {
-      return config.selectedSpacingIds.length > 0;
+      return config.selectedShelvesSpacingIds.length > 0;
     }
     if (type === "facades") {
-      return config.selectedSpacingIds.length > 0;
+      return config.selectedFacadeSpacingIds.length > 0;
     }
     return true;
   };
@@ -422,7 +422,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
   // Thêm function này (mới hoàn toàn)
   const isTextureActive = (textureSrc: string): boolean => {
     if (type === "tablette") {
-      return config.selectedSpacingIds.some((spacingId) => {
+      return config.selectedShelvesSpacingIds.some((spacingId) => {
         if (spacingId.startsWith("angle-")) {
           const relatedSpacingIds = getAllSpacingIdsInAngleGroup(spacingId);
           return relatedSpacingIds.some((relatedId) => {
@@ -438,7 +438,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
         }
       });
     } else if (type === "facades") {
-      return config.selectedSpacingIds.some((spacingId) => {
+      return config.selectedFacadeSpacingIds.some((spacingId) => {
         const customTexture = config.facadeTextureConfig[spacingId];
         const textureToCheck = customTexture || config.texture;
         return textureToCheck.src === textureSrc;
@@ -475,7 +475,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
       )}
 
       {/* Button reset cho chế độ tablette */}
-      {type === "tablette" && config.selectedSpacingIds.length > 0 && (
+      {type === "tablette" && config.selectedShelvesSpacingIds.length > 0 && (
         <div className="mb-3">
           <button
             className="btn btn-outline-secondary btn-sm"
@@ -487,7 +487,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
       )}
 
       {/* Button reset cho chế độ facades */}
-      {type === "facades" && config.selectedSpacingIds.length > 0 && (
+      {type === "facades" && config.selectedFacadeSpacingIds.length > 0 && (
         <div className="mb-3">
           <button
             className="btn btn-outline-secondary btn-sm"

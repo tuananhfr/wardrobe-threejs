@@ -24,26 +24,37 @@ const MainSelector: React.FC<MainSelectorProps> = ({ activeOption }) => {
       // Khi chọn "Tablettes", reset selectedSpacingIds và hoveredSpacingId
       batchUpdate({
         activeView: "tablette",
-        selectedSpacingIds: [],
-        selectedSpacingId: null,
-        hoveredSpacingId: null,
+        selectedFacadeSpacingIds: [],
+        selectedDoorsDrawersSpacingIds: [],
+        selectedInternalEquipmentSpacingId: null,
+        hoveredFacadeSpacingId: null,
+        hoveredDoorsDrawersSpacingId: null,
+        hoveredInternalEquipmentSpacingId: null,
       });
     } else if (optionId === "facades") {
       // Khi chọn "Facades", reset selectedSpacingIds và hoveredSpacingId
       batchUpdate({
         activeView: "facades",
-        selectedSpacingIds: [],
-        selectedSpacingId: null,
-        hoveredSpacingId: null,
+        selectedShelvesSpacingIds: [],
+        selectedDoorsDrawersSpacingIds: [],
+        selectedInternalEquipmentSpacingId: null,
+        hoveredShelvesSpacingId: null,
+        hoveredDoorsDrawersSpacingId: null,
+        hoveredInternalEquipmentSpacingId: null,
       });
     } else {
       // Khi chuyển sang chế độ khác từ tablette hoặc facades, reset các state liên quan
       if (config.activeView === "tablette" || config.activeView === "facades") {
         batchUpdate({
           activeView: optionId,
-          selectedSpacingIds: [],
-          selectedSpacingId: null,
-          hoveredSpacingId: null,
+          selectedFacadeSpacingIds: [],
+          selectedShelvesSpacingIds: [],
+          selectedDoorsDrawersSpacingIds: [],
+          selectedInternalEquipmentSpacingId: null,
+          hoveredFacadeSpacingId: null,
+          hoveredShelvesSpacingId: null,
+          hoveredDoorsDrawersSpacingId: null,
+          hoveredInternalEquipmentSpacingId: null,
         });
       } else {
         // Các option khác hoạt động bình thường

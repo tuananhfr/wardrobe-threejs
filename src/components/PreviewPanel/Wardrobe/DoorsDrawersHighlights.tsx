@@ -28,11 +28,11 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
     updateDoorsDrawersConfig,
   } = useWardrobeConfig();
   // Use global state for hover
-  const hoveredSpacing = config.hoveredSpacingId || null;
+  const hoveredSpacing = config.hoveredDoorsDrawersSpacingId || null;
 
   // Helper function to set global hover state
   const setHoveredSpacing = (spacingId: string | null) => {
-    updateConfig("hoveredSpacingId", spacingId);
+    updateConfig("hoveredDoorsDrawersSpacingId", spacingId);
   };
 
   const width = sectionData.width;
@@ -57,8 +57,7 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
       setHoveredSpacing(null);
       document.body.style.cursor = "auto";
       // Reset all selected spacings when closing accordion
-      updateConfig("selectedSpacingIds", []);
-      updateConfig("selectedSpacingId", null);
+      updateConfig("selectedDoorsDrawersSpacingIds", []);
       updateConfig("selectedDoorsDrawersType", null);
     }
   }, [shouldShowHighlights, updateConfig]);
@@ -102,7 +101,7 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
 
   // Helper function to check if spacing is neighbor of selected spacings
   const isNeighborOfSelected = (spacingId: string): boolean => {
-    const selectedSpacings = config.selectedSpacingIds || [];
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
     if (selectedSpacings.length === 0) return false;
 
     // Parse spacingId to get columnId and spacingIndex
@@ -367,21 +366,19 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
 
   // Handle spacing click with grouped doors logic
   const handleSpacingClick = (spacingId: string) => {
-    const selectedSpacings = config.selectedSpacingIds || [];
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
     const isCurrentlySelected = selectedSpacings.includes(spacingId);
     const hasExistingConfig = config.doorsDrawersConfig[spacingId];
 
     if (isCurrentlySelected) {
       // Nếu spacing đã được chọn, click lại để bỏ chọn
-      updateConfig("selectedSpacingIds", []);
-      updateConfig("selectedSpacingId", null);
+      updateConfig("selectedDoorsDrawersSpacingIds", []);
       updateConfig("selectedDoorsDrawersType", null);
     } else {
       // Nếu click vào spacing đã có config, chọn cả group
       if (hasExistingConfig) {
         const groupMembers = getGroupMembersForSpacing(spacingId);
-        updateConfig("selectedSpacingIds", groupMembers);
-        updateConfig("selectedSpacingId", spacingId);
+        updateConfig("selectedDoorsDrawersSpacingIds", groupMembers);
         updateConfig(
           "selectedDoorsDrawersType",
           config.doorsDrawersConfig[spacingId] as any
@@ -395,12 +392,10 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
       if (isNeighbor) {
         // Add to selected spacings
         const newSelectedSpacings = [...selectedSpacings, spacingId];
-        updateConfig("selectedSpacingIds", newSelectedSpacings);
-        updateConfig("selectedSpacingId", spacingId); // Keep for backward compatibility
+        updateConfig("selectedDoorsDrawersSpacingIds", newSelectedSpacings);
       } else {
         // Clear all and select this spacing
-        updateConfig("selectedSpacingIds", [spacingId]);
-        updateConfig("selectedSpacingId", spacingId);
+        updateConfig("selectedDoorsDrawersSpacingIds", [spacingId]);
       }
 
       // Check if this spacing already has a configuration
@@ -462,7 +457,7 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
     >
       {/* Spacing highlights */}
       {spacingPositions.map((pos) => {
-        const selectedSpacings = config.selectedSpacingIds || [];
+        const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
         const isSelected = selectedSpacings.includes(pos.spacingId);
         const isHovered = hoveredSpacing === pos.spacingId;
 
@@ -513,7 +508,7 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
 
       {/* Icons and labels */}
       {spacingPositions.map((pos) => {
-        const selectedSpacings = config.selectedSpacingIds || [];
+        const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
         const isSelected = selectedSpacings.includes(pos.spacingId);
         const isHovered = hoveredSpacing === pos.spacingId;
 

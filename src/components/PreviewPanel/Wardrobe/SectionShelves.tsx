@@ -77,9 +77,9 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
       const angleGroup = getAngleShelfGroup(columnIndex, spacingIndex);
 
       if (angleGroup) {
-        updateConfig("hoveredSpacingId", angleGroup); // "angle-ab" thay vì spacingId
+        updateConfig("hoveredShelvesSpacingId", angleGroup); // "angle-ab" thay vì spacingId
       } else {
-        updateConfig("hoveredSpacingId", spacingId);
+        updateConfig("hoveredShelvesSpacingId", spacingId);
       }
     }
   };
@@ -87,7 +87,7 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   // Hàm xử lý leave kệ
   const handleShelfPointerOut = () => {
     if (isSelectingShelves) {
-      updateConfig("hoveredSpacingId", null);
+      updateConfig("hoveredShelvesSpacingId", null);
     }
   };
 
@@ -101,7 +101,7 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
       const angleGroup = getAngleShelfGroup(columnIndex, spacingIndex);
       const targetId = angleGroup || spacingId; // Dùng angle group nếu có
 
-      const currentSelectedIds = [...config.selectedSpacingIds];
+      const currentSelectedIds = [...config.selectedShelvesSpacingIds];
       const index = currentSelectedIds.indexOf(targetId);
 
       if (index > -1) {
@@ -110,7 +110,7 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
         currentSelectedIds.push(targetId);
       }
 
-      updateConfig("selectedSpacingIds", currentSelectedIds);
+      updateConfig("selectedShelvesSpacingIds", currentSelectedIds);
     }
   };
 
@@ -124,12 +124,12 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
 
     const angleGroup = getAngleShelfGroup(columnIndex, spacingIndex);
     const isHovered = angleGroup
-      ? config.hoveredSpacingId === angleGroup
-      : config.hoveredSpacingId === spacingId;
+      ? config.hoveredShelvesSpacingId === angleGroup
+      : config.hoveredShelvesSpacingId === spacingId;
 
     const isSelected = angleGroup
-      ? config.selectedSpacingIds.includes(angleGroup)
-      : config.selectedSpacingIds.includes(spacingId);
+      ? config.selectedShelvesSpacingIds.includes(angleGroup)
+      : config.selectedShelvesSpacingIds.includes(spacingId);
 
     return { isHighlighted: isHovered || isSelected, isSelected };
   };
@@ -188,8 +188,8 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
           );
           const angleGroup = getAngleShelfGroup(columnIndex, index);
           const isHovered = angleGroup
-            ? config.hoveredSpacingId === angleGroup
-            : config.hoveredSpacingId === spacingId;
+            ? config.hoveredShelvesSpacingId === angleGroup
+            : config.hoveredShelvesSpacingId === spacingId;
 
           // Xác định màu sắc và opacity cho highlight
           let highlightColor = "#f8f9fa"; // Default light gray

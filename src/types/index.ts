@@ -23,11 +23,25 @@ declare global {
     activeView: string;
     showSections: string;
     accordionOpen: string;
+    // EtagereColumnHighlights states
     selectedColumnId: string | null;
     hoveredColumnId: string | null;
-    selectedSpacingId: string | null;
-    selectedSpacingIds: string[];
-    hoveredSpacingId: string | null;
+
+    // FacadeHighlight states
+    selectedFacadeSpacingIds: string[];
+    hoveredFacadeSpacingId: string | null;
+
+    // DoorsDrawersHighlights states
+    selectedDoorsDrawersSpacingIds: string[];
+    hoveredDoorsDrawersSpacingId: string | null;
+
+    // InternalEquipmentSpacingHighlights states
+    selectedInternalEquipmentSpacingId: string | null;
+    hoveredInternalEquipmentSpacingId: string | null;
+
+    // SectionShelves states
+    selectedShelvesSpacingIds: string[];
+    hoveredShelvesSpacingId: string | null;
     selectedInternalEquipmentType:
       | "vide"
       | "trigle"

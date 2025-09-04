@@ -21,8 +21,8 @@ const FacadeHighlight: React.FC<FacadeHighlightProps> = ({
     config.accordionOpen === "collapseTextures" &&
     config.activeView === "facades";
 
-  const isHovered = config.hoveredSpacingId === spacingId;
-  const isSelected = config.selectedSpacingIds.includes(spacingId);
+  const isHovered = config.hoveredFacadeSpacingId === spacingId;
+  const isSelected = config.selectedFacadeSpacingIds.includes(spacingId);
 
   const showOverlay = inFacades && (isHovered || isSelected);
   const showIcon = inFacades; // luôn hiển thị icon khi ở chế độ facades

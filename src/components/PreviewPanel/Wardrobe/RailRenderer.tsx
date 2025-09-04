@@ -32,10 +32,23 @@ const RailRenderer: React.FC<RailRendererProps> = ({
 
   // Function to check if animations should be disabled
   const shouldDisableAnimations = () => {
-    // Disable when Internal Equipment accordion is open
+    // Trường hợp 1: Khi accordion Doors & Drawers đang mở
+    if (config.accordionOpen === "collapseDoorsDrawers") {
+      return true;
+    }
+    // Trường hợp 2: Khi accordion Internal Equipment đang mở
     if (config.accordionOpen === "collapseInternalEquipment") {
       return true;
     }
+
+    // Trường hợp 3: Khi đang ở chế độ facades selection
+    if (
+      config.accordionOpen === "collapseTextures" &&
+      config.activeView === "facades"
+    ) {
+      return true;
+    }
+
     return false;
   };
 
@@ -288,18 +301,18 @@ const RailRenderer: React.FC<RailRendererProps> = ({
                     if (ref) tiroirGroupsRef.current[key] = ref as any;
                   }}
                   onPointerOver={(e) => {
-                    e.stopPropagation();
-                    triggerTiroir(key, true, facadeZ);
+                    // Chỉ cho phép tiroir animation khi không bị disable
+                    if (!shouldDisableAnimations()) {
+                      e.stopPropagation();
+                      triggerTiroir(key, true, facadeZ);
+                    }
                   }}
                   onPointerOut={(e) => {
-                    e.stopPropagation();
-                    triggerTiroir(key, false, facadeZ);
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const next = !openedTiroirsRef.current[key];
-                    openedTiroirsRef.current[key] = next;
-                    triggerTiroir(key, next, facadeZ);
+                    // Chỉ cho phép tiroir animation khi không bị disable
+                    if (!shouldDisableAnimations()) {
+                      e.stopPropagation();
+                      triggerTiroir(key, false, facadeZ);
+                    }
                   }}
                 >
                   {/* Tiroir front panel */}

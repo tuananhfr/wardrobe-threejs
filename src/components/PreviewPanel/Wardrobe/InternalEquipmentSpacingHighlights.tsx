@@ -42,10 +42,7 @@ const InternalEquipmentSpacingHighlights: React.FC<
   // Only show highlights when in internal equipment mode
   const shouldShowHighlights = isInternalEquipmentMode;
 
-  // Don't render if not in the right mode
-  if (!shouldShowHighlights) {
-    return null;
-  }
+  // Don't early-return here to keep hooks order stable
 
   // Reset when internal equipment mode is disabled
   useEffect(() => {
@@ -371,7 +368,7 @@ const InternalEquipmentSpacingHighlights: React.FC<
     document.body.style.cursor = "auto";
   };
 
-  // Don't render if not in the right mode
+  // Don't render if not in the right mode - AFTER all hooks
   if (!shouldShowHighlights) {
     return null;
   }

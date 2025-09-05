@@ -39,17 +39,11 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
   const depth = sectionData.depth;
 
   // Check if we're in the right mode for highlighting
-
   const isDoorsDrawersMode = config.accordionOpen === "collapseDoorsDrawers";
 
   // Only render highlights for doors/drawers when in doors/drawers mode
   // OR when in textures mode with tablettes/facades selected
   const shouldShowHighlights = isDoorsDrawersMode;
-
-  // Don't render if not in the right mode
-  if (!shouldShowHighlights) {
-    return null;
-  }
 
   // Reset when doors drawers mode is disabled
   useEffect(() => {
@@ -61,6 +55,127 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
       updateConfig("selectedDoorsDrawersType", null);
     }
   }, [shouldShowHighlights, updateConfig]);
+
+  // Auto-update config when shelves change
+  useEffect(() => {
+    // Helper function to get spacing height
+    const getSpacingHeight = (spacingId: string): number | null => {
+      if (!spacingId) return null;
+
+      // Parse spacingId format: "sectionA-col-1-spacing-3"
+      const parts = spacingId.split("-");
+      if (parts.length < 4) return null;
+
+      // Extract column ID and spacing index
+      let columnId: string;
+      let spacingIndex: number;
+
+      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+        // Format: "sectionA-col-1-spacing-3"
+        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`; // "sectionA-col-1"
+        spacingIndex = parseInt(parts[4]); // 3
+      } else {
+        // Fallback to old format: "columnId-spacing-index"
+        columnId = parts[0];
+        spacingIndex = parseInt(parts[2]);
+      }
+
+      // Find the column in sections
+      for (const [, section] of Object.entries(config.wardrobeType.sections)) {
+        if (section && section.columns) {
+          const column = section.columns.find(
+            (col: any) => col.id === columnId
+          );
+          if (column) {
+            const spacings = column.shelves?.spacings || [];
+
+            // If no spacings, return full column height
+            if (spacings.length === 0) {
+              return (
+                config.height - config.baseBarHeight - 2 * config.thickness
+              );
+            }
+
+            // Return spacing height if index exists
+            if (spacingIndex >= 0 && spacingIndex < spacings.length) {
+              return spacings[spacingIndex].spacing;
+            }
+          }
+        }
+      }
+
+      return null;
+    };
+
+    // Check each column for shelf changes
+    Object.entries(config.wardrobeType.sections).forEach(([, section]) => {
+      if (section && section.columns) {
+        section.columns.forEach((column) => {
+          const columnSpacingId = `${column.id}-spacing-0`;
+          const hasShelves =
+            column.shelves?.spacings && column.shelves.spacings.length > 0;
+
+          // If column has shelves and has column door/drawer config, move it to first spacing
+          if (hasShelves && config.doorsDrawersConfig[columnSpacingId]) {
+            const firstSpacingId = `${column.id}-spacing-0`;
+            if (!config.doorsDrawersConfig[firstSpacingId]) {
+              const doorType = config.doorsDrawersConfig[columnSpacingId];
+              updateDoorsDrawersConfig(firstSpacingId, doorType);
+              updateDoorsDrawersConfig(columnSpacingId, null);
+            }
+          }
+          // If column has no shelves and has spacing door/drawer config, move it to column
+          else if (!hasShelves && !config.doorsDrawersConfig[columnSpacingId]) {
+            // Check if any spacing of this column has door/drawer config
+            const columnSpacingIds = Object.keys(
+              config.doorsDrawersConfig
+            ).filter(
+              (id) => id.startsWith(column.id) && id !== columnSpacingId
+            );
+
+            const hasSpacingDoorDrawer = columnSpacingIds.some(
+              (id) => config.doorsDrawersConfig[id]
+            );
+            if (hasSpacingDoorDrawer) {
+              // Get the first door/drawer config found
+              const firstConfig = columnSpacingIds.find(
+                (id) => config.doorsDrawersConfig[id]
+              );
+              if (firstConfig) {
+                const doorType = config.doorsDrawersConfig[firstConfig];
+                updateDoorsDrawersConfig(columnSpacingId, doorType);
+                // Remove all spacing door/drawer configs for this column
+                columnSpacingIds.forEach((id) => {
+                  if (config.doorsDrawersConfig[id]) {
+                    updateDoorsDrawersConfig(id, null);
+                  }
+                });
+              }
+            }
+          }
+        });
+      }
+    });
+
+    // NEW LOGIC: Remove drawer from spacings that are too small (< 10cm or > 60cm)
+    Object.keys(config.doorsDrawersConfig).forEach((spacingId) => {
+      if (config.doorsDrawersConfig[spacingId] === "drawer") {
+        const spacingHeight = getSpacingHeight(spacingId);
+        if (
+          spacingHeight !== null &&
+          (spacingHeight < 10 || spacingHeight > 60)
+        ) {
+          // Remove drawer from spacing that's too small or too large using grouped doors logic
+          updateDoorsDrawersConfig(spacingId, null);
+        }
+      }
+    });
+  }, [config.wardrobeType, config.doorsDrawersConfig, updateConfig]);
+
+  // Don't render if not in the right mode
+  if (!shouldShowHighlights) {
+    return null;
+  }
 
   // Helper function to get column X position
   const getColumnXPosition = (colIndex: number) => {
@@ -247,122 +362,6 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
   };
 
   const spacingPositions = getSpacingPositions();
-
-  // Auto-update config when shelves change
-  useEffect(() => {
-    // Helper function to get spacing height
-    const getSpacingHeight = (spacingId: string): number | null => {
-      if (!spacingId) return null;
-
-      // Parse spacingId format: "sectionA-col-1-spacing-3"
-      const parts = spacingId.split("-");
-      if (parts.length < 4) return null;
-
-      // Extract column ID and spacing index
-      let columnId: string;
-      let spacingIndex: number;
-
-      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
-        // Format: "sectionA-col-1-spacing-3"
-        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`; // "sectionA-col-1"
-        spacingIndex = parseInt(parts[4]); // 3
-      } else {
-        // Fallback to old format: "columnId-spacing-index"
-        columnId = parts[0];
-        spacingIndex = parseInt(parts[2]);
-      }
-
-      // Find the column in sections
-      for (const [, section] of Object.entries(config.wardrobeType.sections)) {
-        if (section && section.columns) {
-          const column = section.columns.find(
-            (col: any) => col.id === columnId
-          );
-          if (column) {
-            const spacings = column.shelves?.spacings || [];
-
-            // If no spacings, return full column height
-            if (spacings.length === 0) {
-              return (
-                config.height - config.baseBarHeight - 2 * config.thickness
-              );
-            }
-
-            // Return spacing height if index exists
-            if (spacingIndex >= 0 && spacingIndex < spacings.length) {
-              return spacings[spacingIndex].spacing;
-            }
-          }
-        }
-      }
-
-      return null;
-    };
-
-    // Check each column for shelf changes
-    Object.entries(config.wardrobeType.sections).forEach(([, section]) => {
-      if (section && section.columns) {
-        section.columns.forEach((column) => {
-          const columnSpacingId = `${column.id}-spacing-0`;
-          const hasShelves =
-            column.shelves?.spacings && column.shelves.spacings.length > 0;
-
-          // If column has shelves and has column door/drawer config, move it to first spacing
-          if (hasShelves && config.doorsDrawersConfig[columnSpacingId]) {
-            const firstSpacingId = `${column.id}-spacing-0`;
-            if (!config.doorsDrawersConfig[firstSpacingId]) {
-              const doorType = config.doorsDrawersConfig[columnSpacingId];
-              updateDoorsDrawersConfig(firstSpacingId, doorType);
-              updateDoorsDrawersConfig(columnSpacingId, null);
-            }
-          }
-          // If column has no shelves and has spacing door/drawer config, move it to column
-          else if (!hasShelves && !config.doorsDrawersConfig[columnSpacingId]) {
-            // Check if any spacing of this column has door/drawer config
-            const columnSpacingIds = Object.keys(
-              config.doorsDrawersConfig
-            ).filter(
-              (id) => id.startsWith(column.id) && id !== columnSpacingId
-            );
-
-            const hasSpacingDoorDrawer = columnSpacingIds.some(
-              (id) => config.doorsDrawersConfig[id]
-            );
-            if (hasSpacingDoorDrawer) {
-              // Get the first door/drawer config found
-              const firstConfig = columnSpacingIds.find(
-                (id) => config.doorsDrawersConfig[id]
-              );
-              if (firstConfig) {
-                const doorType = config.doorsDrawersConfig[firstConfig];
-                updateDoorsDrawersConfig(columnSpacingId, doorType);
-                // Remove all spacing door/drawer configs for this column
-                columnSpacingIds.forEach((id) => {
-                  if (config.doorsDrawersConfig[id]) {
-                    updateDoorsDrawersConfig(id, null);
-                  }
-                });
-              }
-            }
-          }
-        });
-      }
-    });
-
-    // NEW LOGIC: Remove drawer from spacings that are too small (< 10cm or > 60cm)
-    Object.keys(config.doorsDrawersConfig).forEach((spacingId) => {
-      if (config.doorsDrawersConfig[spacingId] === "drawer") {
-        const spacingHeight = getSpacingHeight(spacingId);
-        if (
-          spacingHeight !== null &&
-          (spacingHeight < 10 || spacingHeight > 60)
-        ) {
-          // Remove drawer from spacing that's too small or too large using grouped doors logic
-          updateDoorsDrawersConfig(spacingId, null);
-        }
-      }
-    });
-  }, [config.wardrobeType, config.doorsDrawersConfig, updateConfig]);
 
   // Handle spacing click with grouped doors logic
   const handleSpacingClick = (spacingId: string) => {

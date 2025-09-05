@@ -81,58 +81,6 @@ const InternalEquipmentSection: React.FC = () => {
     return null;
   };
 
-  // Get shelf below height from selectedSpacingId
-  const getShelfBelowHeight = (spacingId: string): number | null => {
-    if (!spacingId) return null;
-
-    // Parse spacingId format: "sectionA-col-1-spacing-3"
-    const parts = spacingId.split("-");
-    if (parts.length < 4) return null;
-
-    // Extract column ID and spacing index
-    let columnId: string;
-    let spacingIndex: number;
-
-    if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
-      // Format: "sectionA-col-1-spacing-3"
-      columnId = `${parts[0]}-${parts[1]}-${parts[2]}`; // "sectionA-col-1"
-      spacingIndex = parseInt(parts[4]); // 3
-    } else {
-      // Fallback to old format: "columnId-spacing-index"
-      columnId = parts[0];
-      spacingIndex = parseInt(parts[2]);
-    }
-
-    // Find the column in sections
-    for (const [, section] of Object.entries(config.wardrobeType.sections)) {
-      if (section && section.columns) {
-        const column = section.columns.find((col: any) => col.id === columnId);
-        if (column) {
-          const spacings = column.shelves?.spacings || [];
-
-          // If no spacings, return full column height
-          if (spacings.length === 0) {
-            return config.height - config.baseBarHeight - 2 * config.thickness;
-          }
-
-          // Calculate height from floor to the shelf below this spacing
-          // baseBarHeight + thickness (mặt sol) + sum_{k=0..spacingIndex-1}(spacing_k + thickness)
-          let heightFromFloor = config.baseBarHeight + config.thickness;
-
-          for (let i = 0; i < spacingIndex; i++) {
-            if (i < spacings.length) {
-              heightFromFloor += spacings[i].spacing + config.thickness;
-            }
-          }
-
-          return heightFromFloor;
-        }
-      }
-    }
-
-    return null;
-  };
-
   // Check if trigle button should be disabled
   const isTrigleDisabled = (): boolean => {
     if (!config.selectedInternalEquipmentSpacingId) return false;
@@ -172,16 +120,78 @@ const InternalEquipmentSection: React.FC = () => {
     return spacingHeight < 200;
   };
 
+  // Get height from floor to selected spacing
+  const getHeightFromFloorToSpacing = (spacingId: string): number | null => {
+    if (!spacingId) return null;
+
+    // Parse spacingId format: "sectionA-col-1-spacing-3"
+    const parts = spacingId.split("-");
+    if (parts.length < 4) return null;
+
+    // Extract column ID and spacing index
+    let columnId: string;
+    let spacingIndex: number;
+
+    if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+      // Format: "sectionA-col-1-spacing-3"
+      columnId = `${parts[0]}-${parts[1]}-${parts[2]}`; // "sectionA-col-1"
+      spacingIndex = parseInt(parts[4]); // 3
+    } else {
+      // Fallback to old format: "columnId-spacing-index"
+      columnId = parts[0];
+      spacingIndex = parseInt(parts[2]);
+    }
+
+    // Find the column in sections
+    for (const [, section] of Object.entries(config.wardrobeType.sections)) {
+      if (section && section.columns) {
+        const column = section.columns.find((col: any) => col.id === columnId);
+        if (column) {
+          const spacings = column.shelves?.spacings || [];
+
+          // If no spacings, return full column height
+          if (spacings.length === 0) {
+            return config.height;
+          }
+
+          // Calculate height from floor to this spacing
+          // For spacing at index i: baseBarHeight + thickness + sum_{k=0..i}(spacing_k + thickness)
+          let heightFromFloor = config.baseBarHeight + config.thickness;
+
+          for (let i = 0; i <= spacingIndex; i++) {
+            if (i < spacings.length) {
+              heightFromFloor += spacings[i].spacing;
+              if (i < spacingIndex) {
+                // Add thickness between spacings (not after the last one)
+                heightFromFloor += config.thickness;
+              }
+            }
+          }
+
+          // If this is the last spacing, it should reach the top of the wardrobe
+          if (spacingIndex === spacings.length - 1) {
+            // The last spacing should go to the top, so use full wardrobe height
+            heightFromFloor = config.height;
+          }
+
+          return heightFromFloor;
+        }
+      }
+    }
+
+    return null;
+  };
+
   // Check if tiroir intérieur button should be disabled
   const isTiroirInterieurDisabled = (): boolean => {
     if (!config.selectedInternalEquipmentSpacingId) return false;
 
-    // Check if shelf below is too high (> 100cm) - same as drawer logic
-    const shelfBelowHeight = getShelfBelowHeight(
+    // Check if height from floor to selected spacing is too high (>= 100cm)
+    const heightFromFloor = getHeightFromFloorToSpacing(
       config.selectedInternalEquipmentSpacingId
     );
-    if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
-      return true; // Disable tiroir intérieur when shelf below is too high
+    if (heightFromFloor !== null && heightFromFloor >= 100) {
+      return true; // Disable tiroir intérieur when height from floor >= 100cm
     }
 
     // No other restrictions - tiroir intérieur can be used for any spacing height
@@ -281,12 +291,12 @@ const InternalEquipmentSection: React.FC = () => {
         updateConfig("selectedInternalEquipmentType", "vide");
       }
 
-      // If shelf below is too high and has tiroir intérieur, remove it and set to vide
+      // If height from floor to spacing is too high and has tiroir intérieur, remove it and set to vide
       if (currentEquipment === "tiroirInterieur") {
-        const shelfBelowHeight = getShelfBelowHeight(
+        const heightFromFloor = getHeightFromFloorToSpacing(
           config.selectedInternalEquipmentSpacingId
         );
-        if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
+        if (heightFromFloor !== null && heightFromFloor >= 100) {
           // Remove tiroir intérieur from config
           const updatedConfig = { ...config.internalEquipmentConfig };
           delete updatedConfig[config.selectedInternalEquipmentSpacingId];
@@ -348,10 +358,10 @@ const InternalEquipmentSection: React.FC = () => {
         hasChanges = true;
       }
 
-      // Remove tiroir intérieur if shelf below is too high
+      // Remove tiroir intérieur if height from floor to spacing is too high
       if (currentEquipment === "tiroirInterieur") {
-        const shelfBelowHeight = getShelfBelowHeight(spacingId);
-        if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
+        const heightFromFloor = getHeightFromFloorToSpacing(spacingId);
+        if (heightFromFloor !== null && heightFromFloor >= 100) {
           delete updatedConfig[spacingId];
           hasChanges = true;
         }
@@ -969,15 +979,15 @@ const InternalEquipmentSection: React.FC = () => {
                     :
                   </p>
                   {(() => {
-                    const shelfBelowHeight = getShelfBelowHeight(
+                    const heightFromFloor = getHeightFromFloorToSpacing(
                       config.selectedInternalEquipmentSpacingId || ""
                     );
 
-                    if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
-                      return `❌ L'étagère en dessous est trop haute (${shelfBelowHeight} cm depuis le sol > 100 cm)`;
+                    if (heightFromFloor !== null && heightFromFloor >= 100) {
+                      return `❌ La hauteur depuis le sol est trop élevée (${heightFromFloor} cm >= 100 cm)`;
                     }
 
-                    return `❌ L'étagère en dessous est trop haute`;
+                    return `❌ La hauteur depuis le sol est trop élevée`;
                   })()}
                 </span>
               </div>

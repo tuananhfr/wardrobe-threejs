@@ -1712,17 +1712,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              <FacadeHighlight
-                overlaySize={[
-                  doorWidthSwing,
-                  facadeHeight + thickness,
-                  thickness,
-                ]}
-                overlayPosition={[doorWidthSwing / 2, 0, 0.01]}
-                iconPosition={[doorWidthSwing / 2, 0, thickness / 2 + 0.02]}
-                spacingId={firstSpacingId}
-              />
-
               {/* Left door handle ở RIGHT SIDE */}
               {renderHandle(handleType, [
                 doorWidthSwing - 0.05,
@@ -1785,17 +1774,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              <FacadeHighlight
-                overlaySize={[
-                  doorWidthSwing,
-                  facadeHeight + thickness,
-                  thickness,
-                ]}
-                overlayPosition={[-doorWidthSwing / 2, 0, 0.01]}
-                iconPosition={[-doorWidthSwing / 2, 0, thickness + 0.02]}
-                spacingId={firstSpacingId}
-              />
-
               {/* Right door handle ở LEFT SIDE */}
               {renderHandle(handleType, [
                 -doorWidthSwing + 0.05,
@@ -1803,6 +1781,14 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 thickness / 2 + 0.01,
               ])}
             </group>
+
+            {/* Single FacadeHighlight for the entire double door */}
+            <FacadeHighlight
+              overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+              overlayPosition={[0, 0, 0.01]}
+              iconPosition={[0, 0, thickness / 2 + 0.02]}
+              spacingId={firstSpacingId}
+            />
           </group>
         );
 
@@ -1965,6 +1951,14 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 thickness / 2 + 0.01,
               ])}
             </group>
+
+            {/* Single FacadeHighlight for the entire double glass door */}
+            <FacadeHighlight
+              overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+              overlayPosition={[0, 0, 0.01]}
+              iconPosition={[0, 0, thickness / 2 + 0.02]}
+              spacingId={firstSpacingId}
+            />
           </group>
         );
 
@@ -2073,6 +2067,14 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 thickness / 2 + 0.01,
               ])}
             </group>
+
+            {/* Single FacadeHighlight for the entire double door */}
+            <FacadeHighlight
+              overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+              overlayPosition={[0, 0, 0.01]}
+              iconPosition={[0, 0, thickness / 2 + 0.02]}
+              spacingId={firstSpacingId}
+            />
           </group>
         );
 
@@ -2227,6 +2229,14 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 thickness / 2 + 0.01,
               ])}
             </group>
+
+            {/* Single FacadeHighlight for the entire double glass door */}
+            <FacadeHighlight
+              overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+              overlayPosition={[0, 0, 0.01]}
+              iconPosition={[0, 0, thickness / 2 + 0.02]}
+              spacingId={firstSpacingId}
+            />
           </group>
         );
 
@@ -2308,17 +2318,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              <FacadeHighlight
-                overlaySize={[
-                  slidingDoorWidth,
-                  facadeHeight + thickness,
-                  thickness,
-                ]}
-                overlayPosition={[0, 0, 0.01]}
-                iconPosition={[0, 0, thickness / 2 + 0.02]}
-                spacingId={firstSpacingId}
-              />
-
               {/* Left door handle - removed for sliding doors */}
             </group>
 
@@ -2394,19 +2393,16 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 />
               </mesh>
 
-              <FacadeHighlight
-                overlaySize={[
-                  slidingDoorWidth,
-                  facadeHeight + thickness,
-                  thickness,
-                ]}
-                overlayPosition={[0, 0, 0.01]}
-                iconPosition={[0, 0, thickness / 2 + 0.02]}
-                spacingId={firstSpacingId}
-              />
-
               {/* Right door handle - removed for sliding doors */}
             </group>
+
+            {/* Single FacadeHighlight for the entire sliding door */}
+            <FacadeHighlight
+              overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+              overlayPosition={[0, 0, 0.01]}
+              iconPosition={[0, 0, thickness / 2 + 0.02]}
+              spacingId={firstSpacingId}
+            />
           </group>
         );
 
@@ -2555,6 +2551,14 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               </mesh>
               {/* Right door handle - removed for sliding doors */}
             </group>
+
+            {/* Single FacadeHighlight for the entire sliding mirror door */}
+            <FacadeHighlight
+              overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+              overlayPosition={[0, 0, 0.01]}
+              iconPosition={[0, 0, thickness / 2 + 0.02]}
+              spacingId={firstSpacingId}
+            />
           </group>
         );
 
@@ -2743,6 +2747,14 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               </mesh>
               {/* Right door handle - removed for sliding doors */}
             </group>
+
+            {/* Single FacadeHighlight for the entire sliding glass door */}
+            <FacadeHighlight
+              overlaySize={[facadeWidth, facadeHeight + thickness, thickness]}
+              overlayPosition={[0, 0, 0.01]}
+              iconPosition={[0, 0, thickness / 2 + 0.02]}
+              spacingId={firstSpacingId}
+            />
           </group>
         );
 

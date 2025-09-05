@@ -693,10 +693,69 @@ const DoorsDrawersSection: React.FC = () => {
         type === "slidingMirrorDoor" ||
         type === "slidingGlassDoor"
       ) {
-        // SLIDING DOOR: Áp dụng cho các spacing được chọn cụ thể
+        // SLIDING DOOR: Luôn áp dụng cho TOÀN BỘ cột (1 cột = 1 cửa kéo)
+        const spacingsByColumn = new Map<string, string[]>();
+
         targetSpacings.forEach((spacingId) => {
-          updateDoorsDrawersConfig(spacingId, type);
+          const parts = spacingId.split("-");
+          if (parts.length < 4) return;
+
+          let columnId: string;
+          if (
+            parts.length === 5 &&
+            parts[1] === "col" &&
+            parts[3] === "spacing"
+          ) {
+            columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+          } else {
+            columnId = parts[0];
+          }
+
+          if (!spacingsByColumn.has(columnId)) {
+            spacingsByColumn.set(columnId, []);
+          }
+          spacingsByColumn.get(columnId)!.push(spacingId);
         });
+
+        // Apply sliding door to ALL spacings in each column
+        for (const [columnId] of spacingsByColumn) {
+          // Get ALL spacings in this column from the wardrobe config
+          const allSpacingsInColumn: string[] = [];
+
+          for (const [, section] of Object.entries(
+            config.wardrobeType.sections
+          )) {
+            if (section && section.columns) {
+              const column = section.columns.find(
+                (col: any) => col.id === columnId
+              );
+              if (column) {
+                const spacings = column.shelves?.spacings || [];
+
+                if (spacings.length === 0) {
+                  allSpacingsInColumn.push(`${columnId}-spacing-0`);
+                } else {
+                  for (let i = 0; i < spacings.length; i++) {
+                    allSpacingsInColumn.push(`${columnId}-spacing-${i}`);
+                  }
+                }
+              }
+            }
+          }
+
+          // Apply sliding door to ALL spacings in the column with group creation
+          if (allSpacingsInColumn.length === 1) {
+            // Single spacing - no group needed
+            updateDoorsDrawersConfig(allSpacingsInColumn[0], type);
+          } else {
+            // Multiple spacings - create group
+            updateDoorsDrawersConfig(
+              allSpacingsInColumn[0],
+              type,
+              allSpacingsInColumn
+            );
+          }
+        }
       } else {
         // CỬA KHÁC: Logic group ghép cửa (tiroir không bao giờ có multiple selection nên không group)
         if (

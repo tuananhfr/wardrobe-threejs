@@ -1047,10 +1047,6 @@ export const useWardrobeConfig = () => {
     const updatedConfig = { ...config.doorsDrawersConfig };
 
     const isDrawer = doorType === "drawer" || doorType === "drawerVerre";
-    const isSlidingDoor =
-      doorType === "slidingDoor" ||
-      doorType === "slidingMirrorDoor" ||
-      doorType === "slidingGlassDoor";
 
     if (doorType === null) {
       spacingsToUpdate.forEach((id) => {
@@ -1072,12 +1068,7 @@ export const useWardrobeConfig = () => {
         updatedConfig[id] = doorType as any;
       });
 
-      if (
-        spacingsToUpdate.length > 1 &&
-        !isDrawer &&
-        !isSlidingDoor &&
-        !targetSpacings
-      ) {
+      if (spacingsToUpdate.length > 1 && !isDrawer && !targetSpacings) {
         createOrUpdateGroup(spacingsToUpdate, doorType);
       }
     }

@@ -14,19 +14,11 @@ const DoorsDrawersSection: React.FC = () => {
     config,
     updateConfig,
     updateDoorsDrawersConfig,
-    createOrUpdateGroup,
     areSpacingsConsecutiveInSameColumn,
   } = useWardrobeConfig();
 
   // State for tooltip
   const [hoveredButton, setHoveredButton] = useState<{
-    type: string;
-    x: number;
-    y: number;
-  } | null>(null);
-
-  // State for sliding door tooltip
-  const [hoveredSlidingDoor, setHoveredSlidingDoor] = useState<{
     type: string;
     x: number;
     y: number;
@@ -282,13 +274,20 @@ const DoorsDrawersSection: React.FC = () => {
     )
       return false;
 
-    const spacingWidth = getSpacingWidth(
-      config.selectedDoorsDrawersSpacingIds[0]
-    );
-    if (spacingWidth === null) return false;
+    // Khi có multiple spacing, kiểm tra tất cả spacing
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
 
-    // Disable if spacing width is not between 40-109cm
-    return spacingWidth < 40 || spacingWidth > 109;
+    for (const spacingId of selectedSpacings) {
+      const spacingWidth = getSpacingWidth(spacingId);
+      if (spacingWidth === null) continue;
+
+      // Nếu có bất kỳ spacing nào không phù hợp (40-109cm) thì disable
+      if (spacingWidth < 40 || spacingWidth > 109) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   // Check if left/right door button should be disabled
@@ -299,13 +298,89 @@ const DoorsDrawersSection: React.FC = () => {
     )
       return false;
 
-    const spacingWidth = getSpacingWidth(
-      config.selectedDoorsDrawersSpacingIds[0]
-    );
-    if (spacingWidth === null) return false;
+    // Khi có multiple spacing, kiểm tra tất cả spacing
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
 
-    // Disable if spacing width is not between 26-60cm
-    return spacingWidth < 26 || spacingWidth > 60;
+    for (const spacingId of selectedSpacings) {
+      const spacingWidth = getSpacingWidth(spacingId);
+      if (spacingWidth === null) continue;
+
+      // Nếu có bất kỳ spacing nào không phù hợp (26-60cm) thì disable
+      if (spacingWidth < 26 || spacingWidth > 60) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  // Check if sliding door button should be disabled
+  const isSlidingDoorDisabled = (): boolean => {
+    if (
+      !config.selectedDoorsDrawersSpacingIds ||
+      config.selectedDoorsDrawersSpacingIds.length === 0
+    )
+      return false;
+
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
+
+    // Group selected spacings by column
+    const spacingsByColumn = new Map<string, string[]>();
+
+    selectedSpacings.forEach((spacingId) => {
+      const parts = spacingId.split("-");
+      if (parts.length < 4) return;
+
+      let columnId: string;
+      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      } else {
+        columnId = parts[0];
+      }
+
+      if (!spacingsByColumn.has(columnId)) {
+        spacingsByColumn.set(columnId, []);
+      }
+      spacingsByColumn.get(columnId)!.push(spacingId);
+    });
+
+    // Check each column to see if all spacings in that column are selected
+    for (const [columnId, selectedSpacingsInColumn] of spacingsByColumn) {
+      // Get all spacings in this column from the wardrobe config
+      const allSpacingsInColumn: string[] = [];
+
+      for (const [, section] of Object.entries(config.wardrobeType.sections)) {
+        if (section && section.columns) {
+          const column = section.columns.find(
+            (col: any) => col.id === columnId
+          );
+          if (column) {
+            const spacings = column.shelves?.spacings || [];
+
+            if (spacings.length === 0) {
+              allSpacingsInColumn.push(`${columnId}-spacing-0`);
+            } else {
+              for (let i = 0; i < spacings.length; i++) {
+                allSpacingsInColumn.push(`${columnId}-spacing-${i}`);
+              }
+            }
+          }
+        }
+      }
+
+      // If not all spacings in this column are selected, disable sliding door
+      if (selectedSpacingsInColumn.length < allSpacingsInColumn.length) {
+        return true;
+      }
+
+      // Check column width for sliding door constraints (90-180cm total)
+      const columnWidth = getSpacingWidth(selectedSpacingsInColumn[0]);
+      if (columnWidth !== null && (columnWidth < 90 || columnWidth > 180)) {
+        return true;
+      }
+    }
+
+    return false;
   };
 
   // Update selected doors drawers type based on selected spacing
@@ -568,6 +643,16 @@ const DoorsDrawersSection: React.FC = () => {
       return;
     }
 
+    // Prevent selecting sliding door if not all spacings in column are selected
+    if (
+      (type === "slidingDoor" ||
+        type === "slidingMirrorDoor" ||
+        type === "slidingGlassDoor") &&
+      isSlidingDoorDisabled()
+    ) {
+      return;
+    }
+
     if (type === "vide") {
       updateConfig("selectedDoorsDrawersType", null);
 
@@ -580,46 +665,27 @@ const DoorsDrawersSection: React.FC = () => {
           : [];
 
       if (targetSpacings.length > 0) {
-        // *** THÊM LOGIC NÀY: Kiểm tra section có sliding door không ***
-        const sectionName = getSectionNameFromSpacingId(targetSpacings[0]);
-        const sectionSpacingIds = getSpacingIdsInSection(sectionName);
-
-        const hasSlidingDoor = sectionSpacingIds.some((sectionSpacingId) => {
-          const currentType = config.doorsDrawersConfig[sectionSpacingId];
-          return (
-            currentType === "slidingDoor" ||
-            currentType === "slidingMirrorDoor" ||
-            currentType === "slidingGlassDoor"
-          );
+        // Logic bình thường: chỉ clear spacing được chọn
+        targetSpacings.forEach((spacingId) => {
+          updateDoorsDrawersConfig(spacingId, null);
         });
-
-        if (hasSlidingDoor) {
-          // Nếu section có sliding door: clear TẤT CẢ spacing trong section
-          updateDoorsDrawersConfig(
-            sectionSpacingIds[0],
-            null,
-            sectionSpacingIds
-          );
-        } else {
-          // Logic bình thường: chỉ clear spacing được chọn
-          targetSpacings.forEach((spacingId) => {
-            updateDoorsDrawersConfig(spacingId, null);
-          });
-        }
       }
       return;
     }
 
-    updateConfig("selectedDoorsDrawersType", type as any);
-
     // Save doors drawers configuration for the selected spacings
     const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
-    const hasMultipleSelected = selectedSpacings.length > 0;
+    const hasMultipleSelected = selectedSpacings.length > 1;
     const targetSpacings = hasMultipleSelected
       ? selectedSpacings
       : config.selectedDoorsDrawersSpacingIds[0]
       ? [config.selectedDoorsDrawersSpacingIds[0]]
       : [];
+
+    // Set selected type AFTER updating config to avoid timing issues
+    setTimeout(() => {
+      updateConfig("selectedDoorsDrawersType", type as any);
+    }, 0);
 
     if (targetSpacings.length > 0) {
       if (
@@ -627,77 +693,28 @@ const DoorsDrawersSection: React.FC = () => {
         type === "slidingMirrorDoor" ||
         type === "slidingGlassDoor"
       ) {
-        // SLIDING DOOR: Áp dụng cho tất cả spacing trong section
-        const sectionsToUpdate = new Set<string>();
+        // SLIDING DOOR: Áp dụng cho các spacing được chọn cụ thể
         targetSpacings.forEach((spacingId) => {
-          const sectionName = getSectionNameFromSpacingId(spacingId);
-          sectionsToUpdate.add(sectionName);
-        });
-
-        sectionsToUpdate.forEach((sectionName) => {
-          const sectionSpacingIds = getSpacingIdsInSection(sectionName);
-
-          // Clear và set sliding door cho tất cả spacing trong section
-          updateDoorsDrawersConfig(
-            sectionSpacingIds[0],
-            null,
-            sectionSpacingIds
-          );
-          updateDoorsDrawersConfig(
-            sectionSpacingIds[0],
-            type,
-            sectionSpacingIds
-          );
+          updateDoorsDrawersConfig(spacingId, type);
         });
       } else {
-        // CỬA KHÁC: Xử lý logic section có sliding door
-        targetSpacings.forEach((spacingId) => {
-          if (spacingId) {
-            const sectionName = getSectionNameFromSpacingId(spacingId);
-            const sectionSpacingIds = getSpacingIdsInSection(sectionName);
-
-            const hasSlidingDoor = sectionSpacingIds.some(
-              (sectionSpacingId) => {
-                const currentType = config.doorsDrawersConfig[sectionSpacingId];
-                return (
-                  currentType === "slidingDoor" ||
-                  currentType === "slidingMirrorDoor" ||
-                  currentType === "slidingGlassDoor"
-                );
-              }
-            );
-
-            if (hasSlidingDoor) {
-              // Thay vì gọi riêng biệt, combine thành 1 operation
-              const sectionSpacingIds = getSpacingIdsInSection(sectionName);
-              const finalConfig = { ...config.doorsDrawersConfig };
-
-              // Clear tất cả spacing trong section
-              sectionSpacingIds.forEach((id) => {
-                delete finalConfig[id];
-              });
-
-              // Set cửa mới cho spacing được chọn
-              finalConfig[spacingId] = type as any;
-
-              // Update 1 lần duy nhất
-              updateConfig("doorsDrawersConfig", finalConfig);
-            } else {
-              // Logic bình thường
-              if (
-                hasMultipleSelected &&
-                areSpacingsConsecutiveInSameColumn(targetSpacings)
-              ) {
-                createOrUpdateGroup(targetSpacings, type);
-                targetSpacings.forEach((targetSpacingId) => {
-                  updateDoorsDrawersConfig(targetSpacingId, type);
-                });
-              } else {
-                updateDoorsDrawersConfig(spacingId, type);
-              }
+        // CỬA KHÁC: Logic group ghép cửa (tiroir không bao giờ có multiple selection nên không group)
+        if (
+          hasMultipleSelected &&
+          areSpacingsConsecutiveInSameColumn(targetSpacings)
+        ) {
+          // Nếu có nhiều spacing cạnh nhau và chọn cửa -> tạo group ghép cửa
+          // Lưu ý: tiroir bị disable khi multiple selection nên không bao giờ vào đây
+          // Chỉ cần gọi updateDoorsDrawersConfig với targetSpacings, nó sẽ tự động tạo group
+          updateDoorsDrawersConfig(targetSpacings[0], type, targetSpacings);
+        } else {
+          // Logic bình thường cho single spacing hoặc không cạnh nhau
+          targetSpacings.forEach((spacingId) => {
+            if (spacingId) {
+              updateDoorsDrawersConfig(spacingId, type);
             }
-          }
-        });
+          });
+        }
       }
     }
   };
@@ -724,6 +741,13 @@ const DoorsDrawersSection: React.FC = () => {
       isLeftRightDoorDisabled()
     ) {
       isDisabled = true;
+    } else if (
+      (type === "slidingDoor" ||
+        type === "slidingMirrorDoor" ||
+        type === "slidingGlassDoor") &&
+      isSlidingDoorDisabled()
+    ) {
+      isDisabled = true;
     }
 
     if (isDisabled) {
@@ -738,23 +762,6 @@ const DoorsDrawersSection: React.FC = () => {
 
   const handleDisabledButtonMouseLeave = () => {
     setHoveredButton(null);
-  };
-
-  // Handle tooltip display for sliding doors
-  const handleSlidingDoorMouseEnter = (
-    event: React.MouseEvent,
-    type: string
-  ) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    setHoveredSlidingDoor({
-      type,
-      x: rect.left + rect.width / 2,
-      y: rect.top - 10,
-    });
-  };
-
-  const handleSlidingDoorMouseLeave = () => {
-    setHoveredSlidingDoor(null);
   };
 
   const renderSelectionPrompt = () => (
@@ -1294,14 +1301,17 @@ const DoorsDrawersSection: React.FC = () => {
           <div className="col-6">
             <div
               onMouseEnter={(e) =>
-                handleSlidingDoorMouseEnter(e, "slidingDoor")
+                handleDisabledButtonMouseEnter(e, "slidingDoor")
               }
-              onMouseLeave={handleSlidingDoorMouseLeave}
+              onMouseLeave={handleDisabledButtonMouseLeave}
               style={{ position: "relative" }}
             >
               <button
-                className="btn w-100 p-3"
+                className={`btn w-100 p-3 ${
+                  isSlidingDoorDisabled() ? "disabled" : ""
+                }`}
                 onClick={() => handleDoorsDrawersTypeSelect("slidingDoor")}
+                disabled={isSlidingDoorDisabled()}
                 style={{
                   height: "120px",
                   display: "flex",
@@ -1313,7 +1323,11 @@ const DoorsDrawersSection: React.FC = () => {
                       ? "#0d6efd"
                       : "#dee2e6"
                   }`,
-                  backgroundColor: "transparent",
+                  backgroundColor: isSlidingDoorDisabled()
+                    ? "#f8f9fa"
+                    : "transparent",
+                  opacity: isSlidingDoorDisabled() ? 0.6 : 1,
+                  cursor: isSlidingDoorDisabled() ? "not-allowed" : "pointer",
                 }}
               >
                 <div className="mb-2" style={{ fontSize: "2rem" }}>
@@ -1321,13 +1335,19 @@ const DoorsDrawersSection: React.FC = () => {
                   <img
                     src={door}
                     alt="Porte coulissante"
-                    style={{ width: 40, height: 40 }}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      opacity: isSlidingDoorDisabled() ? 0.5 : 1,
+                    }}
                   />
                 </div>
                 <span
                   className={`fw-bold ${
                     config.selectedDoorsDrawersType === "slidingDoor"
                       ? "text-primary"
+                      : isSlidingDoorDisabled()
+                      ? "text-muted"
                       : ""
                   }`}
                   style={{ fontSize: "12px", paddingBottom: "8px" }}
@@ -1342,16 +1362,19 @@ const DoorsDrawersSection: React.FC = () => {
           <div className="col-6">
             <div
               onMouseEnter={(e) =>
-                handleSlidingDoorMouseEnter(e, "slidingMirrorDoor")
+                handleDisabledButtonMouseEnter(e, "slidingMirrorDoor")
               }
-              onMouseLeave={handleSlidingDoorMouseLeave}
+              onMouseLeave={handleDisabledButtonMouseLeave}
               style={{ position: "relative" }}
             >
               <button
-                className="btn w-100 p-3"
+                className={`btn w-100 p-3 ${
+                  isSlidingDoorDisabled() ? "disabled" : ""
+                }`}
                 onClick={() =>
                   handleDoorsDrawersTypeSelect("slidingMirrorDoor")
                 }
+                disabled={isSlidingDoorDisabled()}
                 style={{
                   height: "120px",
                   display: "flex",
@@ -1363,7 +1386,11 @@ const DoorsDrawersSection: React.FC = () => {
                       ? "#0d6efd"
                       : "#dee2e6"
                   }`,
-                  backgroundColor: "transparent",
+                  backgroundColor: isSlidingDoorDisabled()
+                    ? "#f8f9fa"
+                    : "transparent",
+                  opacity: isSlidingDoorDisabled() ? 0.6 : 1,
+                  cursor: isSlidingDoorDisabled() ? "not-allowed" : "pointer",
                 }}
               >
                 <div className="mb-2" style={{ fontSize: "2rem" }}>
@@ -1371,13 +1398,19 @@ const DoorsDrawersSection: React.FC = () => {
                   <img
                     src={door}
                     alt="Porte coulissante en miroir"
-                    style={{ width: 40, height: 40 }}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      opacity: isSlidingDoorDisabled() ? 0.5 : 1,
+                    }}
                   />
                 </div>
                 <span
                   className={`fw-bold ${
                     config.selectedDoorsDrawersType === "slidingMirrorDoor"
                       ? "text-primary"
+                      : isSlidingDoorDisabled()
+                      ? "text-muted"
                       : ""
                   }`}
                   style={{ fontSize: "12px", paddingBottom: "8px" }}
@@ -1392,14 +1425,17 @@ const DoorsDrawersSection: React.FC = () => {
           <div className="col-6">
             <div
               onMouseEnter={(e) =>
-                handleSlidingDoorMouseEnter(e, "slidingGlassDoor")
+                handleDisabledButtonMouseEnter(e, "slidingGlassDoor")
               }
-              onMouseLeave={handleSlidingDoorMouseLeave}
+              onMouseLeave={handleDisabledButtonMouseLeave}
               style={{ position: "relative" }}
             >
               <button
-                className="btn w-100 p-3"
+                className={`btn w-100 p-3 ${
+                  isSlidingDoorDisabled() ? "disabled" : ""
+                }`}
                 onClick={() => handleDoorsDrawersTypeSelect("slidingGlassDoor")}
+                disabled={isSlidingDoorDisabled()}
                 style={{
                   height: "120px",
                   display: "flex",
@@ -1411,7 +1447,11 @@ const DoorsDrawersSection: React.FC = () => {
                       ? "#0d6efd"
                       : "#dee2e6"
                   }`,
-                  backgroundColor: "transparent",
+                  backgroundColor: isSlidingDoorDisabled()
+                    ? "#f8f9fa"
+                    : "transparent",
+                  opacity: isSlidingDoorDisabled() ? 0.6 : 1,
+                  cursor: isSlidingDoorDisabled() ? "not-allowed" : "pointer",
                 }}
               >
                 <div className="mb-2" style={{ fontSize: "2rem" }}>
@@ -1419,13 +1459,19 @@ const DoorsDrawersSection: React.FC = () => {
                   <img
                     src={door}
                     alt="Porte coulissante en verre"
-                    style={{ width: 40, height: 40 }}
+                    style={{
+                      width: 40,
+                      height: 40,
+                      opacity: isSlidingDoorDisabled() ? 0.5 : 1,
+                    }}
                   />
                 </div>
                 <span
                   className={`fw-bold ${
                     config.selectedDoorsDrawersType === "slidingGlassDoor"
                       ? "text-primary"
+                      : isSlidingDoorDisabled()
+                      ? "text-muted"
                       : ""
                   }`}
                   style={{ fontSize: "12px", paddingBottom: "8px" }}
@@ -1525,45 +1571,110 @@ const DoorsDrawersSection: React.FC = () => {
                 )}
                 {hoveredButton.type === "doubleSwingDoor" && (
                   <p>
-                    ❌ 40-109 cm de largeur (courant{" "}
-                    {getSpacingWidth(
-                      config.selectedDoorsDrawersSpacingIds[0] || ""
-                    )}{" "}
-                    cm)
+                    ❌ 40-109 cm de largeur{" "}
+                    {config.selectedDoorsDrawersSpacingIds.length > 1
+                      ? "(certains casiers ne respectent pas cette contrainte)"
+                      : `(courant ${getSpacingWidth(
+                          config.selectedDoorsDrawersSpacingIds[0] || ""
+                        )} cm)`}
                   </p>
                 )}
                 {(hoveredButton.type === "leftDoor" ||
                   hoveredButton.type === "rightDoor") && (
                   <p>
-                    ❌ 26-60 cm de largeur (courant{" "}
-                    {getSpacingWidth(
-                      config.selectedDoorsDrawersSpacingIds[0] || ""
-                    )}{" "}
-                    cm)
+                    ❌ 26-60 cm de largeur{" "}
+                    {config.selectedDoorsDrawersSpacingIds.length > 1
+                      ? "(certains casiers ne respectent pas cette contrainte)"
+                      : `(courant ${getSpacingWidth(
+                          config.selectedDoorsDrawersSpacingIds[0] || ""
+                        )} cm)`}
                   </p>
                 )}
-              </span>
-            </div>
-          </div>
-        )}
+                {(hoveredButton.type === "slidingDoor" ||
+                  hoveredButton.type === "slidingMirrorDoor" ||
+                  hoveredButton.type === "slidingGlassDoor") && (
+                  <p>
+                    {(() => {
+                      const selectedSpacings =
+                        config.selectedDoorsDrawersSpacingIds || [];
+                      if (selectedSpacings.length === 0) return "";
 
-        {/* Tooltip cho cửa kéo - đơn giản không có tiêu đề */}
-        {hoveredSlidingDoor && (
-          <div
-            className="position-fixed bg-white text-dark p-2 rounded shadow-lg border"
-            style={{
-              left: hoveredSlidingDoor.x - 150,
-              top: hoveredSlidingDoor.y - 40,
-              zIndex: 9999,
-              pointerEvents: "none",
-              minWidth: "300px",
-              fontSize: "14px",
-            }}
-          >
-            <div className="d-flex align-items-center">
-              <i className="bi bi-exclamation-triangle me-2 text-warning"></i>
-              <span>
-                La porte coulissante couvre toute la section (sauf Angle)
+                      // Check if not all spacings in column are selected
+                      const spacingsByColumn = new Map<string, string[]>();
+                      selectedSpacings.forEach((spacingId) => {
+                        const parts = spacingId.split("-");
+                        if (parts.length < 4) return;
+                        let columnId: string;
+                        if (
+                          parts.length === 5 &&
+                          parts[1] === "col" &&
+                          parts[3] === "spacing"
+                        ) {
+                          columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+                        } else {
+                          columnId = parts[0];
+                        }
+                        if (!spacingsByColumn.has(columnId)) {
+                          spacingsByColumn.set(columnId, []);
+                        }
+                        spacingsByColumn.get(columnId)!.push(spacingId);
+                      });
+
+                      // Check each column
+                      for (const [
+                        columnId,
+                        selectedSpacingsInColumn,
+                      ] of spacingsByColumn) {
+                        // Get all spacings in this column
+                        const allSpacingsInColumn: string[] = [];
+                        for (const [, section] of Object.entries(
+                          config.wardrobeType.sections
+                        )) {
+                          if (section && section.columns) {
+                            const column = section.columns.find(
+                              (col: any) => col.id === columnId
+                            );
+                            if (column) {
+                              const spacings = column.shelves?.spacings || [];
+                              if (spacings.length === 0) {
+                                allSpacingsInColumn.push(
+                                  `${columnId}-spacing-0`
+                                );
+                              } else {
+                                for (let i = 0; i < spacings.length; i++) {
+                                  allSpacingsInColumn.push(
+                                    `${columnId}-spacing-${i}`
+                                  );
+                                }
+                              }
+                            }
+                          }
+                        }
+
+                        // Check if not all spacings selected
+                        if (
+                          selectedSpacingsInColumn.length <
+                          allSpacingsInColumn.length
+                        ) {
+                          return "❌ Tous les casiers de la colonne doivent être sélectionnés pour installer une porte coulissante";
+                        }
+
+                        // Check column width
+                        const columnWidth = getSpacingWidth(
+                          selectedSpacingsInColumn[0]
+                        );
+                        if (
+                          columnWidth !== null &&
+                          (columnWidth < 90 || columnWidth > 180)
+                        ) {
+                          return `❌ Largeur de colonne: 90-180 cm (courant ${columnWidth} cm)`;
+                        }
+                      }
+
+                      return "❌ Conditions non respectées pour la porte coulissante";
+                    })()}
+                  </p>
+                )}
               </span>
             </div>
           </div>

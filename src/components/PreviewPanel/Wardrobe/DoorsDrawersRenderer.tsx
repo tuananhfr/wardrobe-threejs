@@ -2767,7 +2767,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
   const groupedSelectedSpacings = getGroupedSelectedSpacings();
   const groupedConfiguredSpacings = getGroupedConfiguredSpacings();
 
-  // Helper function to render sliding doors for entire section
+  // Helper function to render sliding doors for selected spacings only
   const renderSlidingDoorsForSection = () => {
     const slidingDoorTypes = [
       "slidingDoor",
@@ -2775,146 +2775,143 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       "slidingGlassDoor",
     ];
 
-    // Helper function to check if column should be suppressed for sliding doors
-    const shouldSuppressColumnForSliding = (
-      section: string,
-      columnIndex: number,
-      totalColumns: number
-    ): boolean => {
-      const typeId = config.wardrobeType.id;
-      if (typeId === "Angle") {
-        // Angle: ẩn A cột cuối và B cột 1 (index 0)
-        if (section === "sectionA" && columnIndex === totalColumns - 1)
-          return true;
-        if (section === "sectionB" && columnIndex === 0) return true;
-        return false;
-      }
-      if (typeId === "Forme U") {
-        // Forme U: ẩn B cột cuối, A cột 1 và cột cuối, C cột 1
-        if (section === "sectionA") {
-          if (columnIndex === 0 || columnIndex === totalColumns - 1)
-            return true;
-        } else if (section === "sectionB") {
-          if (columnIndex === totalColumns - 1) return true;
-        } else if (section === "sectionC") {
-          if (columnIndex === 0) return true;
-        }
-        return false;
-      }
-      return false;
-    };
-
-    // Check if any spacing in this section has sliding door config
-    const sectionSpacingsWithSlidingDoor = spacingPositions.filter((pos) => {
+    // Get spacings with sliding door config
+    const spacingsWithSlidingDoor = spacingPositions.filter((pos) => {
       const doorType = config.doorsDrawersConfig[pos.spacingId];
       return slidingDoorTypes.includes(doorType);
     });
 
-    if (sectionSpacingsWithSlidingDoor.length === 0) {
+    if (spacingsWithSlidingDoor.length === 0) {
       return null;
     }
 
-    // Get the sliding door type from the first spacing that has it
-    const firstSlidingSpacing = sectionSpacingsWithSlidingDoor[0];
-    const slidingDoorType =
-      config.doorsDrawersConfig[firstSlidingSpacing.spacingId];
+    // Group spacings by sliding door type
+    const groupedByType = new Map<string, typeof spacingsWithSlidingDoor>();
 
-    // Get section name
-    const sectionName = getSectionNameFromSpacingId(
-      firstSlidingSpacing.spacingId
-    );
-
-    // Filter out spacings from suppressed columns
-    const validSpacingPositions = spacingPositions.filter((pos) => {
-      const parts = pos.spacingId.split("-");
-      if (parts.length < 4) return false;
-
-      let columnId: string;
-      let columnIndex: number;
-
-      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
-        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
-        columnIndex = parseInt(parts[2]); // parts[2] là số thứ tự column (1, 2, 3...)
-      } else {
-        columnId = parts[0];
-        columnIndex = parseInt(parts[1]);
+    spacingsWithSlidingDoor.forEach((pos) => {
+      const doorType = config.doorsDrawersConfig[pos.spacingId];
+      if (!groupedByType.has(doorType)) {
+        groupedByType.set(doorType, []);
       }
-
-      // Find the column in sectionData to get total columns
-      const column = sectionData.columns.find((col) => col.id === columnId);
-      if (!column) return false;
-
-      const totalColumns = sectionData.columns.length;
-
-      // Convert columnIndex to 0-based index for comparison
-      const columnIndexZeroBased = columnIndex - 1; // Convert from 1-based to 0-based
-
-      return !shouldSuppressColumnForSliding(
-        sectionName,
-        columnIndexZeroBased, // Use 0-based index
-        totalColumns
-      );
+      groupedByType.get(doorType)!.push(pos);
     });
 
-    if (validSpacingPositions.length === 0) {
-      return null; // No valid spacings for sliding door
-    }
+    // Render each group of sliding doors
+    return Array.from(groupedByType.entries()).map(([doorType, spacings]) => {
+      // Check if spacings are consecutive in same column for grouping
+      const sortedSpacings = spacings.sort((a, b) => {
+        const aParts = a.spacingId.split("-");
+        const bParts = b.spacingId.split("-");
 
-    // Get unique columns from valid spacings
-    const uniqueColumns = new Set<string>();
-    validSpacingPositions.forEach((pos) => {
-      const parts = pos.spacingId.split("-");
-      let columnId: string;
-      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
-        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
-      } else {
-        columnId = parts[0];
-      }
-      uniqueColumns.add(columnId);
-    });
+        // Compare by column first, then by spacing index
+        const aColumnId =
+          aParts.length === 5
+            ? `${aParts[0]}-${aParts[1]}-${aParts[2]}`
+            : aParts[0];
+        const bColumnId =
+          bParts.length === 5
+            ? `${bParts[0]}-${bParts[1]}-${bParts[2]}`
+            : bParts[0];
 
-    // Calculate section width based on actual columns
-    const sectionWidth = Array.from(uniqueColumns).reduce(
-      (total, columnId, index) => {
-        const column = sectionData.columns.find((col) => col.id === columnId);
-        if (!column) return total;
-
-        if (index === 0) {
-          return column.width;
-        } else {
-          return total + thickness + column.width;
+        if (aColumnId !== bColumnId) {
+          return aColumnId.localeCompare(bColumnId);
         }
-      },
-      0
-    );
 
-    // Calculate section height: height of the column (not sum of spacings)
-    const sectionHeight = height - baseBarHeight - 2 * thickness;
+        const aSpacingIndex = parseInt(
+          aParts.length === 5 ? aParts[4] : aParts[2]
+        );
+        const bSpacingIndex = parseInt(
+          bParts.length === 5 ? bParts[4] : bParts[2]
+        );
+        return aSpacingIndex - bSpacingIndex;
+      });
 
-    // Calculate section center position from valid spacings only
-    const sectionCenterX =
-      validSpacingPositions.reduce((sum, pos) => sum + pos.x, 0) /
-      validSpacingPositions.length;
-    const sectionCenterY =
-      validSpacingPositions.reduce((sum, pos) => sum + pos.y, 0) /
-      validSpacingPositions.length;
+      // Group consecutive spacings in same column
+      const groups: (typeof spacings)[] = [];
+      let currentGroup: typeof spacings = [];
+      let currentColumnId = "";
 
-    // Create group data for the entire section
-    const sectionGroupData = {
-      groupId: `section-${sectionName}-sliding`,
-      spacingIds: validSpacingPositions.map((pos) => pos.spacingId),
-      x: sectionCenterX,
-      centerY: sectionCenterY,
-      width: sectionWidth,
-      totalHeight: sectionHeight,
-    };
+      sortedSpacings.forEach((spacing) => {
+        const parts = spacing.spacingId.split("-");
+        const columnId =
+          parts.length === 5 ? `${parts[0]}-${parts[1]}-${parts[2]}` : parts[0];
 
-    return renderGroupedFacade(
-      slidingDoorType,
-      sectionGroupData,
-      sectionWidth,
-      sectionHeight
-    );
+        if (columnId !== currentColumnId) {
+          if (currentGroup.length > 0) {
+            groups.push([...currentGroup]);
+          }
+          currentGroup = [spacing];
+          currentColumnId = columnId;
+        } else {
+          currentGroup.push(spacing);
+        }
+      });
+
+      if (currentGroup.length > 0) {
+        groups.push(currentGroup);
+      }
+
+      // Render each group
+      return groups.map((group, groupIndex) => {
+        if (group.length === 1) {
+          // Single spacing - render individual facade
+          const pos = group[0];
+          return (
+            <React.Fragment key={`sliding-individual-${pos.spacingId}`}>
+              {renderGroupedFacade(
+                doorType,
+                {
+                  groupId: pos.spacingId,
+                  spacingIds: [pos.spacingId],
+                  x: pos.x,
+                  centerY: pos.y,
+                  width: pos.width,
+                  totalHeight: pos.height,
+                },
+                pos.width,
+                pos.height
+              )}
+            </React.Fragment>
+          );
+        } else {
+          // Multiple consecutive spacings - render grouped facade
+          const firstPos = group[0];
+          const lastPos = group[group.length - 1];
+
+          // Calculate group dimensions
+          const groupWidth = firstPos.width; // All spacings in same column have same width
+          const groupHeight =
+            group.reduce((sum, pos) => sum + pos.height, 0) +
+            (group.length - 1) * thickness;
+
+          // Calculate group center position
+          const groupCenterX = firstPos.x;
+          const groupCenterY = (firstPos.y + lastPos.y) / 2;
+
+          const groupData = {
+            groupId: `sliding-group-${firstPos.spacingId}-${groupIndex}`,
+            spacingIds: group.map((pos) => pos.spacingId),
+            x: groupCenterX,
+            centerY: groupCenterY,
+            width: groupWidth,
+            totalHeight: groupHeight,
+          };
+
+          return (
+            <React.Fragment
+              key={`sliding-group-${firstPos.spacingId}-${groupIndex}`}
+            >
+              {renderGroupedFacade(
+                doorType,
+                groupData,
+                groupWidth,
+                groupHeight
+              )}
+            </React.Fragment>
+          );
+        }
+      });
+    });
   };
 
   // Cache texture để tránh nhấp nháy

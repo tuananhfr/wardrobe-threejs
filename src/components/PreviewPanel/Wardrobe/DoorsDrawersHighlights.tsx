@@ -234,7 +234,12 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
       spacingIndex = parseInt(parts[2]);
     }
 
-    // Check if any selected spacing is in the same column and is a neighbor
+    // Helper function to get column index from columnId
+    const getColumnIndex = (colId: string): number => {
+      return sectionData.columns.findIndex((col) => col.id === colId);
+    };
+
+    // Check if any selected spacing is a neighbor (same column adjacent OR adjacent column same spacing index)
     for (const selectedId of selectedSpacings) {
       const selectedParts = selectedId.split("-");
       if (selectedParts.length < 4) continue;
@@ -254,10 +259,23 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
         selectedSpacingIndex = parseInt(selectedParts[2]);
       }
 
-      // Same column and adjacent spacing
+      // Case 1: Same column and adjacent spacing
       if (
         selectedColumnId === columnId &&
         Math.abs(selectedSpacingIndex - spacingIndex) === 1
+      ) {
+        return true;
+      }
+
+      // Case 2: Adjacent column and same spacing index
+      const currentColumnIndex = getColumnIndex(columnId);
+      const selectedColumnIndex = getColumnIndex(selectedColumnId);
+
+      if (
+        currentColumnIndex !== -1 &&
+        selectedColumnIndex !== -1 &&
+        Math.abs(currentColumnIndex - selectedColumnIndex) === 1 &&
+        selectedSpacingIndex === spacingIndex
       ) {
         return true;
       }

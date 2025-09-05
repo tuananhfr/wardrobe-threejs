@@ -250,15 +250,22 @@ const DoorsDrawersSection: React.FC = () => {
       return true; // Disable drawer when multiple spacings are selected
     }
 
-    const spacingHeight = getSpacingHeight(
-      config.selectedDoorsDrawersSpacingIds[0]
-    );
+    // Check if spacing already has tiroir intérieur
+    const spacingId = config.selectedDoorsDrawersSpacingIds[0];
+    const internalEquipment = config.internalEquipmentConfig[spacingId];
+    if (
+      internalEquipment &&
+      typeof internalEquipment === "object" &&
+      internalEquipment.type === "tiroirInterieur"
+    ) {
+      return true; // Disable drawer when spacing already has tiroir intérieur
+    }
+
+    const spacingHeight = getSpacingHeight(spacingId);
     if (spacingHeight === null) return false;
 
     // Check if shelf below is too high (> 100cm)
-    const shelfBelowHeight = getShelfBelowHeight(
-      config.selectedDoorsDrawersSpacingIds[0]
-    );
+    const shelfBelowHeight = getShelfBelowHeight(spacingId);
     if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
       return true; // Disable drawer when shelf below is too high
     }
@@ -1457,19 +1464,27 @@ const DoorsDrawersSection: React.FC = () => {
                         return "❌ La façade sélectionnée ne peut pas être installée sur plusieurs casiers";
                       }
 
-                      const shelfBelowHeight = getShelfBelowHeight(
-                        (config.selectedDoorsDrawersSpacingIds &&
-                          config.selectedDoorsDrawersSpacingIds[0]) ||
-                          ""
-                      );
+                      const spacingId =
+                        config.selectedDoorsDrawersSpacingIds[0];
+                      const internalEquipment =
+                        config.internalEquipmentConfig[spacingId];
+
+                      // Check if spacing already has tiroir intérieur
+                      if (
+                        internalEquipment &&
+                        typeof internalEquipment === "object" &&
+                        internalEquipment.type === "tiroirInterieur"
+                      ) {
+                        return "❌ Ce casier a déjà un tiroir intérieur configuré";
+                      }
+
+                      const shelfBelowHeight = getShelfBelowHeight(spacingId);
                       if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
                         return `❌ L'étagère en dessous est trop haute (${shelfBelowHeight} cm depuis le sol > 100 cm)`;
                       }
 
                       return `❌ 10-60 cm de hauteur (courant ${getSpacingHeight(
-                        (config.selectedDoorsDrawersSpacingIds &&
-                          config.selectedDoorsDrawersSpacingIds[0]) ||
-                          ""
+                        spacingId
                       )} cm)`;
                     })()}
                   </p>
@@ -1483,19 +1498,27 @@ const DoorsDrawersSection: React.FC = () => {
                         return "❌ La façade sélectionnée ne peut pas être installée sur plusieurs casiers";
                       }
 
-                      const shelfBelowHeight = getShelfBelowHeight(
-                        (config.selectedDoorsDrawersSpacingIds &&
-                          config.selectedDoorsDrawersSpacingIds[0]) ||
-                          ""
-                      );
+                      const spacingId =
+                        config.selectedDoorsDrawersSpacingIds[0];
+                      const internalEquipment =
+                        config.internalEquipmentConfig[spacingId];
+
+                      // Check if spacing already has tiroir intérieur
+                      if (
+                        internalEquipment &&
+                        typeof internalEquipment === "object" &&
+                        internalEquipment.type === "tiroirInterieur"
+                      ) {
+                        return "❌ Ce casier a déjà un tiroir intérieur configuré";
+                      }
+
+                      const shelfBelowHeight = getShelfBelowHeight(spacingId);
                       if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
                         return `❌ L'étagère en dessous est trop haute (${shelfBelowHeight} cm depuis le sol > 100 cm)`;
                       }
 
                       return `❌ 10-60 cm de hauteur (courant ${getSpacingHeight(
-                        (config.selectedDoorsDrawersSpacingIds &&
-                          config.selectedDoorsDrawersSpacingIds[0]) ||
-                          ""
+                        spacingId
                       )} cm)`;
                     })()}
                   </p>

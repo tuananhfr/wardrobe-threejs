@@ -204,7 +204,8 @@ const InternalEquipmentSection: React.FC = () => {
             : (null as any);
         updateConfig("selectedInternalEquipmentType", normalizedType);
       } else {
-        updateConfig("selectedInternalEquipmentType", null);
+        // Set to "vide" when no equipment is configured
+        updateConfig("selectedInternalEquipmentType", "vide");
       }
     } else {
       updateConfig("selectedInternalEquipmentType", null);
@@ -301,6 +302,79 @@ const InternalEquipmentSection: React.FC = () => {
   }, [
     config.selectedInternalEquipmentSpacingId,
     config.internalEquipmentConfig,
+  ]);
+
+  // NEW LOGIC: Check ALL spacings for invalid equipment when wardrobe dimensions change
+  useEffect(() => {
+    const updatedConfig = { ...config.internalEquipmentConfig };
+    let hasChanges = false;
+
+    // Check all spacings in the config
+    Object.keys(updatedConfig).forEach((spacingId) => {
+      const spacingHeight = getSpacingHeight(spacingId);
+      const currentEquipmentVal = updatedConfig[spacingId];
+      const currentEquipment =
+        typeof currentEquipmentVal === "string"
+          ? currentEquipmentVal
+          : currentEquipmentVal?.type;
+
+      // Remove trigle if spacing is too small
+      if (
+        spacingHeight !== null &&
+        spacingHeight < 80 &&
+        currentEquipment === "trigle"
+      ) {
+        delete updatedConfig[spacingId];
+        hasChanges = true;
+      }
+
+      // Remove penderie escamotable if spacing is too small
+      if (
+        spacingHeight !== null &&
+        spacingHeight < 160 &&
+        currentEquipment === "penderieEscamotable"
+      ) {
+        delete updatedConfig[spacingId];
+        hasChanges = true;
+      }
+
+      // Remove double rail if spacing is too small
+      if (
+        spacingHeight !== null &&
+        spacingHeight < 200 &&
+        currentEquipment === "doubleRail"
+      ) {
+        delete updatedConfig[spacingId];
+        hasChanges = true;
+      }
+
+      // Remove tiroir intérieur if shelf below is too high
+      if (currentEquipment === "tiroirInterieur") {
+        const shelfBelowHeight = getShelfBelowHeight(spacingId);
+        if (shelfBelowHeight !== null && shelfBelowHeight > 100) {
+          delete updatedConfig[spacingId];
+          hasChanges = true;
+        }
+      }
+    });
+
+    // Update config if there were changes
+    if (hasChanges) {
+      updateConfig("internalEquipmentConfig", updatedConfig);
+
+      // If the currently selected spacing was affected, update its type to vide
+      if (config.selectedInternalEquipmentSpacingId) {
+        const selectedSpacingId = config.selectedInternalEquipmentSpacingId;
+        if (!updatedConfig[selectedSpacingId]) {
+          updateConfig("selectedInternalEquipmentType", "vide");
+        }
+      }
+    }
+  }, [
+    config.height,
+    config.baseBarHeight,
+    config.thickness,
+    config.wardrobeType,
   ]);
 
   // Reset selection and hover when accordion changes

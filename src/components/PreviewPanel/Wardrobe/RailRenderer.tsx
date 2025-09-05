@@ -482,6 +482,16 @@ const RailRenderer: React.FC<RailRendererProps> = ({
               />
             </mesh>
 
+            {/* Horizontal bar on center vertical - short bar */}
+            <mesh position={[0, -0.5, 0]} rotation={[0, 0, Math.PI / 2]}>
+              <cylinderGeometry args={[0.012, 0.012, 0.15, 8]} />
+              <meshStandardMaterial
+                color="#2c3e50"
+                metalness={0.8}
+                roughness={0.2}
+              />
+            </mesh>
+
             {/* Base blocks for side supports */}
             {/* Left base block */}
             <mesh
@@ -613,6 +623,16 @@ const RailRenderer: React.FC<RailRendererProps> = ({
               {/* Center vertical bar */}
               <mesh position={[0, -0.25, 0]} rotation={[0, 0, 0]}>
                 <cylinderGeometry args={[0.012, 0.012, 0.5, 8]} />
+                <meshStandardMaterial
+                  color="#2c3e50"
+                  metalness={0.8}
+                  roughness={0.2}
+                />
+              </mesh>
+
+              {/* Horizontal bar on center vertical - short bar */}
+              <mesh position={[0, -0.5, 0]} rotation={[0, 0, Math.PI / 2]}>
+                <cylinderGeometry args={[0.012, 0.012, 0.15, 8]} />
                 <meshStandardMaterial
                   color="#2c3e50"
                   metalness={0.8}

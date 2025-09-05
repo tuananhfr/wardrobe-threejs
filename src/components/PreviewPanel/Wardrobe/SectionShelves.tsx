@@ -37,6 +37,15 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   const isTablettesMode = config.activeView === "tablette";
   const isSelectingShelves = isTexturesMode && isTablettesMode;
 
+  // Cache texture để tránh nhấp nháy
+  const textureCache = React.useRef<Map<string, THREE.Texture>>(new Map());
+  const textureLoader = React.useRef(new THREE.TextureLoader());
+
+  // Clear cache khi texture config thay đổi
+  React.useEffect(() => {
+    textureCache.current.clear();
+  }, [config.shelfTextureConfig]);
+
   // Hàm lấy texture cho kệ cụ thể
   const getShelfTexture = (
     spacingId: string,
@@ -45,26 +54,36 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   ): THREE.Texture => {
     // Kiểm tra xem có phải kệ angle không
     const angleGroup = getAngleShelfGroup(columnIndex, spacingIndex);
+    const textureKey = angleGroup || spacingId;
+
+    // Kiểm tra cache trước
+    if (textureCache.current.has(textureKey)) {
+      return textureCache.current.get(textureKey)!;
+    }
+
+    let textureToUse: THREE.Texture;
 
     if (angleGroup) {
       // Nếu là kệ angle, tìm texture theo angle group ID
       const shelfTexture = config.shelfTextureConfig[angleGroup];
       if (shelfTexture) {
-        const textureLoader = new THREE.TextureLoader();
-        return textureLoader.load(shelfTexture.src);
+        textureToUse = textureLoader.current.load(shelfTexture.src);
+      } else {
+        textureToUse = texture;
+      }
+    } else {
+      // Kiểm tra texture riêng cho spacingId
+      const shelfTexture = config.shelfTextureConfig[spacingId];
+      if (shelfTexture) {
+        textureToUse = textureLoader.current.load(shelfTexture.src);
+      } else {
+        textureToUse = texture;
       }
     }
 
-    // Kiểm tra texture riêng cho spacingId
-    const shelfTexture = config.shelfTextureConfig[spacingId];
-    if (shelfTexture) {
-      // Tạo texture mới từ src
-      const textureLoader = new THREE.TextureLoader();
-      return textureLoader.load(shelfTexture.src);
-    }
-
-    // Dùng texture mặc định (entier) chỉ khi kệ không có texture riêng
-    return texture;
+    // Cache texture
+    textureCache.current.set(textureKey, textureToUse);
+    return textureToUse;
   };
 
   // Hàm xử lý hover kệ

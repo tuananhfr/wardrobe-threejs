@@ -35,13 +35,10 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
 
   // Check if we're in the right mode for highlighting
   const isEtagereMode = config.accordionOpen === "collapseEtageres";
-  const isTexturesMode = config.accordionOpen === "collapseTextures";
-  const isTablettesMode = config.activeView === "tablette";
   const selectedColumnId = config.selectedColumnId;
 
-  // Only show highlights when in étagère mode OR when in textures mode with tablettes selected
-  const shouldShowHighlights =
-    isEtagereMode || (isTexturesMode && isTablettesMode);
+  // Only show highlights when in étagère mode
+  const shouldShowHighlights = isEtagereMode;
 
   // Check if Angle AB or Angle AC is selected
   const isAngleABSelected = selectedColumnId === "angle-ab";

@@ -24,8 +24,10 @@ const FacadeHighlight: React.FC<FacadeHighlightProps> = ({
   const isHovered = config.hoveredFacadeSpacingId === spacingId;
   const isSelected = config.selectedFacadeSpacingIds.includes(spacingId);
 
+  // Hiển thị overlay khi có hover hoặc selected
   const showOverlay = inFacades && (isHovered || isSelected);
-  const showIcon = inFacades; // luôn hiển thị icon khi ở chế độ facades
+  // Hiển thị icon khi ở chế độ facades (để người dùng biết có thể click)
+  const showIcon = inFacades;
 
   return (
     <>

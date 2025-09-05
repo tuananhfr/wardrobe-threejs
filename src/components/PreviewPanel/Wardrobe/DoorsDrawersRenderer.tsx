@@ -202,18 +202,18 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
   // Helper function to handle facade pointer events
   const handleFacadePointerOver = (spacingId: string) => {
     if (!isSelectingFacades()) return;
-    updateConfig("hoveredDoorsDrawersSpacingId", spacingId);
+    updateConfig("hoveredFacadeSpacingId", spacingId);
   };
 
   const handleFacadePointerOut = () => {
     if (!isSelectingFacades()) return;
-    updateConfig("hoveredDoorsDrawersSpacingId", null);
+    updateConfig("hoveredFacadeSpacingId", null);
   };
 
   const handleFacadeClick = (spacingId: string) => {
     if (!isSelectingFacades()) return;
 
-    const currentSelectedIds = [...config.selectedDoorsDrawersSpacingIds];
+    const currentSelectedIds = [...config.selectedFacadeSpacingIds];
     const index = currentSelectedIds.indexOf(spacingId);
 
     if (index > -1) {
@@ -224,7 +224,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       currentSelectedIds.push(spacingId);
     }
 
-    updateConfig("selectedDoorsDrawersSpacingIds", currentSelectedIds);
+    updateConfig("selectedFacadeSpacingIds", currentSelectedIds);
   };
 
   // Helper function to get section name from spacingId
@@ -2905,17 +2905,39 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     );
   };
 
+  // Cache texture để tránh nhấp nháy
+  const facadeTextureCache = React.useRef<Map<string, THREE.Texture>>(
+    new Map()
+  );
+  const facadeTextureLoader = React.useRef(new THREE.TextureLoader());
+
+  // Clear cache khi facade texture config thay đổi
+  React.useEffect(() => {
+    facadeTextureCache.current.clear();
+  }, [config.facadeTextureConfig]);
+
   // Helper function to get facade texture
   const getFacadeTexture = (spacingId: string): THREE.Texture => {
+    // Kiểm tra cache trước
+    if (facadeTextureCache.current.has(spacingId)) {
+      return facadeTextureCache.current.get(spacingId)!;
+    }
+
     // Kiểm tra xem facade có texture riêng không
     const customTexture = config.facadeTextureConfig[spacingId];
+    let textureToUse: THREE.Texture;
+
     if (customTexture) {
       // Load custom texture
-      const textureLoader = new THREE.TextureLoader();
-      return textureLoader.load(customTexture.src);
+      textureToUse = facadeTextureLoader.current.load(customTexture.src);
+    } else {
+      // Sử dụng texture mặc định
+      textureToUse = texture;
     }
-    // Sử dụng texture mặc định
-    return texture;
+
+    // Cache texture
+    facadeTextureCache.current.set(spacingId, textureToUse);
+    return textureToUse;
   };
 
   return (

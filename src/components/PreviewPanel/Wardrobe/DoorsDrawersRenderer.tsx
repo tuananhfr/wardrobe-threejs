@@ -237,6 +237,94 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     return "";
   };
 
+  // Helper function to calculate sliding door split point and piece widths
+  const calculateSlidingDoorSplit = (groupData: any) => {
+    const { spacingIds } = groupData;
+
+    // Group spacings by column
+    const spacingsByColumn = new Map<string, string[]>();
+    spacingIds.forEach((spacingId: string) => {
+      const parts = spacingId.split("-");
+      if (parts.length < 4) return;
+
+      let columnId: string;
+      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      } else {
+        columnId = parts[0];
+      }
+
+      if (!spacingsByColumn.has(columnId)) {
+        spacingsByColumn.set(columnId, []);
+      }
+      spacingsByColumn.get(columnId)!.push(spacingId);
+    });
+
+    const columnIds = Array.from(spacingsByColumn.keys());
+    const totalWidth = groupData.width;
+    const targetPieceWidth = totalWidth / 2;
+
+    // Find the split point that gives us equal pieces
+    for (let splitPoint = 1; splitPoint < columnIds.length; splitPoint++) {
+      // Calculate width of first piece
+      let firstPieceWidth = 0;
+      for (let i = 0; i < splitPoint; i++) {
+        const columnId = columnIds[i];
+        const column = sectionData.columns.find(
+          (col: any) => col.id === columnId
+        );
+        if (column) {
+          firstPieceWidth += column.width;
+          // Add thickness between columns (except for the last column in first piece)
+          if (i < splitPoint - 1) {
+            firstPieceWidth += thickness;
+          }
+        }
+      }
+
+      // Calculate width of second piece
+      let secondPieceWidth = 0;
+      for (let i = splitPoint; i < columnIds.length; i++) {
+        const columnId = columnIds[i];
+        const column = sectionData.columns.find(
+          (col: any) => col.id === columnId
+        );
+        if (column) {
+          secondPieceWidth += column.width;
+          // Add thickness between columns (except for the last column in second piece)
+          if (i < columnIds.length - 1) {
+            secondPieceWidth += thickness;
+          }
+        }
+      }
+
+      // Check if both pieces are approximately equal to target width
+      const tolerance = 1; // 1cm tolerance
+      if (
+        Math.abs(firstPieceWidth - targetPieceWidth) <= tolerance &&
+        Math.abs(secondPieceWidth - targetPieceWidth) <= tolerance
+      ) {
+        return {
+          splitPoint,
+          firstPieceWidth,
+          secondPieceWidth,
+          firstPieceColumns: columnIds.slice(0, splitPoint),
+          secondPieceColumns: columnIds.slice(splitPoint),
+        };
+      }
+    }
+
+    // Fallback: split in the middle
+    const midPoint = Math.floor(columnIds.length / 2);
+    return {
+      splitPoint: midPoint,
+      firstPieceWidth: totalWidth / 2,
+      secondPieceWidth: totalWidth / 2,
+      firstPieceColumns: columnIds.slice(0, midPoint),
+      secondPieceColumns: columnIds.slice(midPoint),
+    };
+  };
+
   // Helper function to get column X position
   const getColumnXPosition = (colIndex: number) => {
     let startX = -width / 2 + thickness;
@@ -401,10 +489,77 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
     const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
     const groupedDoorsConfig = config.groupedDoorsConfig || {};
 
-    // Group by column
+    // First, check if any configured spacings are part of existing groups
+    const processedSpacings = new Set<string>();
+    const groupedSpacings: Array<{
+      groupId: string;
+      spacingIds: string[];
+      startIndex: number;
+      endIndex: number;
+      columnId: string;
+      totalHeight: number;
+      centerY: number;
+      width: number;
+      x: number;
+    }> = [];
+
+    // Process existing groups from groupedDoorsConfig
+    Object.entries(groupedDoorsConfig).forEach(([groupId, group]) => {
+      if (group.spacingIds && group.spacingIds.length > 0) {
+        // Check if this group contains any configured spacings
+        const groupConfiguredSpacings = group.spacingIds.filter((spacingId) =>
+          configuredSpacings.includes(spacingId)
+        );
+
+        if (groupConfiguredSpacings.length > 0) {
+          // Create group data for this multi-column group
+          const groupPositions = groupConfiguredSpacings
+            .map((spacingId) =>
+              spacingPositions.find((pos) => pos.spacingId === spacingId)
+            )
+            .filter(Boolean);
+
+          if (groupPositions.length > 0) {
+            const firstPos = groupPositions[0]!;
+            const lastPos = groupPositions[groupPositions.length - 1]!;
+
+            // Calculate group dimensions for multi-column sliding door
+            const groupWidth =
+              groupPositions.reduce((sum, pos) => sum + pos!.width, 0) +
+              (groupPositions.length - 1) * thickness;
+            const groupHeight = Math.max(
+              ...groupPositions.map((pos) => pos!.height)
+            );
+            const groupCenterX = (firstPos.x + lastPos.x) / 2;
+            const groupCenterY = (firstPos.y + lastPos.y) / 2;
+
+            groupedSpacings.push({
+              groupId: groupId,
+              spacingIds: groupConfiguredSpacings,
+              startIndex: 0,
+              endIndex: groupConfiguredSpacings.length - 1,
+              columnId: "multi-column",
+              totalHeight: groupHeight,
+              centerY: groupCenterY,
+              width: groupWidth,
+              x: groupCenterX,
+            });
+
+            // Mark these spacings as processed
+            groupConfiguredSpacings.forEach((spacingId) =>
+              processedSpacings.add(spacingId)
+            );
+          }
+        }
+      }
+    });
+
+    // Group remaining spacings by column (for non-grouped doors)
     const columnGroups: Record<string, string[]> = {};
 
     configuredSpacings.forEach((spacingId) => {
+      if (processedSpacings.has(spacingId)) return; // Skip already processed spacings
+
       const parts = spacingId.split("-");
       if (parts.length < 4) return;
 
@@ -420,18 +575,6 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       }
       columnGroups[columnId].push(spacingId);
     });
-
-    const groupedSpacings: Array<{
-      groupId: string;
-      spacingIds: string[];
-      startIndex: number;
-      endIndex: number;
-      columnId: string;
-      totalHeight: number;
-      centerY: number;
-      width: number;
-      x: number;
-    }> = [];
 
     Object.entries(columnGroups).forEach(([columnId, spacingIds]) => {
       // Sort by spacing index
@@ -2241,8 +2384,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         );
 
       case "slidingDoor":
-        // Porte Coulissante - sliding door
-        const slidingDoorWidth = facadeWidth / 2; // Mỗi cửa chiếm một nửa chiều rộng
+        // Porte Coulissante - sliding door with proper column-based splitting
+        const slidingSplit = calculateSlidingDoorSplit(groupData);
+        const leftPieceWidth = slidingSplit.firstPieceWidth;
+        const rightPieceWidth = slidingSplit.secondPieceWidth;
 
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
@@ -2254,7 +2399,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingDoor-left`
                   ] = ref;
               }}
-              position={[-slidingDoorWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
+              position={[-leftPieceWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2263,9 +2408,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    -slidingDoorWidth / 2,
+                    -leftPieceWidth / 2,
                     1,
-                    slidingDoorWidth
+                    leftPieceWidth
                   );
               }}
               onPointerOut={(e) => {
@@ -2276,9 +2421,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    -slidingDoorWidth / 2,
+                    -leftPieceWidth / 2,
                     1,
-                    slidingDoorWidth
+                    leftPieceWidth
                   );
               }}
               onClick={(e) => {
@@ -2287,13 +2432,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 const k = `${groupData.groupId}-slidingDoor-left`;
                 const next = !openedSlidersRef.current[k];
                 openedSlidersRef.current[k] = next;
-                triggerSlider(
-                  k,
-                  next,
-                  -slidingDoorWidth / 2,
-                  1,
-                  slidingDoorWidth
-                );
+                triggerSlider(k, next, -leftPieceWidth / 2, 1, leftPieceWidth);
               }}
             >
               {/* Left sliding door panel */}
@@ -2310,7 +2449,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 onClick={() => handleFacadeClick(firstSpacingId)}
               >
                 <boxGeometry
-                  args={[slidingDoorWidth, facadeHeight + thickness, thickness]}
+                  args={[leftPieceWidth, facadeHeight + thickness, thickness]}
                 />
                 <meshStandardMaterial
                   map={getFacadeTexture(firstSpacingId)}
@@ -2329,7 +2468,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingDoor-right`
                   ] = ref;
               }}
-              position={[slidingDoorWidth / 2, 0, 0]} // Mảnh phải ở vị trí bình thường
+              position={[rightPieceWidth / 2, 0, 0]} // Mảnh phải ở vị trí bình thường
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2338,9 +2477,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    slidingDoorWidth / 2,
+                    rightPieceWidth / 2,
                     -1,
-                    slidingDoorWidth
+                    rightPieceWidth
                   );
               }}
               onPointerOut={(e) => {
@@ -2351,9 +2490,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    slidingDoorWidth / 2,
+                    rightPieceWidth / 2,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingDoorWidth
+                    rightPieceWidth
                   );
               }}
               onClick={(e) => {
@@ -2365,9 +2504,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  slidingDoorWidth / 2,
+                  rightPieceWidth / 2,
                   -1, // Di chuyển sang trái (về phía mảnh 1)
-                  slidingDoorWidth
+                  rightPieceWidth
                 );
               }}
             >
@@ -2385,7 +2524,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 onClick={() => handleFacadeClick(firstSpacingId)}
               >
                 <boxGeometry
-                  args={[slidingDoorWidth, facadeHeight + thickness, thickness]}
+                  args={[rightPieceWidth, facadeHeight + thickness, thickness]}
                 />
                 <meshStandardMaterial
                   map={getFacadeTexture(firstSpacingId)}
@@ -2407,8 +2546,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         );
 
       case "slidingMirrorDoor":
-        // Porte Coulissante Miroir - sliding mirror door
-        const slidingMirrorDoorWidth = facadeWidth / 2; // Mỗi cửa chiếm một nửa chiều rộng
+        // Porte Coulissante Miroir - sliding mirror door with proper column-based splitting
+        const mirrorSplit = calculateSlidingDoorSplit(groupData);
+        const leftMirrorPieceWidth = mirrorSplit.firstPieceWidth;
+        const rightMirrorPieceWidth = mirrorSplit.secondPieceWidth;
 
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
@@ -2420,7 +2561,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingMirrorDoor-left`
                   ] = ref;
               }}
-              position={[-slidingMirrorDoorWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
+              position={[-leftMirrorPieceWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2429,9 +2570,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    -slidingMirrorDoorWidth / 2,
+                    -leftMirrorPieceWidth / 2,
                     1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingMirrorDoorWidth
+                    leftMirrorPieceWidth
                   );
               }}
               onPointerOut={(e) => {
@@ -2442,9 +2583,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    -slidingMirrorDoorWidth / 2,
+                    -leftMirrorPieceWidth / 2,
                     1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingMirrorDoorWidth
+                    leftMirrorPieceWidth
                   );
               }}
               onClick={(e) => {
@@ -2456,9 +2597,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  -slidingMirrorDoorWidth / 2,
+                  -leftMirrorPieceWidth / 2,
                   1, // Di chuyển sang phải (về phía mảnh 2)
-                  slidingMirrorDoorWidth
+                  leftMirrorPieceWidth
                 );
               }}
             >
@@ -2466,7 +2607,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               <mesh position={[0, 0, 0]}>
                 <boxGeometry
                   args={[
-                    slidingMirrorDoorWidth,
+                    leftMirrorPieceWidth,
                     facadeHeight + thickness,
                     thickness,
                   ]}
@@ -2490,7 +2631,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingMirrorDoor-right`
                   ] = ref;
               }}
-              position={[slidingMirrorDoorWidth / 2, 0, 0]}
+              position={[rightMirrorPieceWidth / 2, 0, 0]}
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2499,9 +2640,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    slidingMirrorDoorWidth / 2,
+                    rightMirrorPieceWidth / 2,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingMirrorDoorWidth
+                    rightMirrorPieceWidth
                   );
               }}
               onPointerOut={(e) => {
@@ -2512,9 +2653,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    slidingMirrorDoorWidth / 2,
+                    rightMirrorPieceWidth / 2,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingMirrorDoorWidth
+                    rightMirrorPieceWidth
                   );
               }}
               onClick={(e) => {
@@ -2526,9 +2667,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  slidingMirrorDoorWidth / 2,
+                  rightMirrorPieceWidth / 2,
                   -1, // Di chuyển sang trái (về phía mảnh 1)
-                  slidingMirrorDoorWidth
+                  rightMirrorPieceWidth
                 );
               }}
             >
@@ -2536,7 +2677,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               <mesh position={[0, 0, 0]}>
                 <boxGeometry
                   args={[
-                    slidingMirrorDoorWidth,
+                    rightMirrorPieceWidth,
                     facadeHeight + thickness,
                     thickness,
                   ]}
@@ -2563,8 +2704,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         );
 
       case "slidingGlassDoor":
-        // Porte Coulissante Verre - sliding glass door
-        const slidingGlassDoorWidth = facadeWidth / 2; // Mỗi cửa chiếm một nửa chiều rộng
+        // Porte Coulissante Verre - sliding glass door with proper column-based splitting
+        const glassSplit = calculateSlidingDoorSplit(groupData);
+        const leftGlassPieceWidth = glassSplit.firstPieceWidth;
+        const rightGlassPieceWidth = glassSplit.secondPieceWidth;
 
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
@@ -2576,7 +2719,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingGlassDoor-left`
                   ] = ref;
               }}
-              position={[-slidingGlassDoorWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
+              position={[-leftGlassPieceWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2585,9 +2728,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    -slidingGlassDoorWidth / 2,
+                    -leftGlassPieceWidth / 2,
                     1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingGlassDoorWidth
+                    leftGlassPieceWidth
                   );
               }}
               onPointerOut={(e) => {
@@ -2598,9 +2741,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    -slidingGlassDoorWidth / 2,
+                    -leftGlassPieceWidth / 2,
                     1, // Di chuyển sang phải (về phía mảnh 2)
-                    slidingGlassDoorWidth
+                    leftGlassPieceWidth
                   );
               }}
               onClick={(e) => {
@@ -2612,9 +2755,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  -slidingGlassDoorWidth / 2,
+                  -leftGlassPieceWidth / 2,
                   1, // Di chuyển sang phải (về phía mảnh 2)
-                  slidingGlassDoorWidth
+                  leftGlassPieceWidth
                 );
               }}
             >
@@ -2622,7 +2765,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               <mesh position={[0, 0, 0]}>
                 <boxGeometry
                   args={[
-                    slidingGlassDoorWidth,
+                    leftGlassPieceWidth,
                     facadeHeight + thickness,
                     thickness,
                   ]}
@@ -2643,7 +2786,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               <mesh position={[0, 0, 0.001]}>
                 <boxGeometry
                   args={[
-                    slidingGlassDoorWidth + 0.01,
+                    leftGlassPieceWidth + 0.01,
                     facadeHeight + thickness + 0.01,
                     0.002,
                   ]}
@@ -2666,7 +2809,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingGlassDoor-right`
                   ] = ref;
               }}
-              position={[slidingGlassDoorWidth / 2, 0, 0]}
+              position={[rightGlassPieceWidth / 2, 0, 0]}
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2675,9 +2818,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    slidingGlassDoorWidth / 2,
+                    rightGlassPieceWidth / 2,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingGlassDoorWidth
+                    rightGlassPieceWidth
                   );
               }}
               onPointerOut={(e) => {
@@ -2688,9 +2831,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    slidingGlassDoorWidth / 2,
+                    rightGlassPieceWidth / 2,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
-                    slidingGlassDoorWidth
+                    rightGlassPieceWidth
                   );
               }}
               onClick={(e) => {
@@ -2702,9 +2845,9 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  slidingGlassDoorWidth / 2,
+                  rightGlassPieceWidth / 2,
                   -1, // Di chuyển sang trái (về phía mảnh 1)
-                  slidingGlassDoorWidth
+                  rightGlassPieceWidth
                 );
               }}
             >
@@ -2712,7 +2855,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               <mesh position={[0, 0, 0]}>
                 <boxGeometry
                   args={[
-                    slidingGlassDoorWidth,
+                    rightGlassPieceWidth,
                     facadeHeight + thickness,
                     thickness,
                   ]}
@@ -2733,7 +2876,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
               <mesh position={[0, 0, 0.001]}>
                 <boxGeometry
                   args={[
-                    slidingGlassDoorWidth + 0.01,
+                    rightGlassPieceWidth + 0.01,
                     facadeHeight + thickness + 0.01,
                     0.002,
                   ]}
@@ -2767,7 +2910,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
   const groupedSelectedSpacings = getGroupedSelectedSpacings();
   const groupedConfiguredSpacings = getGroupedConfiguredSpacings();
 
-  // Helper function to render sliding doors for selected spacings only
+  // Helper function to render sliding doors for entire section
   const renderSlidingDoorsForSection = () => {
     const slidingDoorTypes = [
       "slidingDoor",
@@ -2775,17 +2918,76 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       "slidingGlassDoor",
     ];
 
-    // Get spacings with sliding door config
-    const spacingsWithSlidingDoor = spacingPositions.filter((pos) => {
-      const doorType = config.doorsDrawersConfig[pos.spacingId];
-      return slidingDoorTypes.includes(doorType);
+    // First, render multi-column sliding door groups from groupedDoorsConfig
+    const multiColumnGroups: React.ReactNode[] = [];
+    const groupedDoorsConfig = config.groupedDoorsConfig || {};
+
+    Object.entries(groupedDoorsConfig).forEach(([groupId, groupData]) => {
+      if (slidingDoorTypes.includes(groupData.doorType)) {
+        // This is a sliding door group - render it as multi-column
+        const groupPositions = groupData.spacingIds
+          .map((spacingId) =>
+            spacingPositions.find((pos) => pos.spacingId === spacingId)
+          )
+          .filter(Boolean);
+
+        if (groupPositions.length > 0) {
+          const firstPos = groupPositions[0]!;
+          const lastPos = groupPositions[groupPositions.length - 1]!;
+
+          // Calculate multi-column group dimensions
+          const groupWidth =
+            groupPositions.reduce((sum, pos) => sum + pos!.width, 0) +
+            (groupPositions.length - 1) * thickness;
+          const groupHeight = Math.max(
+            ...groupPositions.map((pos) => pos!.height)
+          );
+          const groupCenterX = (firstPos.x + lastPos.x) / 2;
+          const groupCenterY = (firstPos.y + lastPos.y) / 2;
+
+          const multiColumnGroupData = {
+            groupId: groupId,
+            spacingIds: groupData.spacingIds,
+            x: groupCenterX,
+            centerY: groupCenterY,
+            width: groupWidth,
+            totalHeight: groupHeight,
+          };
+
+          multiColumnGroups.push(
+            <React.Fragment key={`multi-column-sliding-${groupId}`}>
+              {renderGroupedFacade(
+                groupData.doorType,
+                multiColumnGroupData,
+                groupWidth,
+                groupHeight
+              )}
+            </React.Fragment>
+          );
+        }
+      }
     });
 
-    if (spacingsWithSlidingDoor.length === 0) {
+    // Then, render individual sliding doors that are NOT in any group
+    const spacingsWithSlidingDoor = spacingPositions.filter((pos) => {
+      const doorType = config.doorsDrawersConfig[pos.spacingId];
+      if (!slidingDoorTypes.includes(doorType)) return false;
+
+      // Check if this spacing is already in a group
+      const isInGroup = Object.values(groupedDoorsConfig).some((groupData) =>
+        groupData.spacingIds.includes(pos.spacingId)
+      );
+      return !isInGroup;
+    });
+
+    if (
+      spacingsWithSlidingDoor.length === 0 &&
+      multiColumnGroups.length === 0
+    ) {
       return null;
     }
 
-    // Group spacings by sliding door type
+    // Group individual spacings by sliding door type
     const groupedByType = new Map<string, typeof spacingsWithSlidingDoor>();
 
     spacingsWithSlidingDoor.forEach((pos) => {
@@ -2796,122 +2998,129 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       groupedByType.get(doorType)!.push(pos);
     });
 
-    // Render each group of sliding doors
-    return Array.from(groupedByType.entries()).map(([doorType, spacings]) => {
-      // Check if spacings are consecutive in same column for grouping
-      const sortedSpacings = spacings.sort((a, b) => {
-        const aParts = a.spacingId.split("-");
-        const bParts = b.spacingId.split("-");
+    // Render individual sliding door groups (single column only)
+    const individualGroups = Array.from(groupedByType.entries()).map(
+      ([doorType, spacings]) => {
+        // Check if spacings are consecutive in same column for grouping
+        const sortedSpacings = spacings.sort((a, b) => {
+          const aParts = a.spacingId.split("-");
+          const bParts = b.spacingId.split("-");
 
-        // Compare by column first, then by spacing index
-        const aColumnId =
-          aParts.length === 5
-            ? `${aParts[0]}-${aParts[1]}-${aParts[2]}`
-            : aParts[0];
-        const bColumnId =
-          bParts.length === 5
-            ? `${bParts[0]}-${bParts[1]}-${bParts[2]}`
-            : bParts[0];
+          // Compare by column first, then by spacing index
+          const aColumnId =
+            aParts.length === 5
+              ? `${aParts[0]}-${aParts[1]}-${aParts[2]}`
+              : aParts[0];
+          const bColumnId =
+            bParts.length === 5
+              ? `${bParts[0]}-${bParts[1]}-${bParts[2]}`
+              : bParts[0];
 
-        if (aColumnId !== bColumnId) {
-          return aColumnId.localeCompare(bColumnId);
-        }
-
-        const aSpacingIndex = parseInt(
-          aParts.length === 5 ? aParts[4] : aParts[2]
-        );
-        const bSpacingIndex = parseInt(
-          bParts.length === 5 ? bParts[4] : bParts[2]
-        );
-        return aSpacingIndex - bSpacingIndex;
-      });
-
-      // Group consecutive spacings in same column
-      const groups: (typeof spacings)[] = [];
-      let currentGroup: typeof spacings = [];
-      let currentColumnId = "";
-
-      sortedSpacings.forEach((spacing) => {
-        const parts = spacing.spacingId.split("-");
-        const columnId =
-          parts.length === 5 ? `${parts[0]}-${parts[1]}-${parts[2]}` : parts[0];
-
-        if (columnId !== currentColumnId) {
-          if (currentGroup.length > 0) {
-            groups.push([...currentGroup]);
+          if (aColumnId !== bColumnId) {
+            return aColumnId.localeCompare(bColumnId);
           }
-          currentGroup = [spacing];
-          currentColumnId = columnId;
-        } else {
-          currentGroup.push(spacing);
-        }
-      });
 
-      if (currentGroup.length > 0) {
-        groups.push(currentGroup);
+          const aSpacingIndex = parseInt(
+            aParts.length === 5 ? aParts[4] : aParts[2]
+          );
+          const bSpacingIndex = parseInt(
+            bParts.length === 5 ? bParts[4] : bParts[2]
+          );
+          return aSpacingIndex - bSpacingIndex;
+        });
+
+        // Group consecutive spacings in same column
+        const groups: (typeof spacings)[] = [];
+        let currentGroup: typeof spacings = [];
+        let currentColumnId = "";
+
+        sortedSpacings.forEach((spacing) => {
+          const parts = spacing.spacingId.split("-");
+          const columnId =
+            parts.length === 5
+              ? `${parts[0]}-${parts[1]}-${parts[2]}`
+              : parts[0];
+
+          if (columnId !== currentColumnId) {
+            if (currentGroup.length > 0) {
+              groups.push([...currentGroup]);
+            }
+            currentGroup = [spacing];
+            currentColumnId = columnId;
+          } else {
+            currentGroup.push(spacing);
+          }
+        });
+
+        if (currentGroup.length > 0) {
+          groups.push(currentGroup);
+        }
+
+        // Render each group
+        return groups.map((group, groupIndex) => {
+          if (group.length === 1) {
+            // Single spacing - render individual facade
+            const pos = group[0];
+            return (
+              <React.Fragment key={`sliding-individual-${pos.spacingId}`}>
+                {renderGroupedFacade(
+                  doorType,
+                  {
+                    groupId: pos.spacingId,
+                    spacingIds: [pos.spacingId],
+                    x: pos.x,
+                    centerY: pos.y,
+                    width: pos.width,
+                    totalHeight: pos.height,
+                  },
+                  pos.width,
+                  pos.height
+                )}
+              </React.Fragment>
+            );
+          } else {
+            // Multiple consecutive spacings - render grouped facade
+            const firstPos = group[0];
+            const lastPos = group[group.length - 1];
+
+            // Calculate group dimensions
+            const groupWidth = firstPos.width; // All spacings in same column have same width
+            const groupHeight =
+              group.reduce((sum, pos) => sum + pos.height, 0) +
+              (group.length - 1) * thickness;
+
+            // Calculate group center position
+            const groupCenterX = firstPos.x;
+            const groupCenterY = (firstPos.y + lastPos.y) / 2;
+
+            const groupData = {
+              groupId: `sliding-group-${firstPos.spacingId}-${groupIndex}`,
+              spacingIds: group.map((pos) => pos.spacingId),
+              x: groupCenterX,
+              centerY: groupCenterY,
+              width: groupWidth,
+              totalHeight: groupHeight,
+            };
+
+            return (
+              <React.Fragment
+                key={`sliding-group-${firstPos.spacingId}-${groupIndex}`}
+              >
+                {renderGroupedFacade(
+                  doorType,
+                  groupData,
+                  groupWidth,
+                  groupHeight
+                )}
+              </React.Fragment>
+            );
+          }
+        });
       }
+    );
 
-      // Render each group
-      return groups.map((group, groupIndex) => {
-        if (group.length === 1) {
-          // Single spacing - render individual facade
-          const pos = group[0];
-          return (
-            <React.Fragment key={`sliding-individual-${pos.spacingId}`}>
-              {renderGroupedFacade(
-                doorType,
-                {
-                  groupId: pos.spacingId,
-                  spacingIds: [pos.spacingId],
-                  x: pos.x,
-                  centerY: pos.y,
-                  width: pos.width,
-                  totalHeight: pos.height,
-                },
-                pos.width,
-                pos.height
-              )}
-            </React.Fragment>
-          );
-        } else {
-          // Multiple consecutive spacings - render grouped facade
-          const firstPos = group[0];
-          const lastPos = group[group.length - 1];
-
-          // Calculate group dimensions
-          const groupWidth = firstPos.width; // All spacings in same column have same width
-          const groupHeight =
-            group.reduce((sum, pos) => sum + pos.height, 0) +
-            (group.length - 1) * thickness;
-
-          // Calculate group center position
-          const groupCenterX = firstPos.x;
-          const groupCenterY = (firstPos.y + lastPos.y) / 2;
-
-          const groupData = {
-            groupId: `sliding-group-${firstPos.spacingId}-${groupIndex}`,
-            spacingIds: group.map((pos) => pos.spacingId),
-            x: groupCenterX,
-            centerY: groupCenterY,
-            width: groupWidth,
-            totalHeight: groupHeight,
-          };
-
-          return (
-            <React.Fragment
-              key={`sliding-group-${firstPos.spacingId}-${groupIndex}`}
-            >
-              {renderGroupedFacade(
-                doorType,
-                groupData,
-                groupWidth,
-                groupHeight
-              )}
-            </React.Fragment>
-          );
-        }
-      });
-    });
+    // Combine multi-column groups and individual groups
+    return [...multiColumnGroups, ...individualGroups.flat()];
   };
 
   // Cache texture để tránh nhấp nháy
@@ -3013,7 +3222,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
           return null; // No facade for this group
         }
 
-        // Skip if this is a sliding door (already rendered above)
+        // Skip sliding doors - they are already rendered in renderSlidingDoorsForSection()
         const slidingDoorTypes = [
           "slidingDoor",
           "slidingMirrorDoor",
@@ -3045,7 +3254,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
           return null; // No config
         }
 
-        // Skip if this is a sliding door (already rendered above)
+        // Skip sliding doors - they are already rendered in renderSlidingDoorsForSection()
         const slidingDoorTypes = [
           "slidingDoor",
           "slidingMirrorDoor",

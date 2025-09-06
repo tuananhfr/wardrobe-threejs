@@ -228,6 +228,88 @@ const DoorsDrawersSection: React.FC = () => {
     return null;
   };
 
+  // Helper function to check if columns can be split into 2 equal pieces
+  const canSplitColumnsIntoEqualPieces = (
+    columnIds: string[],
+    targetPieceWidth: number
+  ): boolean => {
+    // Try all possible ways to split columns into 2 pieces
+    for (let splitPoint = 1; splitPoint < columnIds.length; splitPoint++) {
+      // Calculate width of first piece
+      let firstPieceWidth = 0;
+      for (let i = 0; i < splitPoint; i++) {
+        const columnId = columnIds[i];
+        const columnWidth = getSpacingWidth(`${columnId}-spacing-0`);
+        if (columnWidth !== null) {
+          firstPieceWidth += columnWidth;
+          // Add thickness between columns (except for the last column in first piece)
+          if (i < splitPoint - 1) {
+            firstPieceWidth += config.thickness;
+          }
+        }
+      }
+
+      // Calculate width of second piece
+      let secondPieceWidth = 0;
+      for (let i = splitPoint; i < columnIds.length; i++) {
+        const columnId = columnIds[i];
+        const columnWidth = getSpacingWidth(`${columnId}-spacing-0`);
+        if (columnWidth !== null) {
+          secondPieceWidth += columnWidth;
+          // Add thickness between columns (except for the last column in second piece)
+          if (i < columnIds.length - 1) {
+            secondPieceWidth += config.thickness;
+          }
+        }
+      }
+
+      // Check if both pieces are approximately equal to target width (allow small tolerance)
+      const tolerance = 1; // 1cm tolerance
+      if (
+        Math.abs(firstPieceWidth - targetPieceWidth) <= tolerance &&
+        Math.abs(secondPieceWidth - targetPieceWidth) <= tolerance
+      ) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  // Helper function to check if multiple columns are selected
+  const isMultiColumnSelected = (): boolean => {
+    if (
+      !config.selectedDoorsDrawersSpacingIds ||
+      config.selectedDoorsDrawersSpacingIds.length === 0
+    )
+      return false;
+
+    const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
+
+    // Group selected spacings by column
+    const spacingsByColumn = new Map<string, string[]>();
+
+    selectedSpacings.forEach((spacingId) => {
+      const parts = spacingId.split("-");
+      if (parts.length < 4) return;
+
+      let columnId: string;
+      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      } else {
+        columnId = parts[0];
+      }
+
+      if (!spacingsByColumn.has(columnId)) {
+        spacingsByColumn.set(columnId, []);
+      }
+      spacingsByColumn.get(columnId)!.push(spacingId);
+    });
+
+    // Return true if more than 1 column is selected
+    return spacingsByColumn.size > 1;
+  };
+
   // Check if drawer button should be disabled
   const isDrawerDisabled = (): boolean => {
     if (
@@ -235,6 +317,11 @@ const DoorsDrawersSection: React.FC = () => {
       config.selectedDoorsDrawersSpacingIds.length === 0
     )
       return false;
+
+    // Disable drawer when multiple columns are selected (only sliding doors allowed)
+    if (isMultiColumnSelected()) {
+      return true;
+    }
 
     // Check if multiple spacings are selected
     const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
@@ -274,6 +361,11 @@ const DoorsDrawersSection: React.FC = () => {
     )
       return false;
 
+    // Disable double swing door when multiple columns are selected (only sliding doors allowed)
+    if (isMultiColumnSelected()) {
+      return true;
+    }
+
     // Khi có multiple spacing, kiểm tra tất cả spacing
     const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
 
@@ -297,6 +389,11 @@ const DoorsDrawersSection: React.FC = () => {
       config.selectedDoorsDrawersSpacingIds.length === 0
     )
       return false;
+
+    // Disable left/right door when multiple columns are selected (only sliding doors allowed)
+    if (isMultiColumnSelected()) {
+      return true;
+    }
 
     // Khi có multiple spacing, kiểm tra tất cả spacing
     const selectedSpacings = config.selectedDoorsDrawersSpacingIds || [];
@@ -344,7 +441,39 @@ const DoorsDrawersSection: React.FC = () => {
       spacingsByColumn.get(columnId)!.push(spacingId);
     });
 
-    // Check each column to see if all spacings in that column are selected
+    // Get section name from first spacing
+    const sectionName = getSectionNameFromSpacingId(selectedSpacings[0]);
+    const section =
+      config.wardrobeType.sections[
+        sectionName as keyof typeof config.wardrobeType.sections
+      ];
+    if (!section || !section.columns) return true;
+
+    // Get column indices for selected columns
+    const selectedColumnIndices: number[] = [];
+    const selectedColumnIds: string[] = [];
+
+    for (const [columnId] of spacingsByColumn) {
+      const columnIndex = section.columns.findIndex(
+        (col: any) => col.id === columnId
+      );
+      if (columnIndex !== -1) {
+        selectedColumnIndices.push(columnIndex);
+        selectedColumnIds.push(columnId);
+      }
+    }
+
+    // Sort column indices to check if they are consecutive
+    selectedColumnIndices.sort((a, b) => a - b);
+
+    // Check if selected columns are consecutive
+    for (let i = 1; i < selectedColumnIndices.length; i++) {
+      if (selectedColumnIndices[i] - selectedColumnIndices[i - 1] !== 1) {
+        return true; // Columns are not consecutive
+      }
+    }
+
+    // Check each selected column to see if all spacings in that column are selected
     for (const [columnId, selectedSpacingsInColumn] of spacingsByColumn) {
       // Get all spacings in this column from the wardrobe config
       const allSpacingsInColumn: string[] = [];
@@ -372,12 +501,43 @@ const DoorsDrawersSection: React.FC = () => {
       if (selectedSpacingsInColumn.length < allSpacingsInColumn.length) {
         return true;
       }
+    }
 
-      // Check column width for sliding door constraints (90-180cm total)
-      const columnWidth = getSpacingWidth(selectedSpacingsInColumn[0]);
-      if (columnWidth !== null && (columnWidth < 90 || columnWidth > 180)) {
-        return true;
+    // Check sliding door width validation: each piece 45-90cm, 2 pieces must have equal width
+    // Each piece must be calculated by full columns (not partial columns)
+
+    // Calculate total width of all selected columns
+    let totalWidth = 0;
+    for (let i = 0; i < selectedColumnIds.length; i++) {
+      const columnId = selectedColumnIds[i];
+      const columnWidth = getSpacingWidth(`${columnId}-spacing-0`);
+      if (columnWidth !== null) {
+        totalWidth += columnWidth;
+
+        // Add thickness between columns (except for the last column)
+        if (i < selectedColumnIds.length - 1) {
+          totalWidth += config.thickness;
+        }
       }
+    }
+
+    // For sliding doors, we need to split into 2 equal pieces
+    // Each piece should be 45-90cm
+    const pieceWidth = totalWidth / 2;
+
+    // Check if each piece is within 45-90cm range
+    if (pieceWidth < 45 || pieceWidth > 90) {
+      return true;
+    }
+
+    // Check if we can split columns into 2 equal pieces
+    // Each piece must be calculated by full columns
+    const canSplitIntoEqualPieces = canSplitColumnsIntoEqualPieces(
+      selectedColumnIds,
+      pieceWidth
+    );
+    if (!canSplitIntoEqualPieces) {
+      return true;
     }
 
     return false;
@@ -421,6 +581,48 @@ const DoorsDrawersSection: React.FC = () => {
       updateConfig("selectedDoorsDrawersType", null);
     }
   }, [config.selectedDoorsDrawersSpacingIds[0], config.doorsDrawersConfig]);
+
+  // Log when sliding door is actually created
+  // useEffect(() => {
+  //   const slidingDoorTypes = [
+  //     "slidingDoor",
+  //     "slidingMirrorDoor",
+  //     "slidingGlassDoor",
+  //   ];
+
+  //   // Check if any sliding door was just created
+  //   const slidingDoors = Object.entries(config.doorsDrawersConfig).filter(
+  //     ([, doorType]) => slidingDoorTypes.includes(doorType)
+  //   );
+
+  //   // Only log if we have sliding doors AND grouped config is not empty
+  //   if (
+  //     slidingDoors.length > 0 &&
+  //     Object.keys(config.groupedDoorsConfig).length > 0
+  //   ) {
+  //     console.log("🚪 SLIDING DOOR CREATED:");
+  //     console.log("- Number of sliding doors:", slidingDoors.length);
+  //     console.log(
+  //       "- All spacing IDs with config:",
+  //       slidingDoors.map(([id]) => id)
+  //     );
+  //     console.log("- Door type:", slidingDoors[0][1]);
+  //     console.log("- Full config:", config.doorsDrawersConfig);
+  //     console.log("- Grouped config:", config.groupedDoorsConfig);
+
+  //     // Log group details
+  //     Object.entries(config.groupedDoorsConfig).forEach(([groupId, group]) => {
+  //       if (group.doorType && slidingDoorTypes.includes(group.doorType)) {
+  //         console.log(
+  //           `- Group ${groupId}:`,
+  //           group.spacingIds.length,
+  //           "spacings"
+  //         );
+  //         console.log(`  - Group spacing IDs:`, group.spacingIds);
+  //       }
+  //     });
+  //   }
+  // }, [config.doorsDrawersConfig, config.groupedDoorsConfig]);
 
   // NEW LOGIC: Update selected doors drawers type when doors/drawers are removed due to unsuitable dimensions
   useEffect(() => {
@@ -693,7 +895,7 @@ const DoorsDrawersSection: React.FC = () => {
         type === "slidingMirrorDoor" ||
         type === "slidingGlassDoor"
       ) {
-        // SLIDING DOOR: Luôn áp dụng cho TOÀN BỘ cột (1 cột = 1 cửa kéo)
+        // SLIDING DOOR: Áp dụng cho TẤT CẢ các cột đã chọn (có thể nhiều cột liền kề)
         const spacingsByColumn = new Map<string, string[]>();
 
         targetSpacings.forEach((spacingId) => {
@@ -717,7 +919,15 @@ const DoorsDrawersSection: React.FC = () => {
           spacingsByColumn.get(columnId)!.push(spacingId);
         });
 
-        // Apply sliding door to ALL spacings in each column
+        // Collect all spacings from all selected columns
+        const allSpacingsForSlidingDoor: string[] = [];
+
+        console.log(
+          "🚪 Processing columns for sliding door:",
+          Array.from(spacingsByColumn.keys())
+        );
+
+        // Apply sliding door to ALL spacings in each selected column
         for (const [columnId] of spacingsByColumn) {
           // Get ALL spacings in this column from the wardrobe config
           const allSpacingsInColumn: string[] = [];
@@ -743,18 +953,74 @@ const DoorsDrawersSection: React.FC = () => {
             }
           }
 
-          // Apply sliding door to ALL spacings in the column with group creation
-          if (allSpacingsInColumn.length === 1) {
-            // Single spacing - no group needed
-            updateDoorsDrawersConfig(allSpacingsInColumn[0], type);
-          } else {
-            // Multiple spacings - create group
-            updateDoorsDrawersConfig(
-              allSpacingsInColumn[0],
-              type,
-              allSpacingsInColumn
-            );
-          }
+          console.log(
+            `🚪 Column ${columnId} has spacings:`,
+            allSpacingsInColumn
+          );
+          // Add all spacings from this column to the total list
+          allSpacingsForSlidingDoor.push(...allSpacingsInColumn);
+        }
+
+        console.log(
+          "🚪 Total spacings for sliding door:",
+          allSpacingsForSlidingDoor
+        );
+
+        // Apply sliding door to ALL spacings across all selected columns as one group
+        // console.log("🚪 SLIDING DOOR LOG:");
+        // console.log("- Selected columns:", Array.from(spacingsByColumn.keys()));
+        // console.log(
+        //   "- All spacings for sliding door:",
+        //   allSpacingsForSlidingDoor
+        // );
+        // console.log(
+        //   "- Total spacings count:",
+        //   allSpacingsForSlidingDoor.length
+        // );
+        // console.log("- Door type:", type);
+
+        if (allSpacingsForSlidingDoor.length === 1) {
+          // Single spacing - no group needed
+          console.log(
+            "🚪 Creating SINGLE sliding door for:",
+            allSpacingsForSlidingDoor[0]
+          );
+          updateDoorsDrawersConfig(allSpacingsForSlidingDoor[0], type);
+        } else {
+          // Multiple spacings across multiple columns - create one big group
+          console.log("🚪 Creating MULTI-COLUMN sliding door group:", {
+            spacings: allSpacingsForSlidingDoor,
+            doorType: type,
+            totalSpacings: allSpacingsForSlidingDoor.length,
+          });
+
+          // For sliding doors, we need to create a group manually
+          const updatedConfig = { ...config.doorsDrawersConfig };
+
+          // Set door type for ALL spacings in the group (not just the first one)
+          allSpacingsForSlidingDoor.forEach((spacingId) => {
+            updatedConfig[spacingId] = type as any;
+          });
+
+          // Clear existing sliding door groups before creating new one
+          const updatedGroupedConfig = { ...config.groupedDoorsConfig };
+          Object.keys(updatedGroupedConfig).forEach((groupId) => {
+            if (groupId.startsWith("sliding-door-")) {
+              delete updatedGroupedConfig[groupId];
+            }
+          });
+
+          // Create group for sliding doors
+          const groupId = `sliding-door-${Date.now()}`;
+          updatedGroupedConfig[groupId] = {
+            spacingIds: allSpacingsForSlidingDoor,
+            doorType: type,
+            createdAt: Date.now(),
+          };
+
+          // Update both configs together
+          updateConfig("doorsDrawersConfig", updatedConfig);
+          updateConfig("groupedDoorsConfig", updatedGroupedConfig);
         }
       } else {
         // CỬA KHÁC: Logic group ghép cửa (tiroir không bao giờ có multiple selection nên không group)
@@ -1565,6 +1831,9 @@ const DoorsDrawersSection: React.FC = () => {
                     {(() => {
                       const selectedSpacings =
                         config.selectedDoorsDrawersSpacingIds || [];
+                      if (isMultiColumnSelected()) {
+                        return "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes";
+                      }
                       if (selectedSpacings.length > 1) {
                         return "❌ La façade sélectionnée ne peut pas être installée sur plusieurs casiers";
                       }
@@ -1599,6 +1868,9 @@ const DoorsDrawersSection: React.FC = () => {
                     {(() => {
                       const selectedSpacings =
                         config.selectedDoorsDrawersSpacingIds || [];
+                      if (isMultiColumnSelected()) {
+                        return "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes";
+                      }
                       if (selectedSpacings.length > 1) {
                         return "❌ La façade sélectionnée ne peut pas être installée sur plusieurs casiers";
                       }
@@ -1630,23 +1902,57 @@ const DoorsDrawersSection: React.FC = () => {
                 )}
                 {hoveredButton.type === "doubleSwingDoor" && (
                   <p>
-                    ❌ 40-109 cm de largeur{" "}
-                    {config.selectedDoorsDrawersSpacingIds.length > 1
-                      ? "(certains casiers ne respectent pas cette contrainte)"
-                      : `(courant ${getSpacingWidth(
-                          config.selectedDoorsDrawersSpacingIds[0] || ""
-                        )} cm)`}
+                    {isMultiColumnSelected()
+                      ? "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes"
+                      : `❌ 40-109 cm de largeur ${
+                          config.selectedDoorsDrawersSpacingIds.length > 1
+                            ? "(certains casiers ne respectent pas cette contrainte)"
+                            : `(courant ${getSpacingWidth(
+                                config.selectedDoorsDrawersSpacingIds[0] || ""
+                              )} cm)`
+                        }`}
                   </p>
                 )}
                 {(hoveredButton.type === "leftDoor" ||
                   hoveredButton.type === "rightDoor") && (
                   <p>
-                    ❌ 26-60 cm de largeur{" "}
-                    {config.selectedDoorsDrawersSpacingIds.length > 1
-                      ? "(certains casiers ne respectent pas cette contrainte)"
-                      : `(courant ${getSpacingWidth(
-                          config.selectedDoorsDrawersSpacingIds[0] || ""
-                        )} cm)`}
+                    {isMultiColumnSelected()
+                      ? "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes"
+                      : `❌ 26-60 cm de largeur ${
+                          config.selectedDoorsDrawersSpacingIds.length > 1
+                            ? "(certains casiers ne respectent pas cette contrainte)"
+                            : `(courant ${getSpacingWidth(
+                                config.selectedDoorsDrawersSpacingIds[0] || ""
+                              )} cm)`
+                        }`}
+                  </p>
+                )}
+                {(hoveredButton.type === "leftDoorVerre" ||
+                  hoveredButton.type === "rightDoorVerre") && (
+                  <p>
+                    {isMultiColumnSelected()
+                      ? "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes"
+                      : `❌ 26-60 cm de largeur ${
+                          config.selectedDoorsDrawersSpacingIds.length > 1
+                            ? "(certains casiers ne respectent pas cette contrainte)"
+                            : `(courant ${getSpacingWidth(
+                                config.selectedDoorsDrawersSpacingIds[0] || ""
+                              )} cm)`
+                        }`}
+                  </p>
+                )}
+                {(hoveredButton.type === "doubleDoor" ||
+                  hoveredButton.type === "doubleDoorVerre") && (
+                  <p>
+                    {isMultiColumnSelected()
+                      ? "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes"
+                      : `❌ 40-109 cm de largeur ${
+                          config.selectedDoorsDrawersSpacingIds.length > 1
+                            ? "(certains casiers ne respectent pas cette contrainte)"
+                            : `(courant ${getSpacingWidth(
+                                config.selectedDoorsDrawersSpacingIds[0] || ""
+                              )} cm)`
+                        }`}
                   </p>
                 )}
                 {(hoveredButton.type === "slidingDoor" ||
@@ -1658,7 +1964,7 @@ const DoorsDrawersSection: React.FC = () => {
                         config.selectedDoorsDrawersSpacingIds || [];
                       if (selectedSpacings.length === 0) return "";
 
-                      // Check if not all spacings in column are selected
+                      // Group selected spacings by column
                       const spacingsByColumn = new Map<string, string[]>();
                       selectedSpacings.forEach((spacingId) => {
                         const parts = spacingId.split("-");
@@ -1679,7 +1985,46 @@ const DoorsDrawersSection: React.FC = () => {
                         spacingsByColumn.get(columnId)!.push(spacingId);
                       });
 
-                      // Check each column
+                      // Get section name from first spacing
+                      const sectionName = getSectionNameFromSpacingId(
+                        selectedSpacings[0]
+                      );
+                      const section =
+                        config.wardrobeType.sections[
+                          sectionName as keyof typeof config.wardrobeType.sections
+                        ];
+                      if (!section || !section.columns)
+                        return "❌ Section non trouvée";
+
+                      // Get column indices for selected columns
+                      const selectedColumnIndices: number[] = [];
+                      const selectedColumnIds: string[] = [];
+
+                      for (const [columnId] of spacingsByColumn) {
+                        const columnIndex = section.columns.findIndex(
+                          (col: any) => col.id === columnId
+                        );
+                        if (columnIndex !== -1) {
+                          selectedColumnIndices.push(columnIndex);
+                          selectedColumnIds.push(columnId);
+                        }
+                      }
+
+                      // Sort column indices to check if they are consecutive
+                      selectedColumnIndices.sort((a, b) => a - b);
+
+                      // Check if selected columns are consecutive
+                      for (let i = 1; i < selectedColumnIndices.length; i++) {
+                        if (
+                          selectedColumnIndices[i] -
+                            selectedColumnIndices[i - 1] !==
+                          1
+                        ) {
+                          return "❌ Les colonnes sélectionnées doivent être consécutives";
+                        }
+                      }
+
+                      // Check each selected column to see if all spacings in that column are selected
                       for (const [
                         columnId,
                         selectedSpacingsInColumn,
@@ -1715,19 +2060,48 @@ const DoorsDrawersSection: React.FC = () => {
                           selectedSpacingsInColumn.length <
                           allSpacingsInColumn.length
                         ) {
-                          return "❌ Tous les casiers de la colonne doivent être sélectionnés pour installer une porte coulissante";
+                          return "❌ Tous les casiers de chaque colonne doivent être sélectionnés";
                         }
+                      }
 
-                        // Check column width
+                      // Check sliding door width validation: each piece 45-90cm, 2 pieces must have equal width
+                      // Include thickness between columns
+                      let totalWidth = 0;
+                      for (let i = 0; i < selectedColumnIds.length; i++) {
+                        const columnId = selectedColumnIds[i];
                         const columnWidth = getSpacingWidth(
-                          selectedSpacingsInColumn[0]
+                          `${columnId}-spacing-0`
                         );
-                        if (
-                          columnWidth !== null &&
-                          (columnWidth < 90 || columnWidth > 180)
-                        ) {
-                          return `❌ Largeur de colonne: 90-180 cm (courant ${columnWidth} cm)`;
+                        if (columnWidth !== null) {
+                          totalWidth += columnWidth;
+
+                          // Add thickness between columns (except for the last column)
+                          if (i < selectedColumnIds.length - 1) {
+                            totalWidth += config.thickness;
+                          }
                         }
+                      }
+
+                      // For sliding doors, we need to split into 2 equal pieces
+                      // Each piece should be 45-90cm
+                      const pieceWidth = totalWidth / 2;
+
+                      if (pieceWidth < 45 || pieceWidth > 90) {
+                        return `❌ Chaque morceau: 45-90 cm (courant ${pieceWidth.toFixed(
+                          1
+                        )} cm par morceau)`;
+                      }
+
+                      // Check if we can split columns into 2 equal pieces
+                      const canSplitIntoEqualPieces =
+                        canSplitColumnsIntoEqualPieces(
+                          selectedColumnIds,
+                          pieceWidth
+                        );
+                      if (!canSplitIntoEqualPieces) {
+                        return `❌ Impossible de diviser les colonnes en 2 morceaux égaux (${pieceWidth.toFixed(
+                          1
+                        )} cm chacun)`;
                       }
 
                       return "❌ Conditions non respectées pour la porte coulissante";

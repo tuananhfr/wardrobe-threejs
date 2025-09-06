@@ -160,10 +160,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
             // Parse key để lấy thông tin baseX, direction, width
             if (key.includes("-left")) {
               const slidingDoorWidth = facadeWidth / 2;
-              baseX = -slidingDoorWidth / 2;
+              baseX = -facadeWidth / 2 + slidingDoorWidth / 2;
             } else if (key.includes("-right")) {
               const slidingDoorWidth = facadeWidth / 2;
-              baseX = slidingDoorWidth / 2;
+              baseX = facadeWidth / 2 - slidingDoorWidth / 2;
             }
 
             // Trigger animation đóng
@@ -191,6 +191,81 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
   React.useEffect(() => {
     disableAndCloseAllAnimations();
   }, [config.accordionOpen, config.activeView]);
+
+  // Auto-remove sliding doors when piece width is < 45cm or > 90cm
+  React.useEffect(() => {
+    const slidingDoorTypes = [
+      "slidingDoor",
+      "slidingMirrorDoor",
+      "slidingGlassDoor",
+    ];
+
+    // Check individual sliding doors
+    Object.keys(config.doorsDrawersConfig).forEach((spacingId) => {
+      const doorType = config.doorsDrawersConfig[spacingId];
+
+      if (slidingDoorTypes.includes(doorType)) {
+        // Find the spacing position to get width
+        const spacingPos = spacingPositions.find(
+          (pos) => pos.spacingId === spacingId
+        );
+
+        if (spacingPos) {
+          const totalWidth = spacingPos.width;
+          const pieceWidth = totalWidth / 2; // Each piece is half the total width
+
+          // If piece width is < 45cm or > 90cm, remove the sliding door
+          if (pieceWidth < 45 || pieceWidth > 90) {
+            const updatedConfig = { ...config.doorsDrawersConfig };
+            delete updatedConfig[spacingId];
+            updateConfig("doorsDrawersConfig", updatedConfig);
+          }
+        }
+      }
+    });
+
+    // Check multi-column sliding door groups
+    const groupedDoorsConfig = config.groupedDoorsConfig || {};
+    Object.entries(groupedDoorsConfig).forEach(([groupId, groupData]) => {
+      if (slidingDoorTypes.includes(groupData.doorType)) {
+        // Calculate total width of the group
+        const groupPositions = groupData.spacingIds
+          .map((spacingId) =>
+            spacingPositions.find((pos) => pos.spacingId === spacingId)
+          )
+          .filter(Boolean);
+
+        if (groupPositions.length > 0) {
+          const groupWidth =
+            groupPositions.reduce((sum, pos) => sum + pos!.width, 0) +
+            (groupPositions.length - 1) * thickness;
+          const pieceWidth = groupWidth / 2; // Each piece is half the total width
+
+          // If piece width is < 45cm or > 90cm, remove the entire group
+          if (pieceWidth < 45 || pieceWidth > 90) {
+            // Remove all spacings in this group
+            const updatedConfig = { ...config.doorsDrawersConfig };
+            groupData.spacingIds.forEach((spacingId) => {
+              delete updatedConfig[spacingId];
+            });
+            updateConfig("doorsDrawersConfig", updatedConfig);
+
+            // Remove the group from groupedDoorsConfig
+            const updatedGroupedDoorsConfig = { ...groupedDoorsConfig };
+            delete updatedGroupedDoorsConfig[groupId];
+            updateConfig("groupedDoorsConfig", updatedGroupedDoorsConfig);
+          }
+        }
+      }
+    });
+  }, [
+    config.wardrobeType,
+    config.height,
+    config.baseBarHeight,
+    config.thickness,
+    width,
+    depth,
+  ]);
 
   // Helper function to check if we're in facades selection mode
   const isSelectingFacades = () => {
@@ -239,89 +314,17 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
 
   // Helper function to calculate sliding door split point and piece widths
   const calculateSlidingDoorSplit = (groupData: any) => {
-    const { spacingIds } = groupData;
-
-    // Group spacings by column
-    const spacingsByColumn = new Map<string, string[]>();
-    spacingIds.forEach((spacingId: string) => {
-      const parts = spacingId.split("-");
-      if (parts.length < 4) return;
-
-      let columnId: string;
-      if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
-        columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
-      } else {
-        columnId = parts[0];
-      }
-
-      if (!spacingsByColumn.has(columnId)) {
-        spacingsByColumn.set(columnId, []);
-      }
-      spacingsByColumn.get(columnId)!.push(spacingId);
-    });
-
-    const columnIds = Array.from(spacingsByColumn.keys());
     const totalWidth = groupData.width;
-    const targetPieceWidth = totalWidth / 2;
 
-    // Find the split point that gives us equal pieces
-    for (let splitPoint = 1; splitPoint < columnIds.length; splitPoint++) {
-      // Calculate width of first piece
-      let firstPieceWidth = 0;
-      for (let i = 0; i < splitPoint; i++) {
-        const columnId = columnIds[i];
-        const column = sectionData.columns.find(
-          (col: any) => col.id === columnId
-        );
-        if (column) {
-          firstPieceWidth += column.width;
-          // Add thickness between columns (except for the last column in first piece)
-          if (i < splitPoint - 1) {
-            firstPieceWidth += thickness;
-          }
-        }
-      }
+    // Always split into two equal pieces regardless of column count
+    const pieceWidth = totalWidth / 2;
 
-      // Calculate width of second piece
-      let secondPieceWidth = 0;
-      for (let i = splitPoint; i < columnIds.length; i++) {
-        const columnId = columnIds[i];
-        const column = sectionData.columns.find(
-          (col: any) => col.id === columnId
-        );
-        if (column) {
-          secondPieceWidth += column.width;
-          // Add thickness between columns (except for the last column in second piece)
-          if (i < columnIds.length - 1) {
-            secondPieceWidth += thickness;
-          }
-        }
-      }
-
-      // Check if both pieces are approximately equal to target width
-      const tolerance = 1; // 1cm tolerance
-      if (
-        Math.abs(firstPieceWidth - targetPieceWidth) <= tolerance &&
-        Math.abs(secondPieceWidth - targetPieceWidth) <= tolerance
-      ) {
-        return {
-          splitPoint,
-          firstPieceWidth,
-          secondPieceWidth,
-          firstPieceColumns: columnIds.slice(0, splitPoint),
-          secondPieceColumns: columnIds.slice(splitPoint),
-        };
-      }
-    }
-
-    // Fallback: split in the middle
-    const midPoint = Math.floor(columnIds.length / 2);
     return {
-      splitPoint: midPoint,
-      firstPieceWidth: totalWidth / 2,
-      secondPieceWidth: totalWidth / 2,
-      firstPieceColumns: columnIds.slice(0, midPoint),
-      secondPieceColumns: columnIds.slice(midPoint),
+      splitPoint: 0, // Not used for equal width splitting
+      firstPieceWidth: pieceWidth,
+      secondPieceWidth: pieceWidth,
+      firstPieceColumns: [], // Not used for equal width splitting
+      secondPieceColumns: [], // Not used for equal width splitting
     };
   };
 
@@ -2389,6 +2392,10 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         const leftPieceWidth = slidingSplit.firstPieceWidth;
         const rightPieceWidth = slidingSplit.secondPieceWidth;
 
+        // Calculate proper X positions for left and right pieces
+        const leftPieceCenterX = -groupData.width / 2 + leftPieceWidth / 2;
+        const rightPieceCenterX = groupData.width / 2 - rightPieceWidth / 2;
+
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
             {/* Left sliding door */}
@@ -2399,32 +2406,20 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingDoor-left`
                   ] = ref;
               }}
-              position={[-leftPieceWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
+              position={[leftPieceCenterX, 0, thickness]} // Lồi ra ngoài thêm thickness
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
                 const k = `${groupData.groupId}-slidingDoor-left`;
                 if (!openedSlidersRef.current[k])
-                  triggerSlider(
-                    k,
-                    true,
-                    -leftPieceWidth / 2,
-                    1,
-                    leftPieceWidth
-                  );
+                  triggerSlider(k, true, leftPieceCenterX, 1, leftPieceWidth);
               }}
               onPointerOut={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
                 const k = `${groupData.groupId}-slidingDoor-left`;
                 if (!openedSlidersRef.current[k])
-                  triggerSlider(
-                    k,
-                    false,
-                    -leftPieceWidth / 2,
-                    1,
-                    leftPieceWidth
-                  );
+                  triggerSlider(k, false, leftPieceCenterX, 1, leftPieceWidth);
               }}
               onClick={(e) => {
                 if (shouldDisableInteractions()) return;
@@ -2432,7 +2427,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 const k = `${groupData.groupId}-slidingDoor-left`;
                 const next = !openedSlidersRef.current[k];
                 openedSlidersRef.current[k] = next;
-                triggerSlider(k, next, -leftPieceWidth / 2, 1, leftPieceWidth);
+                triggerSlider(k, next, leftPieceCenterX, 1, leftPieceWidth);
               }}
             >
               {/* Left sliding door panel */}
@@ -2468,7 +2463,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingDoor-right`
                   ] = ref;
               }}
-              position={[rightPieceWidth / 2, 0, 0]} // Mảnh phải ở vị trí bình thường
+              position={[rightPieceCenterX, 0, 0]} // Mảnh phải ở vị trí bình thường
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2477,7 +2472,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    rightPieceWidth / 2,
+                    rightPieceCenterX,
                     -1,
                     rightPieceWidth
                   );
@@ -2490,7 +2485,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    rightPieceWidth / 2,
+                    rightPieceCenterX,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
                     rightPieceWidth
                   );
@@ -2504,7 +2499,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  rightPieceWidth / 2,
+                  rightPieceCenterX,
                   -1, // Di chuyển sang trái (về phía mảnh 1)
                   rightPieceWidth
                 );
@@ -2551,6 +2546,12 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         const leftMirrorPieceWidth = mirrorSplit.firstPieceWidth;
         const rightMirrorPieceWidth = mirrorSplit.secondPieceWidth;
 
+        // Calculate proper X positions for left and right pieces
+        const leftMirrorPieceCenterX =
+          -groupData.width / 2 + leftMirrorPieceWidth / 2;
+        const rightMirrorPieceCenterX =
+          groupData.width / 2 - rightMirrorPieceWidth / 2;
+
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
             {/* Left sliding mirror door */}
@@ -2561,7 +2562,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingMirrorDoor-left`
                   ] = ref;
               }}
-              position={[-leftMirrorPieceWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
+              position={[leftMirrorPieceCenterX, 0, thickness]} // Lồi ra ngoài thêm thickness
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2570,7 +2571,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    -leftMirrorPieceWidth / 2,
+                    leftMirrorPieceCenterX,
                     1, // Di chuyển sang phải (về phía mảnh 2)
                     leftMirrorPieceWidth
                   );
@@ -2583,7 +2584,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    -leftMirrorPieceWidth / 2,
+                    leftMirrorPieceCenterX,
                     1, // Di chuyển sang phải (về phía mảnh 2)
                     leftMirrorPieceWidth
                   );
@@ -2597,7 +2598,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  -leftMirrorPieceWidth / 2,
+                  leftMirrorPieceCenterX,
                   1, // Di chuyển sang phải (về phía mảnh 2)
                   leftMirrorPieceWidth
                 );
@@ -2631,7 +2632,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingMirrorDoor-right`
                   ] = ref;
               }}
-              position={[rightMirrorPieceWidth / 2, 0, 0]}
+              position={[rightMirrorPieceCenterX, 0, 0]}
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2640,7 +2641,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    rightMirrorPieceWidth / 2,
+                    rightMirrorPieceCenterX,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
                     rightMirrorPieceWidth
                   );
@@ -2653,7 +2654,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    rightMirrorPieceWidth / 2,
+                    rightMirrorPieceCenterX,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
                     rightMirrorPieceWidth
                   );
@@ -2667,7 +2668,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  rightMirrorPieceWidth / 2,
+                  rightMirrorPieceCenterX,
                   -1, // Di chuyển sang trái (về phía mảnh 1)
                   rightMirrorPieceWidth
                 );
@@ -2709,6 +2710,12 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         const leftGlassPieceWidth = glassSplit.firstPieceWidth;
         const rightGlassPieceWidth = glassSplit.secondPieceWidth;
 
+        // Calculate proper X positions for left and right pieces
+        const leftGlassPieceCenterX =
+          -groupData.width / 2 + leftGlassPieceWidth / 2;
+        const rightGlassPieceCenterX =
+          groupData.width / 2 - rightGlassPieceWidth / 2;
+
         return (
           <group position={[groupData.x, groupData.centerY, facadeZ]}>
             {/* Left sliding glass door */}
@@ -2719,7 +2726,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingGlassDoor-left`
                   ] = ref;
               }}
-              position={[-leftGlassPieceWidth / 2, 0, thickness]} // Lồi ra ngoài thêm thickness
+              position={[leftGlassPieceCenterX, 0, thickness]} // Lồi ra ngoài thêm thickness
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2728,7 +2735,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    -leftGlassPieceWidth / 2,
+                    leftGlassPieceCenterX,
                     1, // Di chuyển sang phải (về phía mảnh 2)
                     leftGlassPieceWidth
                   );
@@ -2741,7 +2748,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    -leftGlassPieceWidth / 2,
+                    leftGlassPieceCenterX,
                     1, // Di chuyển sang phải (về phía mảnh 2)
                     leftGlassPieceWidth
                   );
@@ -2755,7 +2762,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  -leftGlassPieceWidth / 2,
+                  leftGlassPieceCenterX,
                   1, // Di chuyển sang phải (về phía mảnh 2)
                   leftGlassPieceWidth
                 );
@@ -2809,7 +2816,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                     `${groupData.groupId}-slidingGlassDoor-right`
                   ] = ref;
               }}
-              position={[rightGlassPieceWidth / 2, 0, 0]}
+              position={[rightGlassPieceCenterX, 0, 0]}
               onPointerOver={(e) => {
                 if (shouldDisableInteractions()) return;
                 e.stopPropagation();
@@ -2818,7 +2825,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     true,
-                    rightGlassPieceWidth / 2,
+                    rightGlassPieceCenterX,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
                     rightGlassPieceWidth
                   );
@@ -2831,7 +2838,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                   triggerSlider(
                     k,
                     false,
-                    rightGlassPieceWidth / 2,
+                    rightGlassPieceCenterX,
                     -1, // Di chuyển sang trái (về phía mảnh 1)
                     rightGlassPieceWidth
                   );
@@ -2845,7 +2852,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
                 triggerSlider(
                   k,
                   next,
-                  rightGlassPieceWidth / 2,
+                  rightGlassPieceCenterX,
                   -1, // Di chuyển sang trái (về phía mảnh 1)
                   rightGlassPieceWidth
                 );

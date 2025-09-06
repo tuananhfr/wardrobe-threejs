@@ -729,6 +729,17 @@ const DoorsDrawersSection: React.FC = () => {
         shouldRemove = true;
       }
 
+      // Check if sliding door should be removed when piece width is < 45cm or > 90cm
+      if (
+        spacingWidth !== null &&
+        (spacingWidth < 90 || spacingWidth > 180) && // Total width < 90cm or > 180cm means each piece < 45cm or > 90cm
+        (doorsDrawersType === "slidingDoor" ||
+          doorsDrawersType === "slidingMirrorDoor" ||
+          doorsDrawersType === "slidingGlassDoor")
+      ) {
+        shouldRemove = true;
+      }
+
       if (shouldRemove) {
         // Use grouped doors logic to remove
         updateDoorsDrawersConfig(spacingId, null);

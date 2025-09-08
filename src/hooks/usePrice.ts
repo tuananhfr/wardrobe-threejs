@@ -3,7 +3,7 @@ import { useConfig } from "@/components/context/WardrobeContext";
 
 export const usePrice = () => {
   const { config, batchUpdate } = useConfig();
-  const WOOD_PANEL_PRICE_PER_M2 = 200;
+  const WOOD_PANEL_PRICE_PER_M2 = 80;
   const BASE_BAR_WIDTH_PRICE = 12;
 
   // LED pricing constants

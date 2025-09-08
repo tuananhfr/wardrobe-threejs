@@ -7,7 +7,7 @@ export const usePrice = () => {
   const BASE_BAR_WIDTH_PRICE = 12;
 
   // LED pricing constants
-  const LED_STRIP_PRICE_PER_METER = 120; // 120€/m (100cm)
+  const LED_STRIP_PRICE_PER_METER = 40; // 40€/m (100cm)
   const LED_CONVERTISSEUR_PRICE = 40; // 40€ cho 1 convertisseur
 
   // Internal Equipment pricing constants

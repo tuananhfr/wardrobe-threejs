@@ -16,6 +16,55 @@ const MainSelector: React.FC<MainSelectorProps> = ({ activeOption }) => {
     { id: "led", name: "LED" },
   ];
 
+  // Đếm tổng số kệ (tablettes) trong toàn bộ tủ
+  const getAllShelvesCount = (): number => {
+    let totalCount = 0;
+
+    Object.entries(config.wardrobeType.sections).forEach(([, section]) => {
+      if (section && section.columns) {
+        section.columns.forEach((column: any) => {
+          if (column.shelves?.spacings) {
+            // Số kệ = số spacings - 1 (trừ spacing cuối cùng)
+            totalCount += column.shelves.spacings.length - 1;
+          }
+        });
+      }
+    });
+
+    return totalCount;
+  };
+
+  // Đếm tổng số facade hợp lệ trong tủ (loại trừ verre/mirror)
+  const getAllFacadesCount = (): number => {
+    let totalCount = 0;
+
+    const excludedTypes = [
+      "leftDoorVerre",
+      "rightDoorVerre",
+      "drawerVerre",
+      "doubleSwingDoorVerre",
+      "slidingMirrorDoor",
+      "slidingGlassDoor",
+    ];
+
+    Object.entries(config.doorsDrawersConfig).forEach(([, doorType]) => {
+      if (doorType && !excludedTypes.includes(doorType as string)) {
+        totalCount += 1;
+      }
+    });
+
+    return totalCount;
+  };
+
+  const totalShelves = getAllShelvesCount();
+  const totalFacades = getAllFacadesCount();
+
+  const filteredOptions = options.filter((opt) => {
+    if (opt.id === "tablette") return totalShelves > 0;
+    if (opt.id === "facades") return totalFacades > 0;
+    return true;
+  });
+
   const handleOptionChange = (optionId: string) => {
     if (optionId === "led") {
       // Khi chọn "LED", hiển thị LED color selector
@@ -65,7 +114,7 @@ const MainSelector: React.FC<MainSelectorProps> = ({ activeOption }) => {
 
   return (
     <div className="d-flex flex-wrap mb-3 mt-3 pb-3 border-bottom">
-      {options.map((option) => (
+      {filteredOptions.map((option) => (
         <button
           key={option.id}
           className={`btn ${

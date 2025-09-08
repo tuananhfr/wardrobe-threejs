@@ -21,6 +21,7 @@ export const usePrice = () => {
   const TIROIR_WIDTH_65_PRICE = 190; // <65cm = 190€
   const TIROIR_WIDTH_95_PRICE = 210; // <95cm = 210€
   const TIROIR_WIDTH_OVER_95_PRICE = 230; // >95cm = 230€
+  const HANDLE_PRICE = 45; // 45€ cho mỗi façade có poignée
 
   // Hàm tính giá chân kệ dựa trên các section
   const calculateFeetPrice = () => {
@@ -359,6 +360,236 @@ export const usePrice = () => {
     };
   };
 
+  // Helper: lấy chiều cao spacing từ spacingId
+  const getSpacingHeight = (spacingId: string): number => {
+    if (!spacingId) return 0;
+    const parts = spacingId.split("-");
+    if (parts.length < 1) return 0;
+
+    let columnId: string;
+    let spacingIndex: number | null = null;
+
+    if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+      columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+      spacingIndex = parseInt(parts[4]);
+    } else {
+      columnId = parts[0];
+      spacingIndex = parts.length >= 3 ? parseInt(parts[2]) : null;
+    }
+
+    for (const [, section] of Object.entries(config.wardrobeType.sections)) {
+      if (section && section.columns) {
+        const column = section.columns.find((col: any) => col.id === columnId);
+        if (column) {
+          const spacings = column.shelves?.spacings || [];
+          if (spacings.length === 0) {
+            return Math.max(
+              0,
+              config.height - config.baseBarHeight - 2 * config.thickness
+            );
+          }
+
+          if (
+            spacingIndex !== null &&
+            spacingIndex >= 0 &&
+            spacingIndex < spacings.length
+          ) {
+            return spacings[spacingIndex].spacing;
+          }
+        }
+      }
+    }
+
+    return 0;
+  };
+
+  // Helper: lấy chiều rộng spacing (bằng chiều rộng cột)
+  const getSpacingWidth = (spacingId: string): number => {
+    if (!spacingId) return 0;
+    const parts = spacingId.split("-");
+    if (parts.length < 1) return 0;
+
+    let columnId: string;
+    if (parts.length === 5 && parts[1] === "col" && parts[3] === "spacing") {
+      columnId = `${parts[0]}-${parts[1]}-${parts[2]}`;
+    } else {
+      columnId = parts[0];
+    }
+
+    for (const [, section] of Object.entries(config.wardrobeType.sections)) {
+      if (section && section.columns) {
+        const column = section.columns.find((col: any) => col.id === columnId);
+        if (column) {
+          return column.width;
+        }
+      }
+    }
+
+    return 0;
+  };
+
+  // Helper: chiều cao cột (full) cho spacingId
+  const getFullColumnHeight = (): number => {
+    return Math.max(
+      0,
+      config.height - config.baseBarHeight - 2 * config.thickness
+    );
+  };
+
+  // Tính giá Facades (doors & drawers)
+  const calculateFacadePrice = () => {
+    let totalFacadePrice = 0;
+
+    // Đánh dấu spacing đã tính qua group để tránh double-count
+    const countedSpacing = new Set<string>();
+
+    // Hệ số nhân cho vật liệu
+    const getMaterialMultiplier = (doorType: string): number => {
+      if (doorType === "slidingMirrorDoor") return 2; // Mirror x2
+      if (
+        doorType === "slidingGlassDoor" ||
+        doorType === "leftDoorVerre" ||
+        doorType === "rightDoorVerre" ||
+        doorType === "doubleSwingDoorVerre" ||
+        doorType === "drawerVerre"
+      ) {
+        return 3; // Verre x3
+      }
+      return 1; // Bois thường
+    };
+
+    // Helper: kiểm tra facade có tay nắm không (ưu tiên handleConfig theo spacing, fallback handleType)
+    const hasHandleForSpacing = (spacingId: string): boolean => {
+      const perSpacing = config.handleConfig?.[spacingId];
+      const effective = perSpacing ?? config.handleType;
+      return effective === "baton"; // "none" hoặc undefined coi như không có
+    };
+
+    // 1) Tính giá cho các nhóm đã cấu hình (bao gồm sliding/grouped)
+    Object.entries(config.groupedDoorsConfig || {}).forEach(([, group]) => {
+      const { spacingIds, doorType } = group;
+      if (!spacingIds || spacingIds.length === 0) return;
+
+      // Đánh dấu các spacing thuộc group
+      spacingIds.forEach((id) => countedSpacing.add(id));
+
+      let groupPrice = 0;
+
+      const multiplier = getMaterialMultiplier(doorType);
+
+      // Sliding door: nhóm có thể gồm nhiều cột, chiều cao full cột
+      if (
+        doorType === "slidingDoor" ||
+        doorType === "slidingMirrorDoor" ||
+        doorType === "slidingGlassDoor"
+      ) {
+        // Lấy các columnId theo thứ tự xuất hiện trong spacingIds
+        const columnIdsInOrder: string[] = [];
+        spacingIds.forEach((sid) => {
+          const parts = sid.split("-");
+          const columnId =
+            parts.length === 5 && parts[1] === "col" && parts[3] === "spacing"
+              ? `${parts[0]}-${parts[1]}-${parts[2]}`
+              : parts[0];
+          if (!columnIdsInOrder.includes(columnId)) {
+            columnIdsInOrder.push(columnId);
+          }
+        });
+
+        // Tính tổng chiều rộng các cột + thickness giữa cột
+        let totalWidth = 0;
+        columnIdsInOrder.forEach((colId, idx) => {
+          const width = getSpacingWidth(`${colId}-spacing-0`);
+          totalWidth += width;
+          if (idx < columnIdsInOrder.length - 1) {
+            totalWidth += config.thickness;
+          }
+        });
+
+        const heightCm = getFullColumnHeight();
+        const areaM2 = (totalWidth * heightCm) / 10000;
+        groupPrice = areaM2 * WOOD_PANEL_PRICE_PER_M2 * multiplier;
+
+        // Sliding: không có tay nắm theo UI hiện tại → không cộng HANDLE_PRICE
+      } else if (doorType === "drawer" || doorType === "drawerVerre") {
+        // Theo yêu cầu: tiroir facade dùng lại bảng giá tiroir theo width của cột đầu tiên
+        // (group tiroir không xảy ra theo logic hiện tại, nhưng xử lý phòng hờ: lấy spacing đầu tiên)
+        const width = getSpacingWidth(spacingIds[0]);
+        let base = 0;
+        if (width < 45) base = TIROIR_WIDTH_45_PRICE;
+        else if (width < 65) base = TIROIR_WIDTH_65_PRICE;
+        else if (width < 95) base = TIROIR_WIDTH_95_PRICE;
+        else base = TIROIR_WIDTH_OVER_95_PRICE;
+        groupPrice = base * multiplier;
+
+        // Tiroir: UI phần handle không áp dụng → không cộng HANDLE_PRICE
+      } else {
+        // Nhóm cửa bản lề dọc một cột: width = width cột, height = tổng height các spacing trong nhóm
+        const width = getSpacingWidth(spacingIds[0]);
+        const totalHeight = spacingIds.reduce(
+          (acc, sid) => acc + getSpacingHeight(sid),
+          0
+        );
+        const areaM2 = (width * totalHeight) / 10000;
+        groupPrice = areaM2 * WOOD_PANEL_PRICE_PER_M2 * multiplier;
+
+        // Thêm giá tay nắm cho 1 façade (group này đại diện 1 cánh/1 cặp? → theo yêu cầu: mỗi façade có poignée +45)
+        // Quy ước: nếu bất kỳ spacing trong group có handle (hoặc handleType mặc định) thì cộng 45€ một lần cho group
+        const groupHasHandle = spacingIds.some((sid) =>
+          hasHandleForSpacing(sid)
+        );
+        if (groupHasHandle) {
+          groupPrice += HANDLE_PRICE;
+        }
+      }
+
+      totalFacadePrice += groupPrice;
+    });
+
+    // 2) Tính giá cho các spacing cấu hình riêng lẻ (không thuộc group)
+    Object.entries(config.doorsDrawersConfig || {}).forEach(
+      ([spacingId, doorType]) => {
+        if (countedSpacing.has(spacingId)) return; // đã tính qua group
+
+        // Bỏ qua sliding ở mức spacing (đã tính ở group sliding)
+        if (
+          doorType === "slidingDoor" ||
+          doorType === "slidingMirrorDoor" ||
+          doorType === "slidingGlassDoor"
+        ) {
+          return;
+        }
+
+        const multiplier = getMaterialMultiplier(doorType);
+
+        if (doorType === "drawer" || doorType === "drawerVerre") {
+          const width = getSpacingWidth(spacingId);
+          let base = 0;
+          if (width < 45) base = TIROIR_WIDTH_45_PRICE;
+          else if (width < 65) base = TIROIR_WIDTH_65_PRICE;
+          else if (width < 95) base = TIROIR_WIDTH_95_PRICE;
+          else base = TIROIR_WIDTH_OVER_95_PRICE;
+          totalFacadePrice += base * multiplier;
+        } else {
+          // Cửa bản lề đơn lẻ: tính theo diện tích spacing
+          const width = getSpacingWidth(spacingId);
+          const heightCm = getSpacingHeight(spacingId);
+          const areaM2 = (width * heightCm) / 10000;
+          let price = areaM2 * WOOD_PANEL_PRICE_PER_M2 * multiplier;
+          // Thêm tay nắm nếu có
+          if (hasHandleForSpacing(spacingId)) {
+            price += HANDLE_PRICE;
+          }
+          totalFacadePrice += price;
+        }
+      }
+    );
+
+    return {
+      total: totalFacadePrice,
+    };
+  };
+
   // Hàm cập nhật giá
   const updatePrice = () => {
     const feet = calculateFeetPrice();
@@ -366,8 +597,14 @@ export const usePrice = () => {
     const shelves = calculateShelvesPrice();
     const led = calculateLEDPrice();
     const internalEquipment = calculateInternalEquipmentPrice();
+    const facades = calculateFacadePrice();
     const calculatedPrice =
-      feet + frame.total + shelves + led.total + internalEquipment.total;
+      feet +
+      frame.total +
+      shelves +
+      led.total +
+      internalEquipment.total +
+      facades.total;
     const finalPrice = Math.round(calculatedPrice * 100) / 100;
     const originalPrice = finalPrice * 1.2; // originalPrice = 1.2 × price
 
@@ -398,6 +635,10 @@ export const usePrice = () => {
     baseBarHeight,
     config.ledColor,
     config.internalEquipmentConfig,
+    config.doorsDrawersConfig,
+    config.groupedDoorsConfig,
+    config.handleConfig,
+    config.handleType,
   ]);
 
   // Return các giá trị và hàm hữu ích
@@ -419,6 +660,9 @@ export const usePrice = () => {
 
     // Chi tiết giá thiết bị nội thất
     internalEquipmentPrice: calculateInternalEquipmentPrice(),
+
+    // Chi tiết giá facades
+    facadePrice: calculateFacadePrice(),
 
     // Discount percentage
     discountPercentage: config.originalPrice

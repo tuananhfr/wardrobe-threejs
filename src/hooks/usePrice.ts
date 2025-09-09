@@ -21,7 +21,7 @@ export const usePrice = () => {
   const TIROIR_WIDTH_65_PRICE = 190; // <65cm = 190€
   const TIROIR_WIDTH_95_PRICE = 210; // <95cm = 210€
   const TIROIR_WIDTH_OVER_95_PRICE = 230; // >95cm = 230€
-  const HANDLE_PRICE = 45; // 45€ cho mỗi façade có poignée
+  const HANDLE_PRICE = 10; // 45€ cho mỗi façade có poignée
 
   // Hàm tính giá chân kệ dựa trên các section
   const calculateFeetPrice = () => {

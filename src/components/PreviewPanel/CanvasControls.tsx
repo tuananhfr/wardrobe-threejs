@@ -46,37 +46,39 @@ const CanvasControls: React.FC<CanvasControlsProps> = ({
         `}
       </style>
 
-      {/* Undo Control - Bên trái */}
-      <div
-        className="position-absolute d-flex flex-row align-items-center"
-        style={{ top: "20px", left: "20px", gap: "8px", zIndex: 100 }}
-      >
-        {/* Wrapper cho button và text với hover effect */}
+      {/* Undo Control - Bên trái (chỉ hiển thị khi có undo) */}
+      {undoCount > 0 && (
         <div
-          className={`d-flex flex-row align-items-center undo-hover-wrapper ${
-            !canUndo ? "disabled" : ""
-          }`}
-          onClick={canUndo ? undo : undefined}
-          style={{ cursor: canUndo ? "pointer" : "not-allowed" }}
+          className="position-absolute d-flex flex-row align-items-center"
+          style={{ top: "20px", left: "20px", gap: "8px", zIndex: 100 }}
         >
-          {/* Annuler (Undo) Button */}
-          <button
-            className={`${buttonBaseClass} btn-light`}
-            style={buttonStyle}
-            disabled={!canUndo}
+          {/* Wrapper cho button và text với hover effect */}
+          <div
+            className={`d-flex flex-row align-items-center undo-hover-wrapper ${
+              !canUndo ? "disabled" : ""
+            }`}
+            onClick={canUndo ? undo : undefined}
+            style={{ cursor: canUndo ? "pointer" : "not-allowed" }}
           >
-            <i className="bi bi-arrow-counterclockwise undo-icon"></i>
-          </button>
+            {/* Annuler (Undo) Button */}
+            <button
+              className={`${buttonBaseClass} btn-light`}
+              style={buttonStyle}
+              disabled={!canUndo}
+            >
+              <i className="bi bi-arrow-counterclockwise undo-icon"></i>
+            </button>
 
-          {/* Text bên cạnh nút - hiển thị số lượng actions có thể undo */}
-          <span
-            className="text-dark fw-medium ms-2 undo-text"
-            style={{ fontSize: "14px" }}
-          >
-            Annuler ({undoCount})
-          </span>
+            {/* Text bên cạnh nút - hiển thị số lượng actions có thể undo */}
+            <span
+              className="text-dark fw-medium ms-2 undo-text"
+              style={{ fontSize: "14px" }}
+            >
+              Annuler ({undoCount})
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Zoom Controls - Bên phải */}
       <div

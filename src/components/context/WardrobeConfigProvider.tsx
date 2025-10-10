@@ -11,6 +11,7 @@ import taupeTexture from "@/assets/images/textures/taupe_u15133.jpg";
 import { wardrobeTypeList } from "@/constants/wardrobeTypes";
 
 const MAX_HISTORY = 100;
+const DEBOUNCE_DELAY = 500; // 500ms
 
 interface WardrobeConfigProviderProps {
   children: ReactNode;
@@ -68,6 +69,10 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
   const configRef = useRef<WardrobeState>(config);
   const [historyCount, setHistoryCount] = useState(0);
 
+  // Debounce timer refs - theo dõi từng field riêng biệt
+  const debounceTimersRef = useRef<{ [key: string]: NodeJS.Timeout }>({});
+  const pendingConfigRef = useRef<WardrobeState | null>(null);
+
   // Cập nhật ref mỗi khi config thay đổi
   configRef.current = config;
 
@@ -109,7 +114,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     console.log("📝 Saved to history. Count:", historyRef.current.length);
   }, []);
 
-  // updateConfig CÓ LƯU HISTORY
+  // updateConfig CÓ LƯU HISTORY - Lưu ngay lập tức
   const updateConfigWithHistory = useCallback(
     <K extends keyof WardrobeState>(key: K, value: WardrobeState[K]) => {
       console.log("🔄 updateConfigWithHistory called for:", key);
@@ -119,7 +124,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     [saveToHistory, updateConfig]
   );
 
-  // batchUpdate CÓ LƯU HISTORY
+  // batchUpdate CÓ LƯU HISTORY - Lưu ngay lập tức
   const batchUpdateWithHistory = useCallback(
     (updates: Partial<WardrobeState>) => {
       console.log(
@@ -132,12 +137,73 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     [saveToHistory, batchUpdate]
   );
 
+  // updateConfig CÓ LƯU HISTORY + DEBOUNCED - Dùng cho input number
+  const updateConfigWithHistoryDebounced = useCallback(
+    <K extends keyof WardrobeState>(
+      key: K,
+      value: WardrobeState[K],
+      delay: number = DEBOUNCE_DELAY
+    ) => {
+      console.log("⏱️ updateConfigWithHistoryDebounced called for:", key);
+
+      // Clear timer cũ cho field này
+      if (debounceTimersRef.current[key as string]) {
+        clearTimeout(debounceTimersRef.current[key as string]);
+      }
+
+      // Nếu đây là lần đầu tiên thay đổi field này (chưa có pending), lưu snapshot
+      if (!pendingConfigRef.current) {
+        pendingConfigRef.current = JSON.parse(
+          JSON.stringify(configRef.current)
+        ) as WardrobeState;
+        console.log("💾 Saved snapshot before debounced changes");
+      }
+
+      // Cập nhật config ngay (để UI responsive)
+      updateConfig(key, value);
+
+      // Set timer mới để lưu history sau delay
+      debounceTimersRef.current[key as string] = setTimeout(() => {
+        console.log("✅ Debounce completed for:", key, "- Saving to history");
+
+        // Lưu snapshot vào history (config TRƯỚC KHI thay đổi)
+        if (pendingConfigRef.current) {
+          historyRef.current.unshift(pendingConfigRef.current);
+
+          if (historyRef.current.length > MAX_HISTORY) {
+            historyRef.current.pop();
+          }
+
+          setHistoryCount(historyRef.current.length);
+          console.log(
+            "📝 Saved debounced history. Count:",
+            historyRef.current.length
+          );
+
+          // Reset pending
+          pendingConfigRef.current = null;
+        }
+
+        // Cleanup timer
+        delete debounceTimersRef.current[key as string];
+      }, delay);
+    },
+    [updateConfig]
+  );
+
   // Hàm undo
   const undo = useCallback(() => {
     if (historyRef.current.length === 0) {
       console.log("⚠️ No history to undo");
       return;
     }
+
+    // Clear tất cả debounce timers đang chờ
+    Object.values(debounceTimersRef.current).forEach((timer) =>
+      clearTimeout(timer)
+    );
+    debounceTimersRef.current = {};
+    pendingConfigRef.current = null;
 
     const previousConfig = historyRef.current.shift();
     setHistoryCount(historyRef.current.length);
@@ -160,6 +226,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     // Undo/Redo
     updateConfigWithHistory,
     batchUpdateWithHistory,
+    updateConfigWithHistoryDebounced, // ✨ NEW: Debounced version
     undo,
     undoCount: historyCount,
     canUndo: historyCount > 0,

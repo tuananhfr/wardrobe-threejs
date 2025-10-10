@@ -17,6 +17,14 @@ declare global {
       value: WardrobeState[K]
     ) => void;
     batchUpdateWithHistory: (updates: Partial<WardrobeState>) => void;
+
+    // ✨ NEW: Debounced version cho input number
+    updateConfigWithHistoryDebounced: <K extends keyof WardrobeState>(
+      key: K,
+      value: WardrobeState[K],
+      delay?: number
+    ) => void;
+
     undo: () => void;
     undoCount: number;
     canUndo: boolean;

@@ -23,6 +23,7 @@ export const useUndoRedo = () => {
     batchUpdate: context.batchUpdate,
     updateConfigWithHistory: context.updateConfigWithHistory,
     batchUpdateWithHistory: context.batchUpdateWithHistory,
+    updateConfigWithHistoryDebounced: context.updateConfigWithHistoryDebounced, // ✨ NEW
     undo: context.undo,
     undoCount: context.undoCount,
     canUndo: context.canUndo,

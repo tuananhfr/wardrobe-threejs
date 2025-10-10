@@ -1,9 +1,10 @@
 // src/hooks/useWardrobeConfig.ts (Updated with L-Shape constraints)
 
-import { useConfig } from "@/components/context/WardrobeContext";
+import { useConfig, useUndoRedo } from "@/components/context/WardrobeContext";
 
 export const useWardrobeConfig = () => {
   const { config, updateConfig } = useConfig();
+  const { updateConfigWithHistoryDebounced } = useUndoRedo();
 
   // ===== L-SHAPE CONSTRAINT HELPERS =====
 
@@ -1109,7 +1110,7 @@ export const useWardrobeConfig = () => {
   const handleHeightChange = (newHeight: number) => {
     const oldHeight = config.height;
     if (newHeight === oldHeight) {
-      updateConfig("height", newHeight);
+      updateConfigWithHistoryDebounced("height", newHeight);
       return;
     }
 
@@ -1217,7 +1218,7 @@ export const useWardrobeConfig = () => {
         ...config.wardrobeType,
         sections: updatedSections,
       });
-      updateConfig("height", newHeight);
+      updateConfigWithHistoryDebounced("height", newHeight);
     } else {
       // Increase height: reset spacings like changing shelf count
       const updatedSections: typeof config.wardrobeType.sections = JSON.parse(
@@ -1263,7 +1264,7 @@ export const useWardrobeConfig = () => {
         ...config.wardrobeType,
         sections: updatedSections,
       });
-      updateConfig("height", newHeight);
+      updateConfigWithHistoryDebounced("height", newHeight);
     }
   };
 

@@ -1,7 +1,10 @@
 // src/components/ConfigPanel/ConfigPanel.tsx
 import React from "react";
 
-import { useConfig } from "../../components/context/WardrobeContext";
+import {
+  useConfig,
+  useUndoRedo,
+} from "../../components/context/WardrobeContext";
 import WardrobeTypeSelector from "./section/WardrobeTypeSelector";
 import DimensionSection from "./section/DimensionSection";
 import DimensionControl from "./section/DimensionControl";
@@ -15,6 +18,7 @@ import DoorsDrawersSection from "./section/DoorsDrawersSection";
 
 const ConfigPanel: React.FC = () => {
   const { config, updateConfig, batchUpdate } = useConfig();
+  const { updateConfigWithHistoryDebounced } = useUndoRedo();
 
   // Generic accordion handler
   const createAccordionHandler = (accordionId: string) => {
@@ -136,7 +140,9 @@ const ConfigPanel: React.FC = () => {
               min={7}
               max={14}
               step={1}
-              onChange={(value) => updateConfig("baseBarHeight", value)}
+              onChange={(value) =>
+                updateConfigWithHistoryDebounced("baseBarHeight", value)
+              }
             />
           </div>
         </div>

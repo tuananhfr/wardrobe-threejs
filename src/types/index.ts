@@ -3,11 +3,24 @@ declare global {
   // Định nghĩa kiểu cho context
   interface WardrobeContextType {
     config: WardrobeState;
+
+    // Config functions - KHÔNG lưu history
     updateConfig: <K extends keyof WardrobeState>(
       key: K,
       value: WardrobeState[K]
     ) => void;
     batchUpdate: (updates: Partial<WardrobeState>) => void;
+
+    // Undo/Redo functions - CÓ lưu history
+    updateConfigWithHistory: <K extends keyof WardrobeState>(
+      key: K,
+      value: WardrobeState[K]
+    ) => void;
+    batchUpdateWithHistory: (updates: Partial<WardrobeState>) => void;
+    undo: () => void;
+    undoCount: number;
+    canUndo: boolean;
+    saveToHistory: () => void;
   }
 
   interface WardrobeState {

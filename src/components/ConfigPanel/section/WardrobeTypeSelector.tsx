@@ -1,8 +1,10 @@
-import { useConfig } from "@/components/context/WardrobeContext";
+import { useConfig, useUndoRedo } from "@/components/context/WardrobeContext";
+
 import React, { useState } from "react";
 
 const WardrobeTypeSelector: React.FC = () => {
   const { config, updateConfig } = useConfig();
+  const { updateConfigWithHistory } = useUndoRedo();
   const [hoveredWardrobeType, setHoveredWardrobeType] = useState<{
     name: string;
     images: string;
@@ -40,7 +42,7 @@ const WardrobeTypeSelector: React.FC = () => {
     }
 
     // Update config context
-    updateConfig("wardrobeType", wardrobeType);
+    updateConfigWithHistory("wardrobeType", wardrobeType);
   };
 
   // Hàm xử lý mouse enter để hiển thị tooltip

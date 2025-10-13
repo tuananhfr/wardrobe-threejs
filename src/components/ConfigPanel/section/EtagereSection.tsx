@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useWardrobeShelves } from "@/hooks/useWardrobeShelves";
+import { useUndoRedo } from "@/components/context/WardrobeContext";
 
 const EtagereSection: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
+  const { updateConfigWithHistoryDebounced } = useUndoRedo();
+
   const {
     getColumnShelves,
     setShelfCount,
@@ -647,7 +650,7 @@ const EtagereSection: React.FC = () => {
                       return col;
                     });
 
-                    updateConfig("wardrobeType", {
+                    updateConfigWithHistoryDebounced("wardrobeType", {
                       ...config.wardrobeType,
                       sections: {
                         ...config.wardrobeType.sections,

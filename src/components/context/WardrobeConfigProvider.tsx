@@ -111,13 +111,11 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     }
 
     setHistoryCount(historyRef.current.length);
-    console.log("📝 Saved to history. Count:", historyRef.current.length);
   }, []);
 
   // updateConfig CÓ LƯU HISTORY - Lưu ngay lập tức
   const updateConfigWithHistory = useCallback(
     <K extends keyof WardrobeState>(key: K, value: WardrobeState[K]) => {
-      console.log("🔄 updateConfigWithHistory called for:", key);
       saveToHistory();
       updateConfig(key, value);
     },
@@ -127,10 +125,6 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
   // batchUpdate CÓ LƯU HISTORY - Lưu ngay lập tức
   const batchUpdateWithHistory = useCallback(
     (updates: Partial<WardrobeState>) => {
-      console.log(
-        "🔄 batchUpdateWithHistory called with:",
-        Object.keys(updates)
-      );
       saveToHistory();
       batchUpdate(updates);
     },
@@ -144,8 +138,6 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
       value: WardrobeState[K],
       delay: number = DEBOUNCE_DELAY
     ) => {
-      console.log("⏱️ updateConfigWithHistoryDebounced called for:", key);
-
       // Clear timer cũ cho field này
       if (debounceTimersRef.current[key as string]) {
         clearTimeout(debounceTimersRef.current[key as string]);
@@ -156,7 +148,6 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
         pendingConfigRef.current = JSON.parse(
           JSON.stringify(configRef.current)
         ) as WardrobeState;
-        console.log("💾 Saved snapshot before debounced changes");
       }
 
       // Cập nhật config ngay (để UI responsive)
@@ -164,8 +155,6 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
 
       // Set timer mới để lưu history sau delay
       debounceTimersRef.current[key as string] = setTimeout(() => {
-        console.log("✅ Debounce completed for:", key, "- Saving to history");
-
         // Lưu snapshot vào history (config TRƯỚC KHI thay đổi)
         if (pendingConfigRef.current) {
           historyRef.current.unshift(pendingConfigRef.current);
@@ -175,10 +164,6 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
           }
 
           setHistoryCount(historyRef.current.length);
-          console.log(
-            "📝 Saved debounced history. Count:",
-            historyRef.current.length
-          );
 
           // Reset pending
           pendingConfigRef.current = null;
@@ -194,7 +179,6 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
   // Hàm undo
   const undo = useCallback(() => {
     if (historyRef.current.length === 0) {
-      console.log("⚠️ No history to undo");
       return;
     }
 
@@ -207,10 +191,6 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
 
     const previousConfig = historyRef.current.shift();
     setHistoryCount(historyRef.current.length);
-    console.log(
-      "⏪ Undo to previous config. Remaining:",
-      historyRef.current.length
-    );
 
     if (previousConfig) {
       batchUpdate(previousConfig);
@@ -226,7 +206,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     // Undo/Redo
     updateConfigWithHistory,
     batchUpdateWithHistory,
-    updateConfigWithHistoryDebounced, // ✨ NEW: Debounced version
+    updateConfigWithHistoryDebounced,
     undo,
     undoCount: historyCount,
     canUndo: historyCount > 0,

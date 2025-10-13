@@ -4,7 +4,8 @@ import { useConfig, useUndoRedo } from "@/components/context/WardrobeContext";
 
 export const useWardrobeConfig = () => {
   const { config, updateConfig } = useConfig();
-  const { updateConfigWithHistoryDebounced } = useUndoRedo();
+  const { updateConfigWithHistory, updateConfigWithHistoryDebounced } =
+    useUndoRedo();
 
   // ===== L-SHAPE CONSTRAINT HELPERS =====
 
@@ -669,7 +670,8 @@ export const useWardrobeConfig = () => {
 
   const handleUpdateSection = (
     sectionKey: SectionKey,
-    newData: Partial<WardrobeSection>
+    newData: Partial<WardrobeSection>,
+    withHistory: boolean = false
   ) => {
     const currentSection = config.wardrobeType.sections[sectionKey];
     if (!currentSection) {
@@ -785,10 +787,17 @@ export const useWardrobeConfig = () => {
       [sectionKey]: updatedSectionData,
     };
 
-    updateConfig("wardrobeType", {
+    const newWardrobeType = {
       ...config.wardrobeType,
       sections: newSections,
-    });
+    };
+
+    // Kiểm tra flag để quyết định có lưu history không
+    if (withHistory) {
+      updateConfigWithHistoryDebounced("wardrobeType", newWardrobeType);
+    } else {
+      updateConfig("wardrobeType", newWardrobeType);
+    }
   };
 
   // ===== CONVENIENCE FUNCTIONS =====
@@ -800,7 +809,7 @@ export const useWardrobeConfig = () => {
     sectionKey: SectionKey,
     newWidth: number
   ) => {
-    handleUpdateSection(sectionKey, { width: newWidth });
+    handleUpdateSection(sectionKey, { width: newWidth }, true);
   };
 
   /**
@@ -1074,7 +1083,7 @@ export const useWardrobeConfig = () => {
       }
     }
 
-    updateConfig("doorsDrawersConfig", updatedConfig);
+    updateConfigWithHistory("doorsDrawersConfig", updatedConfig);
   };
   /**
    * Xóa group chứa spacingId

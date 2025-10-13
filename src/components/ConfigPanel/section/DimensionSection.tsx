@@ -174,7 +174,7 @@ const DimensionSection: React.FC = () => {
                       max={110}
                       step={1}
                       onChange={(value) =>
-                        handleUpdateSection("sectionA", { depth: value })
+                        handleUpdateSection("sectionA", { depth: value }, true)
                       }
                     />
                   </div>
@@ -247,7 +247,11 @@ const DimensionSection: React.FC = () => {
                               sections: newSections,
                             });
                           } else {
-                            handleUpdateSection("sectionB", { depth: value });
+                            handleUpdateSection(
+                              "sectionB",
+                              { depth: value },
+                              true
+                            );
                           }
                         } else if (
                           config.wardrobeType.id === "Forme U" &&
@@ -278,10 +282,18 @@ const DimensionSection: React.FC = () => {
                               sections: newSections,
                             });
                           } else {
-                            handleUpdateSection("sectionB", { depth: value });
+                            handleUpdateSection(
+                              "sectionB",
+                              { depth: value },
+                              true
+                            );
                           }
                         } else {
-                          handleUpdateSection("sectionB", { depth: value });
+                          handleUpdateSection(
+                            "sectionB",
+                            { depth: value },
+                            true
+                          );
                         }
                       }}
                     />
@@ -359,10 +371,18 @@ const DimensionSection: React.FC = () => {
                               sections: newSections,
                             });
                           } else {
-                            handleUpdateSection("sectionC", { depth: value });
+                            handleUpdateSection(
+                              "sectionC",
+                              { depth: value },
+                              true
+                            );
                           }
                         } else {
-                          handleUpdateSection("sectionC", { depth: value });
+                          handleUpdateSection(
+                            "sectionC",
+                            { depth: value },
+                            true
+                          );
                         }
                       }}
                     />

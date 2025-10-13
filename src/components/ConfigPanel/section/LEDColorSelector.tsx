@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { useConfig } from "@/components/context/WardrobeContext";
+import { useConfig, useUndoRedo } from "@/components/context/WardrobeContext";
 import SansLED from "@/assets/images/led/PanneauSansLED.webp";
 import BlancNaturelle from "@/assets/images/led/CordonLarge-BlancNaturelle.webp";
 import BlancChaud from "@/assets/images/led/CordonLarge-BlancChaud.webp";
 
 const LEDColorSelector: React.FC = () => {
-  const { config, updateConfig } = useConfig();
+  const { config } = useConfig();
+  const { updateConfigWithHistory } = useUndoRedo();
   const [hoveredLED, setHoveredLED] = useState<{
     name: string;
     src: string;
@@ -32,7 +33,7 @@ const LEDColorSelector: React.FC = () => {
   ];
 
   const handleColorChange = (colorValue: string) => {
-    updateConfig("ledColor", colorValue);
+    updateConfigWithHistory("ledColor", colorValue);
   };
 
   // Hàm xử lý mouse enter để hiển thị tooltip

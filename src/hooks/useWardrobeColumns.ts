@@ -71,7 +71,7 @@ export const useWardrobeColumns = () => {
         );
         return;
       }
-      handleUpdateSection(sectionKey, { columns: newColumns });
+      handleUpdateSection(sectionKey, { columns: newColumns }, true);
       return;
     }
 
@@ -153,7 +153,7 @@ export const useWardrobeColumns = () => {
     }
 
     // Update section
-    handleUpdateSection(sectionKey, { columns: newColumns });
+    handleUpdateSection(sectionKey, { columns: newColumns }, true);
   };
 
   // ===== SET COLUMN COUNT =====
@@ -202,7 +202,7 @@ export const useWardrobeColumns = () => {
         return newCol;
       });
 
-      handleUpdateSection(sectionKey, { columns: preservedColumns });
+      handleUpdateSection(sectionKey, { columns: preservedColumns }, true);
     } else if (isDecreasing) {
       // Khi giảm: chỉ xóa thiết lập trên các cột bị loại bỏ
       const preservedColumns = newColumns.map((newCol) => {
@@ -227,10 +227,10 @@ export const useWardrobeColumns = () => {
 
       cleanupConfigForRemovedColumns(removedColumnIds);
 
-      handleUpdateSection(sectionKey, { columns: preservedColumns });
+      handleUpdateSection(sectionKey, { columns: preservedColumns }, true);
     } else {
       // Không thay đổi số lượng columns, chỉ redistribute
-      handleUpdateSection(sectionKey, { columns: newColumns });
+      handleUpdateSection(sectionKey, { columns: newColumns }, true);
     }
   };
 

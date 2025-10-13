@@ -1,4 +1,4 @@
-import { useConfig } from "@/components/context/WardrobeContext";
+import { useConfig, useUndoRedo } from "@/components/context/WardrobeContext";
 import React, { useMemo, useState } from "react";
 
 // Type cho thông tin đếm components sử dụng texture
@@ -13,6 +13,7 @@ interface TextureSelectorProps {
 
 const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
   const { config, updateConfig, batchUpdate } = useConfig();
+  const { updateConfigWithHistory } = useUndoRedo();
   const [hoveredTexture, setHoveredTexture] = useState<{
     name: string;
     src: string;
@@ -232,7 +233,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
   // Hàm cập nhật texture cho toàn bộ tủ
   const updateEntireWardrobe = (textureName: string, textureSrc: string) => {
     // Cập nhật texture mặc định (entier)
-    updateConfig("texture", {
+    updateConfigWithHistory("texture", {
       name: textureName,
       src: textureSrc,
     });
@@ -283,7 +284,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
     });
 
     // Cập nhật texture config
-    updateConfig("shelfTextureConfig", newShelfTextureConfig);
+    updateConfigWithHistory("shelfTextureConfig", newShelfTextureConfig);
 
     // Tự động deselect tất cả các kệ sau khi áp dụng texture
     batchUpdate({
@@ -380,7 +381,7 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
     });
 
     // Cập nhật texture config
-    updateConfig("facadeTextureConfig", newFacadeTextureConfig);
+    updateConfigWithHistory("facadeTextureConfig", newFacadeTextureConfig);
 
     // Tự động deselect tất cả các facade sau khi áp dụng texture
     batchUpdate({

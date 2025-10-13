@@ -173,7 +173,7 @@ export const useWardrobeShelves = () => {
       // Xóa config cho tất cả spacing bị loại bỏ
       cleanupConfigForRemovedSpacings(currentSpacingIds);
 
-      handleUpdateSection(sectionKey, { columns: updatedColumns });
+      handleUpdateSection(sectionKey, { columns: updatedColumns }, true);
       return;
     }
 
@@ -215,7 +215,7 @@ export const useWardrobeShelves = () => {
       return col;
     });
 
-    handleUpdateSection(sectionKey, { columns: updatedColumns });
+    handleUpdateSection(sectionKey, { columns: updatedColumns }, true);
   };
 
   /**

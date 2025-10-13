@@ -5,10 +5,11 @@ import empty from "@/assets/images/empty.svg";
 import rail from "@/assets/images/rail.svg";
 import pantograph from "@/assets/images/pantograph.svg";
 import doubleRail from "@/assets/images/double-rail.svg";
+import { useUndoRedo } from "@/components/context/WardrobeContext";
 
 const InternalEquipmentSection: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
-
+  const { updateConfigWithHistory } = useUndoRedo();
   // State for tooltip
   const [hoveredButton, setHoveredButton] = useState<{
     type: string;
@@ -509,7 +510,7 @@ const InternalEquipmentSection: React.FC = () => {
           width: columnWidth,
         }));
 
-        updateConfig("internalEquipmentConfig", {
+        updateConfigWithHistory("internalEquipmentConfig", {
           ...config.internalEquipmentConfig,
           [config.selectedInternalEquipmentSpacingId]: {
             type: "tiroirInterieur",
@@ -518,7 +519,7 @@ const InternalEquipmentSection: React.FC = () => {
         });
         updateConfig("selectedInternalEquipmentType", "tiroirInterieur");
       } else {
-        updateConfig("internalEquipmentConfig", {
+        updateConfigWithHistory("internalEquipmentConfig", {
           ...config.internalEquipmentConfig,
           [config.selectedInternalEquipmentSpacingId]: type,
         });

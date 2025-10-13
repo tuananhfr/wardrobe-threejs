@@ -8,6 +8,7 @@ import empty from "@/assets/images/empty.svg";
 import doubleSwingDoor from "@/assets/images/door_both.svg";
 import leftDoor from "@/assets/images/left.svg";
 import rightDoor from "@/assets/images/right.svg";
+import { useUndoRedo } from "@/components/context/WardrobeContext";
 
 const DoorsDrawersSection: React.FC = () => {
   const {
@@ -16,7 +17,7 @@ const DoorsDrawersSection: React.FC = () => {
     updateDoorsDrawersConfig,
     areSpacingsConsecutiveInSameColumn,
   } = useWardrobeConfig();
-
+  const { updateConfigWithHistory } = useUndoRedo();
   // State for tooltip
   const [hoveredButton, setHoveredButton] = useState<{
     type: string;
@@ -879,9 +880,10 @@ const DoorsDrawersSection: React.FC = () => {
 
       if (targetSpacings.length > 0) {
         // Logic bình thường: chỉ clear spacing được chọn
-        targetSpacings.forEach((spacingId) => {
-          updateDoorsDrawersConfig(spacingId, null);
-        });
+        // targetSpacings.forEach((spacingId) => {
+        //   updateDoorsDrawersConfig(spacingId, null);
+        // });
+        updateDoorsDrawersConfig(targetSpacings[0], null);
       }
       return;
     }
@@ -933,11 +935,6 @@ const DoorsDrawersSection: React.FC = () => {
         // Collect all spacings from all selected columns
         const allSpacingsForSlidingDoor: string[] = [];
 
-        console.log(
-          "🚪 Processing columns for sliding door:",
-          Array.from(spacingsByColumn.keys())
-        );
-
         // Apply sliding door to ALL spacings in each selected column
         for (const [columnId] of spacingsByColumn) {
           // Get ALL spacings in this column from the wardrobe config
@@ -964,18 +961,9 @@ const DoorsDrawersSection: React.FC = () => {
             }
           }
 
-          console.log(
-            `🚪 Column ${columnId} has spacings:`,
-            allSpacingsInColumn
-          );
           // Add all spacings from this column to the total list
           allSpacingsForSlidingDoor.push(...allSpacingsInColumn);
         }
-
-        console.log(
-          "🚪 Total spacings for sliding door:",
-          allSpacingsForSlidingDoor
-        );
 
         // Apply sliding door to ALL spacings across all selected columns as one group
         // console.log("🚪 SLIDING DOOR LOG:");
@@ -992,18 +980,10 @@ const DoorsDrawersSection: React.FC = () => {
 
         if (allSpacingsForSlidingDoor.length === 1) {
           // Single spacing - no group needed
-          console.log(
-            "🚪 Creating SINGLE sliding door for:",
-            allSpacingsForSlidingDoor[0]
-          );
+
           updateDoorsDrawersConfig(allSpacingsForSlidingDoor[0], type);
         } else {
           // Multiple spacings across multiple columns - create one big group
-          console.log("🚪 Creating MULTI-COLUMN sliding door group:", {
-            spacings: allSpacingsForSlidingDoor,
-            doorType: type,
-            totalSpacings: allSpacingsForSlidingDoor.length,
-          });
 
           // For sliding doors, we need to create a group manually
           const updatedConfig = { ...config.doorsDrawersConfig };
@@ -1030,7 +1010,7 @@ const DoorsDrawersSection: React.FC = () => {
           };
 
           // Update both configs together
-          updateConfig("doorsDrawersConfig", updatedConfig);
+          updateConfigWithHistory("doorsDrawersConfig", updatedConfig);
           updateConfig("groupedDoorsConfig", updatedGroupedConfig);
         }
       } else {
@@ -1045,11 +1025,12 @@ const DoorsDrawersSection: React.FC = () => {
           updateDoorsDrawersConfig(targetSpacings[0], type, targetSpacings);
         } else {
           // Logic bình thường cho single spacing hoặc không cạnh nhau
-          targetSpacings.forEach((spacingId) => {
-            if (spacingId) {
-              updateDoorsDrawersConfig(spacingId, type);
-            }
-          });
+          // targetSpacings.forEach((spacingId) => {
+          //   if (spacingId) {
+          //     updateDoorsDrawersConfig(spacingId, type);
+          //   }
+          // });
+          updateDoorsDrawersConfig(targetSpacings[0], type);
         }
       }
     }
@@ -2191,7 +2172,7 @@ const DoorsDrawersSection: React.FC = () => {
                       const updatedConfig = { ...config.handleConfig };
                       updatedConfig[config.selectedDoorsDrawersSpacingIds[0]] =
                         "none";
-                      updateConfig("handleConfig", updatedConfig);
+                      updateConfigWithHistory("handleConfig", updatedConfig);
                       updateConfig("handleType", "none");
                     }
                   }}
@@ -2227,7 +2208,7 @@ const DoorsDrawersSection: React.FC = () => {
                       const updatedConfig = { ...config.handleConfig };
                       updatedConfig[config.selectedDoorsDrawersSpacingIds[0]] =
                         "baton";
-                      updateConfig("handleConfig", updatedConfig);
+                      updateConfigWithHistory("handleConfig", updatedConfig);
                       updateConfig("handleType", "baton");
                     }
                   }}

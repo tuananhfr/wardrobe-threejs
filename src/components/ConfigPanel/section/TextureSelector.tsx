@@ -8,7 +8,7 @@ interface EntierInfo {
 }
 
 interface TextureSelectorProps {
-  type: "entier" | "test" | "tablette" | "facades";
+  type: "entier" | "tablette" | "facades";
 }
 
 const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {

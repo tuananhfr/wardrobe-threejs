@@ -54,7 +54,21 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
   ): THREE.Texture => {
     // Kiểm tra xem có phải kệ angle không
     const angleGroup = getAngleShelfGroup(columnIndex, spacingIndex);
-    const textureKey = angleGroup || spacingId;
+
+    let textureSrc: string;
+    let textureKey: string;
+
+    if (angleGroup) {
+      // Nếu là kệ angle, tìm texture theo angle group ID
+      const shelfTexture = config.shelfTextureConfig[angleGroup];
+      textureSrc = shelfTexture ? shelfTexture.src : texture.image?.src || "";
+      textureKey = `${angleGroup}-${textureSrc}`;
+    } else {
+      // Kiểm tra texture riêng cho spacingId
+      const shelfTexture = config.shelfTextureConfig[spacingId];
+      textureSrc = shelfTexture ? shelfTexture.src : texture.image?.src || "";
+      textureKey = `${spacingId}-${textureSrc}`;
+    }
 
     // Kiểm tra cache trước
     if (textureCache.current.has(textureKey)) {
@@ -81,7 +95,7 @@ const SectionShelves: React.FC<SectionShelvesProps> = ({
       }
     }
 
-    // Cache texture
+    // Cache texture với key bao gồm cả URL
     textureCache.current.set(textureKey, textureToUse);
     return textureToUse;
   };

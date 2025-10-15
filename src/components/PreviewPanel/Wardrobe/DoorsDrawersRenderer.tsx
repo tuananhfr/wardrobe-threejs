@@ -3143,13 +3143,18 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
 
   // Helper function to get facade texture
   const getFacadeTexture = (spacingId: string): THREE.Texture => {
-    // Kiểm tra cache trước
-    if (facadeTextureCache.current.has(spacingId)) {
-      return facadeTextureCache.current.get(spacingId)!;
-    }
-
     // Kiểm tra xem facade có texture riêng không
     const customTexture = config.facadeTextureConfig[spacingId];
+    const textureSrc = customTexture
+      ? customTexture.src
+      : texture.image?.src || "";
+    const textureKey = `${spacingId}-${textureSrc}`;
+
+    // Kiểm tra cache trước
+    if (facadeTextureCache.current.has(textureKey)) {
+      return facadeTextureCache.current.get(textureKey)!;
+    }
+
     let textureToUse: THREE.Texture;
 
     if (customTexture) {
@@ -3160,8 +3165,8 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
       textureToUse = texture;
     }
 
-    // Cache texture
-    facadeTextureCache.current.set(spacingId, textureToUse);
+    // Cache texture với key bao gồm cả URL
+    facadeTextureCache.current.set(textureKey, textureToUse);
     return textureToUse;
   };
 

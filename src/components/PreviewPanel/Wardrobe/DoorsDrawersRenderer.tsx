@@ -515,7 +515,7 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
         );
 
         if (groupConfiguredSpacings.length > 0) {
-          // Create group data for this multi-column group
+          // Create group data
           const groupPositions = groupConfiguredSpacings
             .map((spacingId) =>
               spacingPositions.find((pos) => pos.spacingId === spacingId)
@@ -526,27 +526,56 @@ const DoorsDrawersRenderer: React.FC<DoorsDrawersRendererProps> = ({
             const firstPos = groupPositions[0]!;
             const lastPos = groupPositions[groupPositions.length - 1]!;
 
-            // Calculate group dimensions for multi-column sliding door
-            const groupWidth =
-              groupPositions.reduce((sum, pos) => sum + pos!.width, 0) +
-              (groupPositions.length - 1) * thickness;
-            const groupHeight = Math.max(
-              ...groupPositions.map((pos) => pos!.height)
-            );
-            const groupCenterX = (firstPos.x + lastPos.x) / 2;
-            const groupCenterY = (firstPos.y + lastPos.y) / 2;
+            const slidingDoorTypes = [
+              "slidingDoor",
+              "slidingMirrorDoor",
+              "slidingGlassDoor",
+            ];
 
-            groupedSpacings.push({
-              groupId: groupId,
-              spacingIds: groupConfiguredSpacings,
-              startIndex: 0,
-              endIndex: groupConfiguredSpacings.length - 1,
-              columnId: "multi-column",
-              totalHeight: groupHeight,
-              centerY: groupCenterY,
-              width: groupWidth,
-              x: groupCenterX,
-            });
+            if (slidingDoorTypes.includes(group.doorType)) {
+              // Multi-column logic for sliding doors
+              const groupWidth =
+                groupPositions.reduce((sum, pos) => sum + pos!.width, 0) +
+                (groupPositions.length - 1) * thickness;
+              const groupHeight = Math.max(
+                ...groupPositions.map((pos) => pos!.height)
+              );
+              const groupCenterX = (firstPos.x + lastPos.x) / 2;
+              const groupCenterY = (firstPos.y + lastPos.y) / 2;
+
+              groupedSpacings.push({
+                groupId: groupId,
+                spacingIds: groupConfiguredSpacings,
+                startIndex: 0,
+                endIndex: groupConfiguredSpacings.length - 1,
+                columnId: "multi-column",
+                totalHeight: groupHeight,
+                centerY: groupCenterY,
+                width: groupWidth,
+                x: groupCenterX,
+              });
+            } else {
+              // Single-column logic for swing doors/drawers
+              // Assume spacings are in the same column (as created by grouping UI)
+              const groupWidth = firstPos.width; // width of the column
+              const groupHeight =
+                groupPositions.reduce((sum, pos) => sum + pos!.height, 0) +
+                (groupPositions.length - 1) * thickness;
+              const groupCenterX = firstPos.x; // center x is the column center
+              const groupCenterY = (firstPos.y + lastPos.y) / 2;
+
+              groupedSpacings.push({
+                groupId: groupId,
+                spacingIds: groupConfiguredSpacings,
+                startIndex: 0,
+                endIndex: groupConfiguredSpacings.length - 1,
+                columnId: firstPos.columnId || "single-column",
+                totalHeight: groupHeight,
+                centerY: groupCenterY,
+                width: groupWidth,
+                x: groupCenterX,
+              });
+            }
 
             // Mark these spacings as processed
             groupConfiguredSpacings.forEach((spacingId) =>

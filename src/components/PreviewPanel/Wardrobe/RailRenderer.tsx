@@ -116,15 +116,8 @@ const RailRenderer: React.FC<RailRendererProps> = ({
   });
 
   // Function to get section texture
-  const getSectionTexture = (spacingId: string): THREE.Texture => {
-    // Kiểm tra xem spacing có texture riêng không
-    const customTexture = config.facadeTextureConfig[spacingId];
-    if (customTexture) {
-      // Load custom texture
-      const textureLoader = new THREE.TextureLoader();
-      return textureLoader.load(customTexture.src);
-    }
-    // Sử dụng texture mặc định của section
+  const getSectionTexture = (): THREE.Texture => {
+    // Chỉ sử dụng texture của entier (texture tổng thể)
     return texture;
   };
 
@@ -325,7 +318,7 @@ const RailRenderer: React.FC<RailRendererProps> = ({
                       ]}
                     />
                     <meshStandardMaterial
-                      map={getSectionTexture(spacingId)}
+                      map={getSectionTexture()}
                       color="white"
                     />
                   </mesh>
@@ -342,7 +335,7 @@ const RailRenderer: React.FC<RailRendererProps> = ({
                       args={[sideThickness, tiroirHeight, tiroirDepth]}
                     />
                     <meshStandardMaterial
-                      map={getSectionTexture(spacingId)}
+                      map={getSectionTexture()}
                       color="white"
                     />
                   </mesh>
@@ -359,7 +352,7 @@ const RailRenderer: React.FC<RailRendererProps> = ({
                       args={[sideThickness, tiroirHeight, tiroirDepth]}
                     />
                     <meshStandardMaterial
-                      map={getSectionTexture(spacingId)}
+                      map={getSectionTexture()}
                       color="white"
                     />
                   </mesh>
@@ -380,7 +373,7 @@ const RailRenderer: React.FC<RailRendererProps> = ({
                       ]}
                     />
                     <meshStandardMaterial
-                      map={getSectionTexture(spacingId)}
+                      map={getSectionTexture()}
                       color="white"
                     />
                   </mesh>
@@ -395,7 +388,7 @@ const RailRenderer: React.FC<RailRendererProps> = ({
                       ]}
                     />
                     <meshStandardMaterial
-                      map={getSectionTexture(spacingId)}
+                      map={getSectionTexture()}
                       color="white"
                     />
                   </mesh>

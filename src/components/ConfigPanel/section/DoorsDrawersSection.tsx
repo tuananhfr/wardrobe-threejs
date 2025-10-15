@@ -234,6 +234,11 @@ const DoorsDrawersSection: React.FC = () => {
     columnIds: string[],
     targetPieceWidth: number
   ): boolean => {
+    // Allow single-column split: the caller has already ensured targetPieceWidth is within 45–90 cm
+    // so if there is only one column, splitting within the column is logically acceptable.
+    if (columnIds.length === 1) {
+      return true;
+    }
     // Try all possible ways to split columns into 2 pieces
     for (let splitPoint = 1; splitPoint < columnIds.length; splitPoint++) {
       // Calculate width of first piece
@@ -374,8 +379,8 @@ const DoorsDrawersSection: React.FC = () => {
       const spacingWidth = getSpacingWidth(spacingId);
       if (spacingWidth === null) continue;
 
-      // Nếu có bất kỳ spacing nào không phù hợp (40-109cm) thì disable
-      if (spacingWidth < 40 || spacingWidth > 109) {
+      // Nếu có bất kỳ spacing nào không phù hợp (40-120cm) thì disable
+      if (spacingWidth < 40 || spacingWidth > 120) {
         return true;
       }
     }
@@ -403,8 +408,8 @@ const DoorsDrawersSection: React.FC = () => {
       const spacingWidth = getSpacingWidth(spacingId);
       if (spacingWidth === null) continue;
 
-      // Nếu có bất kỳ spacing nào không phù hợp (26-60cm) thì disable
-      if (spacingWidth < 26 || spacingWidth > 60) {
+      // Nếu có bất kỳ spacing nào không phù hợp (30-90cm) thì disable
+      if (spacingWidth < 30 || spacingWidth > 90) {
         return true;
       }
     }
@@ -642,20 +647,20 @@ const DoorsDrawersSection: React.FC = () => {
 
       let shouldRemove = false;
 
-      // Check if double swing door should be removed
+      // Check if double swing door should be removed (40–120 cm)
       if (
         spacingWidth !== null &&
-        (spacingWidth < 40 || spacingWidth > 109) &&
+        (spacingWidth < 40 || spacingWidth > 120) &&
         (currentDoorsDrawers === "doubleSwingDoor" ||
           currentDoorsDrawers === "doubleSwingDoorVerre")
       ) {
         shouldRemove = true;
       }
 
-      // Check if left/right door should be removed
+      // Check if left/right door should be removed (30–90 cm)
       if (
         spacingWidth !== null &&
-        (spacingWidth < 26 || spacingWidth > 60) &&
+        (spacingWidth < 30 || spacingWidth > 90) &&
         (currentDoorsDrawers === "leftDoor" ||
           currentDoorsDrawers === "leftDoorVerre" ||
           currentDoorsDrawers === "rightDoor" ||
@@ -698,20 +703,20 @@ const DoorsDrawersSection: React.FC = () => {
 
       let shouldRemove = false;
 
-      // Check if double swing door should be removed
+      // Check if double swing door should be removed (40–120 cm)
       if (
         spacingWidth !== null &&
-        (spacingWidth < 40 || spacingWidth > 109) &&
+        (spacingWidth < 40 || spacingWidth > 120) &&
         (doorsDrawersType === "doubleSwingDoor" ||
           doorsDrawersType === "doubleSwingDoorVerre")
       ) {
         shouldRemove = true;
       }
 
-      // Check if left/right door should be removed
+      // Check if left/right door should be removed (30–90 cm)
       if (
         spacingWidth !== null &&
-        (spacingWidth < 26 || spacingWidth > 60) &&
+        (spacingWidth < 30 || spacingWidth > 90) &&
         (doorsDrawersType === "leftDoor" ||
           doorsDrawersType === "leftDoorVerre" ||
           doorsDrawersType === "rightDoor" ||
@@ -1896,7 +1901,7 @@ const DoorsDrawersSection: React.FC = () => {
                   <p>
                     {isMultiColumnSelected()
                       ? "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes"
-                      : `❌ 40-109 cm de largeur ${
+                      : `❌ 40-120 cm de largeur ${
                           config.selectedDoorsDrawersSpacingIds.length > 1
                             ? "(certains casiers ne respectent pas cette contrainte)"
                             : `(courant ${getSpacingWidth(
@@ -1910,7 +1915,7 @@ const DoorsDrawersSection: React.FC = () => {
                   <p>
                     {isMultiColumnSelected()
                       ? "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes"
-                      : `❌ 26-60 cm de largeur ${
+                      : `❌ 30-90 cm de largeur ${
                           config.selectedDoorsDrawersSpacingIds.length > 1
                             ? "(certains casiers ne respectent pas cette contrainte)"
                             : `(courant ${getSpacingWidth(
@@ -1924,7 +1929,7 @@ const DoorsDrawersSection: React.FC = () => {
                   <p>
                     {isMultiColumnSelected()
                       ? "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes"
-                      : `❌ 26-60 cm de largeur ${
+                      : `❌ 30-90 cm de largeur ${
                           config.selectedDoorsDrawersSpacingIds.length > 1
                             ? "(certains casiers ne respectent pas cette contrainte)"
                             : `(courant ${getSpacingWidth(
@@ -1938,7 +1943,7 @@ const DoorsDrawersSection: React.FC = () => {
                   <p>
                     {isMultiColumnSelected()
                       ? "❌ Seules les portes coulissantes sont autorisées pour plusieurs colonnes"
-                      : `❌ 40-109 cm de largeur ${
+                      : `❌ 40-120 cm de largeur ${
                           config.selectedDoorsDrawersSpacingIds.length > 1
                             ? "(certains casiers ne respectent pas cette contrainte)"
                             : `(courant ${getSpacingWidth(

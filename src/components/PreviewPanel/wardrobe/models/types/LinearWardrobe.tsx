@@ -1,13 +1,13 @@
 import React from "react";
 import * as THREE from "three";
-import SectionFrame from "./SectionFrame";
-import SectionColumns from "./SectionColumns";
-import SectionShelves from "./SectionShelves";
-import ShelvesColumnHighlights from "./ShelvesColumnHighlights";
-import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
-import DoorsDrawersHighlights from "./DoorsDrawersHighlights";
-import DoorsDrawersRenderer from "./DoorsDrawersRenderer";
-import RailRenderer from "./RailRenderer";
+import SectionFrame from "../../sections/SectionFrame";
+import SectionColumns from "../../sections/SectionColumns";
+import SectionShelves from "../../sections/SectionShelves";
+import ShelvesColumnHighlights from "../../highlights/ShelvesColumnHighlights";
+import InternalEquipmentSpacingHighlights from "../../highlights/InternalEquipmentSpacingHighlights";
+import DoorsDrawersHighlights from "../../highlights/DoorsDrawersHighlights";
+import DoorsDrawersRenderer from "../../renderers/DoorsDrawersRenderer";
+import RailRenderer from "../../renderers/RailRenderer";
 
 interface LinearWardrobeProps {
   sections: {

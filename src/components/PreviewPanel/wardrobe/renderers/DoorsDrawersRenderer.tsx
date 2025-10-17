@@ -1,7 +1,7 @@
 import React, { useRef } from "react";
 import * as THREE from "three";
 
-import FacadeHighlight from "./FacadeHighlight";
+import FacadeHighlight from "../highlights/FacadeHighlight";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useConfig } from "@/context/WardrobeContext";
 import { useFrame } from "@react-three/fiber";

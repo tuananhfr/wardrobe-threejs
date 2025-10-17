@@ -38,7 +38,7 @@ const WardrobeConfigProvider = ({ children }: WardrobeConfigProviderProps) => {
     texture: textures[0],
     textures: textures,
     ledColor: "",
-    showMeasurements: false,
+    showMeasurements: true,
     showSections: "",
     accordionOpen: "collapseType",
     selectedColumnId: null,

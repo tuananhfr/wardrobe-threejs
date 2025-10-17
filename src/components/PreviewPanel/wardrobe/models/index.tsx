@@ -3,11 +3,11 @@ import { useLoader } from "@react-three/fiber";
 import { TextureLoader } from "three";
 import * as THREE from "three";
 import { useConfig } from "@/context/WardrobeContext";
-import LinearWardrobe from "./LinearWardrobe";
-import AngleWardrobe from "./AngleWardrobe";
-import FormeUWardrobe from "./FormeUWardrobe";
-import BaseBar from "./BaseBar";
-import SectionMeasurements from "./SectionMeasurements";
+import LinearWardrobe from "./types/LinearWardrobe";
+import AngleWardrobe from "./types/AngleWardrobe";
+import FormeUWardrobe from "./types/FormeUWardrobe";
+import BaseBar from "./baseBar";
+import SectionMeasurements from "../sections/SectionMeasurements";
 
 interface WardrobeModelProps {
   showMeasurements: boolean;

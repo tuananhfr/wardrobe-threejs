@@ -7,9 +7,9 @@ import { OrbitControls } from "three-stdlib";
 import { useRef, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import React from "react";
-import CameraController from "./CameraController";
-import CanvasControls from "./CanvasControls";
-import WardrobeModel from "./Wardrobe/WardrobeModel";
+import CameraController from "./controllers/CameraController";
+import CanvasControls from "./controllers/CanvasControls";
+import WardrobeModel from "./wardrobe/models";
 import { useConfig } from "@/context/WardrobeContext";
 // Custom OrbitControls component
 interface CustomOrbitControlsProps {

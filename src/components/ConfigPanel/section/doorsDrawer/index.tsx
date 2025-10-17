@@ -8,7 +8,7 @@ import empty from "@/assets/images/empty.svg";
 import doubleSwingDoor from "@/assets/images/door_both.svg";
 import leftDoor from "@/assets/images/left.svg";
 import rightDoor from "@/assets/images/right.svg";
-import { useUndoRedo } from "@/components/context/WardrobeContext";
+import { useUndoRedo } from "@/context/WardrobeContext";
 
 const DoorsDrawersSection: React.FC = () => {
   const {

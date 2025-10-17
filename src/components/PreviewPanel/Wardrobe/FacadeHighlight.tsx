@@ -1,6 +1,6 @@
 import React from "react";
 import { Text } from "@react-three/drei";
-import { useConfig } from "@/components/context/WardrobeContext";
+import { useConfig } from "@/context/WardrobeContext";
 
 interface FacadeHighlightProps {
   overlaySize: [number, number, number];

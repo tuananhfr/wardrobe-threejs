@@ -1,4 +1,4 @@
-import { useConfig } from "@/components/context/WardrobeContext";
+import { useConfig } from "@/context/WardrobeContext";
 import React from "react";
 import * as THREE from "three";
 import { Text } from "@react-three/drei";

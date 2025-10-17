@@ -1,4 +1,4 @@
-import { useConfig, useUndoRedo } from "@/components/context/WardrobeContext";
+import { useConfig, useUndoRedo } from "@/context/WardrobeContext";
 
 export const useWardrobeConfig = () => {
   const { config, updateConfig } = useConfig();

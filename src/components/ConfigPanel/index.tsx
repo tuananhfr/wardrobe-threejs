@@ -1,19 +1,16 @@
 import React from "react";
 
-import {
-  useConfig,
-  useUndoRedo,
-} from "../../components/context/WardrobeContext";
-import WardrobeTypeSelector from "./section/WardrobeTypeSelector";
-import DimensionSection from "./section/DimensionSection";
-import DimensionControl from "./section/DimensionControl";
-import ColumnsSection from "./section/ColumnsSection";
-import MainSelector from "./section/MainSelector";
-import TextureSelector from "./section/TextureSelector";
-import LEDColorSelector from "./section/LEDColorSelector";
-import ShelvesSection from "./section/ShelvesSection";
-import InternalEquipmentSection from "./section/InternalEquipmentSection";
-import DoorsDrawersSection from "./section/DoorsDrawersSection";
+import { useConfig, useUndoRedo } from "../../context/WardrobeContext";
+import WardrobeTypeSelector from "./section/types";
+import DimensionSection from "./section/dimensions";
+import DimensionControl from "./section/dimensions/DimensionControl";
+import ColumnsSection from "./section/columns";
+import MainSelector from "./section/textures";
+import TextureSelector from "./section/textures/TextureSelector";
+import LEDColorSelector from "./section/textures/LEDColorSelector";
+import ShelvesSection from "./section/shelves";
+import InternalEquipmentSection from "./section/internalEquipments";
+import DoorsDrawersSection from "./section/doorsDrawer";
 
 const ConfigPanel: React.FC = () => {
   const { config, updateConfig, batchUpdate } = useConfig();

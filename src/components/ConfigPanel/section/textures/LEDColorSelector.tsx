@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useConfig, useUndoRedo } from "@/components/context/WardrobeContext";
+import { useConfig, useUndoRedo } from "@/context/WardrobeContext";
 import SansLED from "@/assets/images/led/PanneauSansLED.webp";
 import BlancNaturelle from "@/assets/images/led/CordonLarge-BlancNaturelle.webp";
 import BlancChaud from "@/assets/images/led/CordonLarge-BlancChaud.webp";

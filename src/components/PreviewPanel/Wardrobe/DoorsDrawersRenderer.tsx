@@ -3,7 +3,7 @@ import * as THREE from "three";
 
 import FacadeHighlight from "./FacadeHighlight";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
-import { useConfig } from "@/components/context/WardrobeContext";
+import { useConfig } from "@/context/WardrobeContext";
 import { useFrame } from "@react-three/fiber";
 
 interface DoorsDrawersRendererProps {

@@ -1,5 +1,5 @@
 import React from "react";
-import { useUndoRedo } from "../context/WardrobeContext";
+import { useUndoRedo } from "@/context/WardrobeContext";
 
 interface CanvasControlsProps {
   onRulerClick: () => void;

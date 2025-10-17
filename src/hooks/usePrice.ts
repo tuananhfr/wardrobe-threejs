@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useConfig } from "@/components/context/WardrobeContext";
+import { useConfig } from "@/context/WardrobeContext";
 
 export const usePrice = () => {
   const { config, batchUpdate } = useConfig();

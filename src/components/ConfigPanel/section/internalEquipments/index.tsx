@@ -5,7 +5,7 @@ import empty from "@/assets/images/empty.svg";
 import rail from "@/assets/images/rail.svg";
 import pantograph from "@/assets/images/pantograph.svg";
 import doubleRail from "@/assets/images/double-rail.svg";
-import { useUndoRedo } from "@/components/context/WardrobeContext";
+import { useUndoRedo } from "@/context/WardrobeContext";
 
 const InternalEquipmentSection: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();

@@ -10,7 +10,7 @@ import React from "react";
 import CameraController from "./CameraController";
 import CanvasControls from "./CanvasControls";
 import WardrobeModel from "./Wardrobe/WardrobeModel";
-import { useConfig } from "../context/WardrobeContext";
+import { useConfig } from "@/context/WardrobeContext";
 // Custom OrbitControls component
 interface CustomOrbitControlsProps {
   enablePan?: boolean;

@@ -1,4 +1,4 @@
-import { useConfig, useUndoRedo } from "@/components/context/WardrobeContext";
+import { useConfig, useUndoRedo } from "@/context/WardrobeContext";
 import React, { useMemo, useState } from "react";
 
 // Type cho thông tin đếm components sử dụng texture

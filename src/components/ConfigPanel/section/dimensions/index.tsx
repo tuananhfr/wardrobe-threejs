@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import DimensionControl from "../section/DimensionControl";
+import DimensionControl from "./DimensionControl";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 
 const DimensionSection: React.FC = () => {

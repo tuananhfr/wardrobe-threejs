@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useWardrobeShelves } from "@/hooks/useWardrobeShelves";
-import { useUndoRedo } from "@/components/context/WardrobeContext";
+import { useUndoRedo } from "@/context/WardrobeContext";
 
 const ShelvesSection: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();

@@ -1,5 +1,5 @@
 import React from "react";
-import { useConfig } from "@/components/context/WardrobeContext";
+import { useConfig } from "@/context/WardrobeContext";
 
 interface MainSelectorProps {
   activeOption: string;

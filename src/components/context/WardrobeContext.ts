@@ -1,4 +1,3 @@
-// src/components/context/WardrobeContext.tsx
 import { createContext, useContext } from "react";
 
 // Tạo context với giá trị mặc định là undefined
@@ -23,7 +22,7 @@ export const useUndoRedo = () => {
     batchUpdate: context.batchUpdate,
     updateConfigWithHistory: context.updateConfigWithHistory,
     batchUpdateWithHistory: context.batchUpdateWithHistory,
-    updateConfigWithHistoryDebounced: context.updateConfigWithHistoryDebounced, // ✨ NEW
+    updateConfigWithHistoryDebounced: context.updateConfigWithHistoryDebounced,
     undo: context.undo,
     undoCount: context.undoCount,
     canUndo: context.canUndo,

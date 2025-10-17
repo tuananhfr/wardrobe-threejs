@@ -1,4 +1,3 @@
-// src/components/Wardrobe/BaseBar.tsx
 import React from "react";
 import * as THREE from "three";
 

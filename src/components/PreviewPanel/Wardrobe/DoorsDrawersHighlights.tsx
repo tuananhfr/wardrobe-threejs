@@ -1,4 +1,3 @@
-// src/components/Wardrobe/DoorsDrawersHighlights.tsx
 import { useEffect } from "react";
 import { Text } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
@@ -157,7 +156,7 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
       }
     });
 
-    // NEW LOGIC: Remove drawer from spacings that are too small (< 10cm or > 60cm)
+    // Remove drawer from spacings that are too small (< 10cm or > 60cm)
     Object.keys(config.doorsDrawersConfig).forEach((spacingId) => {
       if (config.doorsDrawersConfig[spacingId] === "drawer") {
         const spacingHeight = getSpacingHeight(spacingId);
@@ -487,7 +486,7 @@ const DoorsDrawersHighlights: React.FC<DoorsDrawersHighlightsProps> = ({
 
         // Determine highlight state and color
         let shouldShowHighlight = false;
-        let highlightColor = "#e6f7f9"; // Blue like EtagereColumnHighlights
+        let highlightColor = "#e6f7f9";
         let opacity = 0;
 
         if (isSelected || isGroupSelected) {

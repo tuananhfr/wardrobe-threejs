@@ -226,7 +226,7 @@ const InternalEquipmentSection: React.FC = () => {
     config.internalEquipmentConfig,
   ]);
 
-  // NEW LOGIC: Update selected equipment type when rail is removed due to small spacing
+  // Update selected equipment type when rail is removed due to small spacing
   useEffect(() => {
     if (config.selectedInternalEquipmentSpacingId) {
       const spacingHeight = getSpacingHeight(
@@ -315,7 +315,7 @@ const InternalEquipmentSection: React.FC = () => {
     config.internalEquipmentConfig,
   ]);
 
-  // NEW LOGIC: Check ALL spacings for invalid equipment when wardrobe dimensions change
+  // Check ALL spacings for invalid equipment when wardrobe dimensions change
   useEffect(() => {
     const updatedConfig = { ...config.internalEquipmentConfig };
     let hasChanges = false;

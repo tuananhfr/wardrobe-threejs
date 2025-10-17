@@ -108,7 +108,6 @@ const TextureSelector: React.FC<TextureSelectorProps> = ({ type }) => {
         }
       });
     } else {
-      // Logic cũ cho các chế độ khác (entier, facades)
       // Đếm kệ sử dụng texture này
       Object.entries(config.shelfTextureConfig).forEach(
         ([spacingId, texture]) => {

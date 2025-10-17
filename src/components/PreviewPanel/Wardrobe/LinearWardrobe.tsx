@@ -1,10 +1,9 @@
-// src/components/Wardrobe/LinearWardrobe.tsx (Updated - Working Version)
 import React from "react";
 import * as THREE from "three";
 import SectionFrame from "./SectionFrame";
 import SectionColumns from "./SectionColumns";
 import SectionShelves from "./SectionShelves";
-import EtagereColumnHighlights from "./EtagereColumnHighlights"; // New working component
+import ShelvesColumnHighlights from "./ShelvesColumnHighlights";
 import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
 import DoorsDrawersHighlights from "./DoorsDrawersHighlights";
 import DoorsDrawersRenderer from "./DoorsDrawersRenderer";
@@ -71,8 +70,8 @@ const LinearWardrobe: React.FC<LinearWardrobeProps> = ({
         showSections={showSections}
       />
 
-      {/* Étagère Column Highlights - Based on working ColumnHighlights pattern */}
-      <EtagereColumnHighlights
+      {/* Shelves Column Highlights - Based on working ColumnHighlights pattern */}
+      <ShelvesColumnHighlights
         sectionName="sectionA"
         sectionData={sections.sectionA}
         position={[0, 0, 0]}

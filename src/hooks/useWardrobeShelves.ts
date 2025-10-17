@@ -1,4 +1,3 @@
-// src/hooks/useWardrobeShelves.ts - Updated with spacing change logic
 import { useWardrobeConfig } from "./useWardrobeConfig";
 
 interface ShelfItem {

@@ -1,4 +1,3 @@
-// src/components/PreviewPanel/Wardrobe/DoorsDrawersRenderer.tsx
 import React, { useRef } from "react";
 import * as THREE from "three";
 

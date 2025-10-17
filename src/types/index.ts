@@ -18,7 +18,7 @@ declare global {
     ) => void;
     batchUpdateWithHistory: (updates: Partial<WardrobeState>) => void;
 
-    // ✨ NEW: Debounced version cho input number
+    // Debounced version cho input number
     updateConfigWithHistoryDebounced: <K extends keyof WardrobeState>(
       key: K,
       value: WardrobeState[K],
@@ -44,7 +44,7 @@ declare global {
     activeView: string;
     showSections: string;
     accordionOpen: string;
-    // EtagereColumnHighlights states
+    // ShelvesColumnHighlights states
     selectedColumnId: string | null;
     hoveredColumnId: string | null;
 

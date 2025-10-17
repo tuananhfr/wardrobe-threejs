@@ -1,4 +1,3 @@
-// src/hooks/useColumnSeparators.ts (Simplified)
 import { useWardrobeConfig } from "./useWardrobeConfig";
 
 interface ColumnSeparator {

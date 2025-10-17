@@ -1,4 +1,3 @@
-// src/components/Wardrobe/SectionShelves.tsx - WITH SPECIAL CASE
 import { useConfig } from "@/components/context/WardrobeContext";
 import React from "react";
 import * as THREE from "three";

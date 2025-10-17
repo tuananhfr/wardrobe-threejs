@@ -1,12 +1,11 @@
-// src/components/ConfigPanel/section/EtagereInstructions.tsx
 import React from "react";
 
-interface EtagereInstructionsProps {
+interface ShelvesInstructionsProps {
   onClose?: () => void;
   showCloseButton?: boolean;
 }
 
-const EtagereInstructions: React.FC<EtagereInstructionsProps> = ({
+const ShelvesInstructions: React.FC<ShelvesInstructionsProps> = ({
   onClose,
   showCloseButton = false,
 }) => {
@@ -108,4 +107,4 @@ const EtagereInstructions: React.FC<EtagereInstructionsProps> = ({
   );
 };
 
-export default EtagereInstructions;
+export default ShelvesInstructions;

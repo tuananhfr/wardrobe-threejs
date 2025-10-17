@@ -1,4 +1,3 @@
-// src/hooks/useColumnSelection.ts
 import { useState, useCallback } from "react";
 
 interface SelectedColumnInfo {
@@ -10,7 +9,7 @@ interface SelectedColumnInfo {
 export const useColumnSelection = () => {
   const [selectedColumn, setSelectedColumn] =
     useState<SelectedColumnInfo | null>(null);
-  const [isEtagereMode, setIsEtagereMode] = useState(false);
+  const [isShelvesMode, setIsShelvesMode] = useState(false);
 
   const selectColumn = useCallback(
     (sectionKey: SectionKey, columnId: string, columnIndex: number) => {
@@ -27,8 +26,8 @@ export const useColumnSelection = () => {
     setSelectedColumn(null);
   }, []);
 
-  const toggleEtagereMode = useCallback((enabled: boolean) => {
-    setIsEtagereMode(enabled);
+  const toggleShelvesMode = useCallback((enabled: boolean) => {
+    setIsShelvesMode(enabled);
     if (!enabled) {
       setSelectedColumn(null); // Clear selection when exiting mode
     }
@@ -47,10 +46,10 @@ export const useColumnSelection = () => {
 
   return {
     selectedColumn,
-    isEtagereMode,
+    isShelvesMode,
     selectColumn,
     clearSelection,
-    toggleEtagereMode,
+    toggleShelvesMode,
     isColumnSelected,
     getSelectedColumnInfo,
   };

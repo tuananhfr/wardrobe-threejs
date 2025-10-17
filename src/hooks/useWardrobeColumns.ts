@@ -1,5 +1,3 @@
-// src/hooks/useWardrobeColumns.ts - Simple Adjacent Redistribution Only
-
 import { useWardrobeConfig } from "./useWardrobeConfig";
 
 export const useWardrobeColumns = () => {

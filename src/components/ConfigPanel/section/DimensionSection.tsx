@@ -1,4 +1,3 @@
-// src/components/ConfigPanel/DimensionSection.tsx
 import React, { useEffect } from "react";
 import DimensionControl from "../section/DimensionControl";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";

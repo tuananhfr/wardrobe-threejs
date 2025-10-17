@@ -1,4 +1,3 @@
-// src/components/ConfigPanel/ConfigPanel.tsx
 import React from "react";
 
 import {
@@ -12,7 +11,7 @@ import ColumnsSection from "./section/ColumnsSection";
 import MainSelector from "./section/MainSelector";
 import TextureSelector from "./section/TextureSelector";
 import LEDColorSelector from "./section/LEDColorSelector";
-import EtagereSection from "./section/EtagereSection";
+import ShelvesSection from "./section/ShelvesSection";
 import InternalEquipmentSection from "./section/InternalEquipmentSection";
 import DoorsDrawersSection from "./section/DoorsDrawersSection";
 
@@ -152,7 +151,7 @@ const ConfigPanel: React.FC = () => {
       <ColumnsSection />
 
       {/* 5. Étagères */}
-      <EtagereSection />
+      <ShelvesSection />
 
       {/* 6. internal equipment */}
       <InternalEquipmentSection />

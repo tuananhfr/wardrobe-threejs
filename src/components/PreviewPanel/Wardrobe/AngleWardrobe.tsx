@@ -3,7 +3,7 @@ import * as THREE from "three";
 import SectionFrame from "./SectionFrame";
 import SectionColumns from "./SectionColumns";
 import SectionShelves from "./SectionShelves";
-import EtagereColumnHighlights from "./EtagereColumnHighlights";
+import ShelvesColumnHighlights from "./ShelvesColumnHighlights";
 import InternalEquipmentSpacingHighlights from "./InternalEquipmentSpacingHighlights";
 import DoorsDrawersHighlights from "./DoorsDrawersHighlights";
 import DoorsDrawersRenderer from "./DoorsDrawersRenderer";
@@ -122,8 +122,8 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
         showSections={showSections}
       />
 
-      {/* Étagère Column Highlights - Based on working ColumnHighlights pattern */}
-      <EtagereColumnHighlights
+      {/* Shelves Column Highlights - Based on working ColumnHighlights pattern */}
+      <ShelvesColumnHighlights
         sectionName="sectionA"
         sectionData={sections.sectionA}
         position={[0, 0, 0]}
@@ -210,8 +210,8 @@ const AngleWardrobe: React.FC<AngleWardrobeProps> = ({
           showSections={showSections}
         />
 
-        {/* Étagère Column Highlights - Based on working ColumnHighlights pattern */}
-        <EtagereColumnHighlights
+        {/* Shelves Column Highlights - Based on working ColumnHighlights pattern */}
+        <ShelvesColumnHighlights
           sectionName="sectionB"
           sectionData={sections.sectionB}
           position={[0, 0, 0]}

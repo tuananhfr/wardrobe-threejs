@@ -1,4 +1,3 @@
-// src/components/Wardrobe/InternalEquipmentSpacingHighlights.tsx
 import { useEffect } from "react";
 import { Text } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
@@ -284,7 +283,7 @@ const InternalEquipmentSpacingHighlights: React.FC<
       }
     });
 
-    // NEW LOGIC: Remove rail from spacings that are too small (< 80cm)
+    // Remove rail from spacings that are too small (< 80cm)
     Object.keys(updatedConfig).forEach((spacingId) => {
       if (updatedConfig[spacingId] === "trigle") {
         const spacingHeight = getSpacingHeight(spacingId);
@@ -296,7 +295,7 @@ const InternalEquipmentSpacingHighlights: React.FC<
       }
     });
 
-    // NEW LOGIC: Auto-update tiroir configuration when spacing height changes
+    // Auto-update tiroir configuration when spacing height changes
     Object.keys(updatedConfig).forEach((spacingId) => {
       const equipmentVal = updatedConfig[spacingId];
       if (
@@ -440,7 +439,7 @@ const InternalEquipmentSpacingHighlights: React.FC<
 
         // Determine highlight state and color
         let shouldShowHighlight = false;
-        let highlightColor = "#e6f7f9"; // Blue like EtagereColumnHighlights
+        let highlightColor = "#e6f7f9";
         let opacity = 0;
 
         if (isSelected) {
@@ -488,7 +487,7 @@ const InternalEquipmentSpacingHighlights: React.FC<
 
         // Determine icon properties based on whether it's a full column or spacing
         let iconColor = "#4169E1"; // Default blue
-        let iconText = "+"; // Default plus like EtagereColumnHighlights
+        let iconText = "+";
 
         if (isSelected) {
           iconColor = "green";

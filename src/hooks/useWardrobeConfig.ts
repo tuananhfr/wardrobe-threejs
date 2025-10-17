@@ -1,5 +1,3 @@
-// src/hooks/useWardrobeConfig.ts (Updated with L-Shape constraints)
-
 import { useConfig, useUndoRedo } from "@/components/context/WardrobeContext";
 
 export const useWardrobeConfig = () => {

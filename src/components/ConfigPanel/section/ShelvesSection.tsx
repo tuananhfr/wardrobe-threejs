@@ -3,7 +3,7 @@ import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useWardrobeShelves } from "@/hooks/useWardrobeShelves";
 import { useUndoRedo } from "@/components/context/WardrobeContext";
 
-const EtagereSection: React.FC = () => {
+const ShelvesSection: React.FC = () => {
   const { config, updateConfig } = useWardrobeConfig();
   const { updateConfigWithHistoryDebounced } = useUndoRedo();
 
@@ -1664,4 +1664,4 @@ const EtagereSection: React.FC = () => {
   );
 };
 
-export default EtagereSection;
+export default ShelvesSection;

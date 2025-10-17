@@ -1,4 +1,3 @@
-// src/components/Wardrobe/WardrobeModel.tsx
 import React, { useRef } from "react";
 import { useLoader } from "@react-three/fiber";
 import { TextureLoader } from "three";
@@ -7,7 +6,6 @@ import { useConfig } from "../../context/WardrobeContext";
 import LinearWardrobe from "./LinearWardrobe";
 import AngleWardrobe from "./AngleWardrobe";
 import FormeUWardrobe from "./FormeUWardrobe";
-import WardrobeInteractions from "./WardrobeInteractions";
 import BaseBar from "./BaseBar";
 import SectionMeasurements from "./SectionMeasurements";
 
@@ -146,9 +144,6 @@ const WardrobeModel: React.FC<WardrobeModelProps> = ({
         wardrobeType={currentWardrobeType.id}
         showMeasurements={showMeasurements}
       />
-
-      {/* Interactive behaviors */}
-      <WardrobeInteractions />
     </group>
   );
 };

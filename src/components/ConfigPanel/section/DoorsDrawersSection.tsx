@@ -588,49 +588,7 @@ const DoorsDrawersSection: React.FC = () => {
     }
   }, [config.selectedDoorsDrawersSpacingIds[0], config.doorsDrawersConfig]);
 
-  // Log when sliding door is actually created
-  // useEffect(() => {
-  //   const slidingDoorTypes = [
-  //     "slidingDoor",
-  //     "slidingMirrorDoor",
-  //     "slidingGlassDoor",
-  //   ];
-
-  //   // Check if any sliding door was just created
-  //   const slidingDoors = Object.entries(config.doorsDrawersConfig).filter(
-  //     ([, doorType]) => slidingDoorTypes.includes(doorType)
-  //   );
-
-  //   // Only log if we have sliding doors AND grouped config is not empty
-  //   if (
-  //     slidingDoors.length > 0 &&
-  //     Object.keys(config.groupedDoorsConfig).length > 0
-  //   ) {
-  //     console.log("🚪 SLIDING DOOR CREATED:");
-  //     console.log("- Number of sliding doors:", slidingDoors.length);
-  //     console.log(
-  //       "- All spacing IDs with config:",
-  //       slidingDoors.map(([id]) => id)
-  //     );
-  //     console.log("- Door type:", slidingDoors[0][1]);
-  //     console.log("- Full config:", config.doorsDrawersConfig);
-  //     console.log("- Grouped config:", config.groupedDoorsConfig);
-
-  //     // Log group details
-  //     Object.entries(config.groupedDoorsConfig).forEach(([groupId, group]) => {
-  //       if (group.doorType && slidingDoorTypes.includes(group.doorType)) {
-  //         console.log(
-  //           `- Group ${groupId}:`,
-  //           group.spacingIds.length,
-  //           "spacings"
-  //         );
-  //         console.log(`  - Group spacing IDs:`, group.spacingIds);
-  //       }
-  //     });
-  //   }
-  // }, [config.doorsDrawersConfig, config.groupedDoorsConfig]);
-
-  // NEW LOGIC: Update selected doors drawers type when doors/drawers are removed due to unsuitable dimensions
+  // Update selected doors drawers type when doors/drawers are removed due to unsuitable dimensions
   useEffect(() => {
     if (
       config.selectedDoorsDrawersSpacingIds &&
@@ -884,10 +842,6 @@ const DoorsDrawersSection: React.FC = () => {
           : [];
 
       if (targetSpacings.length > 0) {
-        // Logic bình thường: chỉ clear spacing được chọn
-        // targetSpacings.forEach((spacingId) => {
-        //   updateDoorsDrawersConfig(spacingId, null);
-        // });
         updateDoorsDrawersConfig(targetSpacings[0], null);
       }
       return;
@@ -970,19 +924,6 @@ const DoorsDrawersSection: React.FC = () => {
           allSpacingsForSlidingDoor.push(...allSpacingsInColumn);
         }
 
-        // Apply sliding door to ALL spacings across all selected columns as one group
-        // console.log("🚪 SLIDING DOOR LOG:");
-        // console.log("- Selected columns:", Array.from(spacingsByColumn.keys()));
-        // console.log(
-        //   "- All spacings for sliding door:",
-        //   allSpacingsForSlidingDoor
-        // );
-        // console.log(
-        //   "- Total spacings count:",
-        //   allSpacingsForSlidingDoor.length
-        // );
-        // console.log("- Door type:", type);
-
         if (allSpacingsForSlidingDoor.length === 1) {
           // Single spacing - no group needed
 
@@ -1029,12 +970,6 @@ const DoorsDrawersSection: React.FC = () => {
           // Chỉ cần gọi updateDoorsDrawersConfig với targetSpacings, nó sẽ tự động tạo group
           updateDoorsDrawersConfig(targetSpacings[0], type, targetSpacings);
         } else {
-          // Logic bình thường cho single spacing hoặc không cạnh nhau
-          // targetSpacings.forEach((spacingId) => {
-          //   if (spacingId) {
-          //     updateDoorsDrawersConfig(spacingId, type);
-          //   }
-          // });
           updateDoorsDrawersConfig(targetSpacings[0], type);
         }
       }

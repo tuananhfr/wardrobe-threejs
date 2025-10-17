@@ -1,4 +1,3 @@
-// src/components/Wardrobe/WardrobeFrame.tsx
 import React from "react";
 import * as THREE from "three";
 

@@ -1,4 +1,3 @@
-// src/context/WardrobeConfigProvider.tsx
 import { ReactNode, useState, useRef, useCallback } from "react";
 import { WardrobeContext } from "./WardrobeContext";
 

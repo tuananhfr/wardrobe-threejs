@@ -1,4 +1,3 @@
-// src/pages/WardrobePage.tsx
 import ConfigPanel from "@/components/ConfigPanel/ConfigPanel";
 import PreviewPanel from "@/components/PreviewPanel/PreviewPanel";
 import PriceSection from "./components/ConfigPanel/section/PriceSection";

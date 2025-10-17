@@ -1,4 +1,3 @@
-// src/components/ConfigPanel/ColumnsSection.tsx (Simplified)
 import React, { useEffect } from "react";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 import { useWardrobeColumns } from "@/hooks/useWardrobeColumns";

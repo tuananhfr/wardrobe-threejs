@@ -1,10 +1,9 @@
-// src/components/Wardrobe/EtagereColumnHighlights.tsx - UPDATED WITH ANGLE AB HOVER
 import { useEffect } from "react";
 import { Text } from "@react-three/drei";
 import { ThreeEvent } from "@react-three/fiber";
 import { useWardrobeConfig } from "@/hooks/useWardrobeConfig";
 
-interface EtagereColumnHighlightsProps {
+interface ShelvesColumnHighlightsProps {
   sectionName: string;
   sectionData: WardrobeSection;
   position: [number, number, number];
@@ -13,7 +12,7 @@ interface EtagereColumnHighlightsProps {
   thickness: number;
 }
 
-const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
+const ShelvesColumnHighlights: React.FC<ShelvesColumnHighlightsProps> = ({
   sectionName,
   sectionData,
   position,
@@ -231,7 +230,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       }
     }
 
-    // NEW: Special handling for Angle AB and Angle AC hover
+    // Special handling for Angle AB and Angle AC hover
     let finalHoveredState: number | string | null = null;
 
     if (hoveredCol !== null) {
@@ -290,7 +289,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       {/* Column highlights */}
       {columnPositions.map((pos, index) => {
         const isSelected = selectedColumnId === pos.columnId;
-        // UPDATED: Handle both number index and "angle-ab"/"angle-ac" string hover
+        // Handle both number index and "angle-ab"/"angle-ac" string hover
         const isDirectlyHovered = hoveredColumn === `${sectionName}-${index}`;
         const isAngleABHovered =
           hoveredColumn === "angle-ab" && pos.isAngleABColumn;
@@ -346,7 +345,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
           highlightColor = "#e6f7f9"; // Blue
           opacity = 0.6;
         } else if (isHovered) {
-          // NEW: Handle Angle AB/AC hover and normal hover
+          // Handle Angle AB/AC hover and normal hover
           shouldShowHighlight = true;
           if (
             (hoveredColumn === "angle-ab" && pos.isAngleABColumn) ||
@@ -388,7 +387,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
       {/* Icons and labels */}
       {columnPositions.map((pos, index) => {
         const isSelected = selectedColumnId === pos.columnId;
-        // UPDATED: Handle both number index and "angle-ab"/"angle-ac" string hover
+        // Handle both number index and "angle-ab"/"angle-ac" string hover
         const isDirectlyHovered = hoveredColumn === `${sectionName}-${index}`;
         const isAngleABHovered =
           hoveredColumn === "angle-ab" && pos.isAngleABColumn;
@@ -447,7 +446,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
           return null; // Don't show icon for A-cuối when Angle AC hovered
         }
 
-        // UPDATED: Show icon conditions - include Angle AB/AC hover
+        // Show icon conditions - include Angle AB/AC hover
         const shouldShowIcon =
           isHovered ||
           isSelected ||
@@ -497,7 +496,7 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
           iconColor = "green";
           iconText = "✓";
         } else if (isHovered) {
-          // UPDATED: Handle Angle AB/AC hover and normal hover
+          // Handle Angle AB/AC hover and normal hover
           if (
             (hoveredColumn === "angle-ab" && pos.isAngleABColumn) ||
             (hoveredColumn === "angle-ac" && pos.isAngleACColumn)
@@ -540,4 +539,4 @@ const EtagereColumnHighlights: React.FC<EtagereColumnHighlightsProps> = ({
   );
 };
 
-export default EtagereColumnHighlights;
+export default ShelvesColumnHighlights;

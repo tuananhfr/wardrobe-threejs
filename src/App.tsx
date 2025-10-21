@@ -1,6 +1,6 @@
 import ConfigPanel from "./components/configPanel";
 import PreviewPanel from "./components/previewPanel";
-import PriceSection from "@/components/bottomSection/PriceSection";
+import PriceSection from "./components/bottomSection/PriceSection";
 
 function App() {
   return (

@@ -7,7 +7,9 @@ This project provides a responsive UI to configure wardrobe types, dimensions, i
 
 ## Demo
 
-[demo](https://wardrobe-threejs.vercel.app/)
+![Wardrobe Configurator Screenshot](demo-wardrobe.png)
+
+[Live demo](https://wardrobe-threejs.vercel.app/)
 
 ## Tech Stack
 
@@ -48,5 +50,49 @@ npm run dev
 
 # Build for production
 npm run build
+```
+
+# Project Structure
 
 ```
+src/
+├── main.tsx # App bootstrap and provider wiring
+├── App.tsx # Main layout (split view between config and preview)
+├── context/
+│ └── WardrobeContext.tsx # Config provider and undo/redo logic
+├── components/
+│ ├── configPanel/ # Configuration accordions and controls
+│ ├── previewPanel/ # 3D preview and camera setup
+│ └── bottomSection/ # Price display and action buttons
+├── constants/ # Type definitions and constants
+└── assets/ # Textures and static resources
+```
+
+## Key Implementation Notes
+
+- Global configuration is managed through WardrobeConfigProvider, exposing:
+
+- Immediate updates (updateConfig)
+
+- Batched updates (batchUpdate)
+
+- Debounced updates for sliders/inputs (updateConfigWithHistoryDebounced)
+
+- Undo/Redo support with capped history (MAX_HISTORY)
+
+- The UI uses a Bootstrap accordion system. Opening a new section resets temporary selection states to prevent accidental edits in other sections.
+
+- The 3D renderer is divided into models, renderers, and highlight components for better modularity and maintainability.
+
+## Development Tips
+
+- Import aliases: @ points to src/ (set in vite.config.ts).
+
+- Place large textures or model assets under src/assets/.
+
+- When editing the configuration context, ensure type updates stay in sync with components using it.
+
+## License
+
+This project is licensed under the **MIT License**.  
+Copyright © 2025 [PHAM Tuan Anh](https://github.com/tuananhfr)

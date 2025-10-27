@@ -284,18 +284,28 @@ const ShelvesSection: React.FC = () => {
       const sectionB = config.wardrobeType.sections.sectionB;
 
       if (sectionA && sectionB) {
-        const aLastColumn = sectionA.columns[sectionA.columns.length - 1];
-        if (aLastColumn) {
-          const aColumnShelves = getColumnShelves("sectionA", aLastColumn.id);
+        const aFirstColumn = sectionA.columns[0];
+
+        if (aFirstColumn) {
+          const aColumnShelves = getColumnShelves("sectionA", aFirstColumn.id);
           const actualCount = aColumnShelves?.shelves?.length || 0;
           // Only sync if local state is 0 (initial state) and actual count is different
-          if (angleABShelfCount === 0 && actualCount > 0 && !isUserChanging) {
+          if (
+            !isUserChanging &&
+            actualCount !== angleABShelfCount &&
+            (angleABShelfCount === 0 || actualCount >= 0)
+          ) {
             setAngleABShelfCount(actualCount);
           }
         }
       }
     }
-  }, [config.selectedColumnId, config.wardrobeType.sections, isUserChanging]);
+  }, [
+    config.selectedColumnId,
+    config.wardrobeType.sections,
+    isUserChanging,
+    angleABShelfCount,
+  ]);
 
   // Sync local state with actual data when Angle AC is selected
   useEffect(() => {
@@ -304,18 +314,27 @@ const ShelvesSection: React.FC = () => {
       const sectionC = config.wardrobeType.sections.sectionC;
 
       if (sectionA && sectionC) {
-        const aFirstColumn = sectionA.columns[0];
-        if (aFirstColumn) {
-          const aColumnShelves = getColumnShelves("sectionA", aFirstColumn.id);
+        const aLastColumn = sectionA.columns[sectionA.columns.length - 1];
+        if (aLastColumn) {
+          const aColumnShelves = getColumnShelves("sectionA", aLastColumn.id);
           const actualCount = aColumnShelves?.shelves?.length || 0;
           // Only sync if local state is 0 (initial state) and actual count is different
-          if (angleACShelfCount === 0 && actualCount > 0 && !isUserChanging) {
+          if (
+            !isUserChanging &&
+            actualCount !== angleACShelfCount &&
+            (angleACShelfCount === 0 || actualCount >= 0)
+          ) {
             setAngleACShelfCount(actualCount);
           }
         }
       }
     }
-  }, [config.selectedColumnId, config.wardrobeType.sections, isUserChanging]);
+  }, [
+    config.selectedColumnId,
+    config.wardrobeType.sections,
+    isUserChanging,
+    angleACShelfCount,
+  ]);
 
   // Reset local state when switching away from Angle AB or Angle AC
   useEffect(() => {
@@ -354,46 +373,6 @@ const ShelvesSection: React.FC = () => {
     // Update the previous accordion open reference
     prevAccordionOpenRef.current = currentAccordionOpen;
   }, [config.accordionOpen, updateConfig]);
-
-  // Sync with actual data after user changes for Angle AB
-  useEffect(() => {
-    if (!isUserChanging && config.selectedColumnId === "angle-ab") {
-      const sectionA = config.wardrobeType.sections.sectionA;
-      const sectionB = config.wardrobeType.sections.sectionB;
-
-      if (sectionA && sectionB) {
-        const aLastColumn = sectionA.columns[sectionA.columns.length - 1];
-        if (aLastColumn) {
-          const aColumnShelves = getColumnShelves("sectionA", aLastColumn.id);
-          const actualCount = aColumnShelves?.shelves?.length || 0;
-          // Sync with actual data after user changes
-          if (actualCount > 0) {
-            setAngleABShelfCount(actualCount);
-          }
-        }
-      }
-    }
-  }, [isUserChanging, config.selectedColumnId, config.wardrobeType.sections]);
-
-  // Sync with actual data after user changes for Angle AC
-  useEffect(() => {
-    if (!isUserChanging && config.selectedColumnId === "angle-ac") {
-      const sectionA = config.wardrobeType.sections.sectionA;
-      const sectionC = config.wardrobeType.sections.sectionC;
-
-      if (sectionA && sectionC) {
-        const aFirstColumn = sectionA.columns[0];
-        if (aFirstColumn) {
-          const aColumnShelves = getColumnShelves("sectionA", aFirstColumn.id);
-          const actualCount = aColumnShelves?.shelves?.length || 0;
-          // Sync with actual data after user changes
-          if (actualCount > 0) {
-            setAngleACShelfCount(actualCount);
-          }
-        }
-      }
-    }
-  }, [isUserChanging, config.selectedColumnId, config.wardrobeType.sections]);
 
   // Get Angle AB data when selected as a single column
   const getAngleABData = () => {
@@ -781,7 +760,7 @@ const ShelvesSection: React.FC = () => {
                   setIsUserChanging(true);
                   setAngleABShelfCount(newCount);
 
-                  // Use new function to update both columns in single transaction
+                  // Use function to update both columns in single transaction
                   setShelfCountForMultipleColumns([
                     {
                       sectionKey: angleData.aColumn.sectionKey,
@@ -976,7 +955,7 @@ const ShelvesSection: React.FC = () => {
                     );
 
                     // Single config update for both columns
-                    updateConfig("wardrobeType", {
+                    updateConfigWithHistoryDebounced("wardrobeType", {
                       ...config.wardrobeType,
                       sections: updatedSections,
                     });
@@ -1340,7 +1319,7 @@ const ShelvesSection: React.FC = () => {
                     );
 
                     // Single config update for both columns
-                    updateConfig("wardrobeType", {
+                    updateConfigWithHistoryDebounced("wardrobeType", {
                       ...config.wardrobeType,
                       sections: updatedSections,
                     });

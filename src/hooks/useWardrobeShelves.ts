@@ -1,3 +1,4 @@
+import { useUndoRedo } from "@/context/WardrobeContext";
 import { useWardrobeConfig } from "./useWardrobeConfig";
 
 interface ShelfItem {
@@ -14,13 +15,9 @@ interface ColumnShelves {
 }
 
 export const useWardrobeShelves = () => {
-  const {
-    config,
-    handleUpdateSection,
-    updateConfig,
-    cleanupConfigForRemovedSpacings,
-  } = useWardrobeConfig();
-
+  const { config, handleUpdateSection, cleanupConfigForRemovedSpacings } =
+    useWardrobeConfig();
+  const { updateConfigWithHistoryDebounced } = useUndoRedo();
   const MIN_SHELF_SPACING = 10; // cm
 
   /**
@@ -348,7 +345,7 @@ export const useWardrobeShelves = () => {
     }
 
     // Single update to config - all sections at once
-    updateConfig("wardrobeType", {
+    updateConfigWithHistoryDebounced("wardrobeType", {
       ...config.wardrobeType,
       sections: updatedSections,
     });
